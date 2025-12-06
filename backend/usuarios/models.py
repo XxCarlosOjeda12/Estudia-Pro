@@ -2,9 +2,6 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 
 class Usuario(AbstractUser):
-    """
-    Modelo de usuario personalizado que extiende de AbstractUser
-    """
     ROLES = [
         ('ESTUDIANTE', 'Estudiante'),
         ('CREADOR', 'Creador'),
@@ -17,20 +14,13 @@ class Usuario(AbstractUser):
         ('SUSPENDIDO', 'Suspendido'),
     ]
     
-    # Sobrescribimos algunos campos
     email = models.EmailField(unique=True)
-    
-    # Campos adicionales
     fecha_registro = models.DateTimeField(auto_now_add=True)
     rol = models.CharField(max_length=20, choices=ROLES)
     puntos_gamificacion = models.IntegerField(default=0)
     nivel = models.IntegerField(default=1)
     foto_perfil_url = models.URLField(blank=True, null=True)
     estado = models.CharField(max_length=20, choices=ESTADOS, default='ACTIVO')
-    
-    # Para que Django use 'email' en lugar de 'username' para login (opcional)
-    # USERNAME_FIELD = 'email'
-    # REQUIRED_FIELDS = ['username']
     
     class Meta:
         db_table = 'usuario'
@@ -42,9 +32,6 @@ class Usuario(AbstractUser):
 
 
 class Estudiante(models.Model):
-    """
-    Perfil de Estudiante
-    """
     id_estudiante = models.AutoField(primary_key=True)
     id_usuario = models.OneToOneField(
         Usuario, 
@@ -52,7 +39,7 @@ class Estudiante(models.Model):
         related_name='perfil_estudiante'
     )
     nivel_escolar = models.CharField(max_length=100)
-    id_institucion = models.IntegerField(null=True, blank=True)  # Por ahora sin FK
+    id_institucion = models.IntegerField(null=True, blank=True)
     
     class Meta:
         db_table = 'estudiante'
@@ -64,9 +51,6 @@ class Estudiante(models.Model):
 
 
 class Creador(models.Model):
-    """
-    Perfil de Creador de contenido
-    """
     id_creador = models.AutoField(primary_key=True)
     id_usuario = models.OneToOneField(
         Usuario, 
@@ -96,9 +80,6 @@ class Creador(models.Model):
 
 
 class Administrador(models.Model):
-    """
-    Perfil de Administrador
-    """
     id_administrador = models.AutoField(primary_key=True)
     id_usuario = models.OneToOneField(
         Usuario, 

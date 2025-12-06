@@ -47,12 +47,18 @@ class RegisterSerializer(serializers.ModelSerializer):
                   'nivel_escolar', 'id_institucion', 'especialidad', 'permiso']
     
     def validate(self, data):
+        """
+        Función: validate
+        Descripción: Valida que las contraseñas coincidan y que se proporcionen los campos requeridos según el rol.
+        Input:
+          - data: Diccionario con los datos del formulario de registro
+        Output:
+          - data: Datos validados o lanza ValidationError si hay errores
+        """
         if data['password'] != data['password_confirm']:
             raise serializers.ValidationError({"password": "Las contraseñas no coinciden"})
         
         rol = data.get('rol')
-        
-        # Validar campos según el rol
         if rol == 'ESTUDIANTE' and not data.get('nivel_escolar'):
             raise serializers.ValidationError({"nivel_escolar": "Este campo es requerido para estudiantes"})
         
@@ -65,9 +71,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         return data
     
     def create(self, validated_data):
+        """
+        Función: create
+        Descripción: Crea un nuevo usuario y su perfil correspondiente según el rol asignado.
+        Input:
+          - validated_data: Datos validados del usuario a crear
+        Output:
+          - usuario: Instancia del usuario creado con su perfil asociado
+        """
         validated_data.pop('password_confirm')
-        
-        # Extraer campos específicos de cada perfil
         nivel_escolar = validated_data.pop('nivel_escolar', None)
         id_institucion = validated_data.pop('id_institucion', None)
         especialidad = validated_data.pop('especialidad', None)
@@ -104,6 +116,14 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
     
     def validate(self, data):
+        """
+        Función: validate
+        Descripción: Autentica las credenciales del usuario y verifica que esté activo.
+        Input:
+          - data: Diccionario con username y password
+        Output:
+          - usuario: Instancia del usuario autenticado o lanza ValidationError
+        """
         usuario = authenticate(username=data['username'], password=data['password'])
         if usuario and usuario.is_active and usuario.estado == 'ACTIVO':
             return usuario

@@ -9,7 +9,12 @@ from .models import Usuario
 @permission_classes([permissions.AllowAny])
 def register(request):
     """
-    Registro de nuevos usuarios
+    Función: register
+    Descripción: Registra un nuevo usuario en el sistema y crea su perfil según el rol asignado.
+    Input:
+      - request: Objeto Request de Django REST Framework con los datos del usuario
+    Output:
+      - Response: Token de autenticación y datos del usuario creado (201) o errores de validación (400)
     """
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
@@ -28,7 +33,12 @@ def register(request):
 @permission_classes([permissions.AllowAny])
 def login(request):
     """
-    Login de usuarios
+    Función: login
+    Descripción: Autentica un usuario y genera un token de acceso.
+    Input:
+      - request: Objeto Request con username y password
+    Output:
+      - Response: Token de autenticación y datos del usuario (200) o errores de validación (400)
     """
     serializer = LoginSerializer(data=request.data)
     if serializer.is_valid():
@@ -47,7 +57,12 @@ def login(request):
 @permission_classes([permissions.IsAuthenticated])
 def user_profile(request):
     """
-    Obtener perfil del usuario autenticado
+    Función: user_profile
+    Descripción: Obtiene los datos completos del perfil del usuario autenticado.
+    Input:
+      - request: Objeto Request con usuario autenticado
+    Output:
+      - Response: Datos del usuario incluyendo perfil según su rol (200)
     """
     serializer = UsuarioSerializer(request.user)
     return Response(serializer.data)
@@ -56,7 +71,12 @@ def user_profile(request):
 @permission_classes([permissions.IsAuthenticated])
 def logout(request):
     """
-    Logout - elimina el token
+    Función: logout
+    Descripción: Cierra la sesión del usuario eliminando su token de autenticación.
+    Input:
+      - request: Objeto Request con usuario autenticado
+    Output:
+      - Response: Mensaje de confirmación (200) o error interno (500)
     """
     try:
         request.user.auth_token.delete()
@@ -72,7 +92,12 @@ def logout(request):
 @permission_classes([permissions.IsAuthenticated])
 def verificar_rol(request):
     """
-    Verifica el rol del usuario autenticado
+    Función: verificar_rol
+    Descripción: Verifica y retorna el rol del usuario autenticado junto con información adicional.
+    Input:
+      - request: Objeto Request con usuario autenticado
+    Output:
+      - Response: Información del rol, estado, nivel y puntos del usuario (200)
     """
     usuario = request.user
     
