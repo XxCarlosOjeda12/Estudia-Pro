@@ -1,0 +1,20 @@
+# Django Framework
+Django>=5.0,<6.0
+
+# Django REST Framework
+djangorestframework>=3.14.0
+
+# CORS Headers para permitir peticiones desde el frontend
+django-cors-headers>=4.3.0
+
+# Variables de entorno
+python-dotenv>=1.0.0
+
+# Base de datos PostgreSQL (para producción)
+psycopg2-binary>=2.9.9
+
+# Servidor de producción
+gunicorn>=21.2.0
+
+# Whitenoise para servir archivos estáticos
+whitenoise>=6.6.0
