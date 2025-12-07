@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estudia-Pro: Iniciar Sesión</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- CSS Personalizado -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body class="bg-light-bg dark:bg-dark-bg text-slate-800 dark:text-slate-200 transition-colors duration-300">
+
+    <div id="app-container">
+        <!-- LOGIN PAGE -->
+        <div id="login-page" class="page active">
+            <div
+                class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 dark:from-dark-bg dark:to-slate-900 p-4">
+                <div class="w-full max-w-md">
+                    <div class="text-center mb-8">
+                        <h1 class="text-4xl font-bold text-primary">Estudia-Pro</h1>
+                        <p class="text-slate-500 dark:text-slate-400 mt-2">Tu aliado para aprobar y avanzar en
+                            matemáticas.</p>
+                    </div>
+
+                    <div class="glass-effect-light p-8 rounded-2xl shadow-2xl">
+                        <div id="login-form-container">
+                            <!-- Tabs as Links -->
+                            <div class="flex border-b border-slate-200 dark:border-slate-700 mb-6">
+                                <a href="login.html"
+                                    class="tab-button flex-1 py-2 font-medium text-center text-primary active border-b-2 border-primary">Iniciar
+                                    Sesión</a>
+                                <a href="register.html"
+                                    class="tab-button flex-1 py-2 font-medium text-center text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300">Registrarse</a>
+                            </div>
+
+                            <form id="login-form" class="active-form">
+                                <div class="mb-4">
+                                    <label for="email"
+                                        class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Usuario
+                                        (email)</label>
+                                    <input type="email" id="email"
+                                        class="w-full px-4 py-2 bg-white/50 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+                                        placeholder="tu.email@ejemplo.com" required>
+                                </div>
+                                <div class="mb-6">
+                                    <label for="password"
+                                        class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Contraseña</label>
+                                    <div class="relative">
+                                        <input type="password" id="password"
+                                            class="w-full px-4 py-2 bg-white/50 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+                                            placeholder="••••••••" required>
+                                        <button type="button"
+                                            class="toggle-password absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center justify-between mb-6">
+                                    <div class="flex items-center">
+                                        <input id="remember-me" type="checkbox"
+                                            class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        <label for="remember-me"
+                                            class="ml-2 block text-sm text-slate-500 dark:text-slate-400">Recordarme</label>
+                                    </div>
+                                    <div class="text-sm">
+                                        <a href="#"
+                                            class="font-medium text-primary hover:text-primary-focus hover:underline">¿Olvidaste
+                                            tu contraseña?</a>
+                                    </div>
+                                </div>
+
+                                <button type="submit"
+                                    class="w-full bg-primary hover:bg-primary-focus text-white font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105">
+                                    Ingresar
+                                </button>
+                            </form>
+
+                            <p class="text-center text-slate-500 dark:text-slate-400 text-sm mt-6">
+                                ¿No tienes cuenta? <a href="register.html"
+                                    class="text-primary font-bold hover:underline">Regístrate gratis</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS CONTAINER -->
+    <div id="modals-container"></div>
+
+    <!-- NOTIFICATIONS CONTAINER -->
+    <div id="notifications-container" class="notification"></div>
+
+    <!-- JavaScript -->
+    <script src="global.js"></script>
+    <script src="login.js"></script>
+</body>
+
+</html>
