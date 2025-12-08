@@ -45,6 +45,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ['username', 'email', 'password', 'password_confirm', 
                   'first_name', 'last_name', 'rol', 'foto_perfil_url',
                   'nivel_escolar', 'id_institucion', 'especialidad', 'permiso']
+        
+    def validate_email(self, value):
+        """Validar que el email no esté registrado"""
+        if Usuario.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Este correo electrónico ya está registrado")
+        return value.lower()
     
     def validate(self, data):
         """
