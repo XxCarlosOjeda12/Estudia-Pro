@@ -1,0 +1,12 @@
+/* Fondo de modal */
+.fondo-modal {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+/* Contenido de modal */
+.contenido-modal {
+    max-height: 80vh;
+    overflow-y: auto;
+}

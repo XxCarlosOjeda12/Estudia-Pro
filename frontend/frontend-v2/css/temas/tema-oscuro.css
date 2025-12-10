@@ -1,0 +1,26 @@
+.tema-oscuro {
+    color-scheme: dark;
+}
+
+.tema-oscuro body {
+    background-color: #0f172a;
+    color: #e2e8f0;
+}
+
+.tema-oscuro .efecto-vidrio-claro {
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tema-oscuro .visor-pdf {
+    background: #1e293b;
+    border-color: #475569;
+}
+
+.tema-oscuro .campo-matematico {
+    background: #1e293b;
+    border-color: #475569;
+    color: white;
+}
