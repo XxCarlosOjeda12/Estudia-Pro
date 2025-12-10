@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     
     # Tu app
     'usuarios',
+    'cursos',
 ]
 
 MIDDLEWARE = [
