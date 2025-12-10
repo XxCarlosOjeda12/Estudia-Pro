@@ -1,0 +1,31 @@
+/* Efecto de vidrio para autenticación */
+.efecto-vidrio {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tema-oscuro .efecto-vidrio-claro {
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tema-claro .efecto-vidrio-claro {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Formularios de autenticación */
+.formulario-activo {
+    display: block;
+}
+
+#formulario-login.oculto,
+#formulario-registro.oculto {
+    display: none;
+}
