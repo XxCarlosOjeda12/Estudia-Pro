@@ -2,7 +2,9 @@ from django.contrib import admin
 from .models import (
     Curso, Modulo, Recurso, Pregunta, 
     Inscripcion, ProgresoRecurso, Examen, 
-    IntentoExamen, RespuestaEstudiante
+    IntentoExamen, RespuestaEstudiante,
+    Logro, LogroEstudiante, ActividadEstudiante,
+    TemaForo, RespuestaForo, VotoRespuesta
 )
 
 
@@ -71,3 +73,41 @@ class RespuestaEstudianteAdmin(admin.ModelAdmin):
     def pregunta_corta(self, obj):
         return obj.pregunta.texto_pregunta[:30] + '...'
     pregunta_corta.short_description = 'Pregunta'
+
+
+
+@admin.register(Logro)
+class LogroAdmin(admin.ModelAdmin):
+    list_display = ['nombre', 'tipo', 'puntos_recompensa', 'condicion_valor', 'activo']
+    list_filter = ['tipo', 'activo']
+
+
+@admin.register(LogroEstudiante)
+class LogroEstudianteAdmin(admin.ModelAdmin):
+    list_display = ['estudiante', 'logro', 'progreso_actual', 'desbloqueado', 'fecha_obtenido']
+    list_filter = ['desbloqueado']
+
+
+@admin.register(ActividadEstudiante)
+class ActividadEstudianteAdmin(admin.ModelAdmin):
+    list_display = ['estudiante', 'tipo', 'descripcion', 'fecha', 'puntos_ganados']
+    list_filter = ['tipo', 'fecha']
+
+
+@admin.register(TemaForo)
+class TemaForoAdmin(admin.ModelAdmin):
+    list_display = ['titulo', 'autor', 'categoria', 'curso', 'resuelto', 'cerrado', 'vistas', 'fecha_creacion']
+    list_filter = ['categoria', 'resuelto', 'cerrado']
+    search_fields = ['titulo', 'contenido']
+
+
+@admin.register(RespuestaForo)
+class RespuestaForoAdmin(admin.ModelAdmin):
+    list_display = ['tema', 'autor', 'es_solucion', 'votos', 'fecha_creacion']
+    list_filter = ['es_solucion']
+
+
+@admin.register(VotoRespuesta)
+class VotoRespuestaAdmin(admin.ModelAdmin):
+    list_display = ['respuesta', 'usuario', 'tipo', 'fecha']
+    list_filter = ['tipo']

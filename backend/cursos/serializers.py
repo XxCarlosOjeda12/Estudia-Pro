@@ -2,9 +2,12 @@ from rest_framework import serializers
 from .models import (
     Curso, Modulo, Recurso, Pregunta, 
     Inscripcion, ProgresoRecurso, Examen,
-    IntentoExamen, RespuestaEstudiante
+    IntentoExamen, RespuestaEstudiante,
+    Logro, LogroEstudiante, ActividadEstudiante,
+    TemaForo, RespuestaForo, VotoRespuesta
 )
 from usuarios.models import Creador
+from usuarios.models import Usuario
 
 
 class CreadorSerializer(serializers.ModelSerializer):
@@ -175,4 +178,100 @@ class IntentoExamenSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'puntaje_obtenido', 'completado', 'aprobado'
+        ]
+
+
+class LogroSerializer(serializers.ModelSerializer):
+    """Serializer para logros"""
+    
+    class Meta:
+        model = Logro
+        fields = [
+            'id', 'nombre', 'descripcion', 'icono',
+            'tipo', 'puntos_recompensa', 'condicion_valor'
+        ]
+
+
+class LogroEstudianteSerializer(serializers.ModelSerializer):
+    """Serializer para logros del estudiante"""
+    logro = LogroSerializer(read_only=True)
+    porcentaje_progreso = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = LogroEstudiante
+        fields = [
+            'id', 'logro', 'fecha_obtenido', 
+            'progreso_actual', 'desbloqueado', 'porcentaje_progreso'
+        ]
+    
+    def get_porcentaje_progreso(self, obj):
+        if obj.logro.condicion_valor == 0:
+            return 100 if obj.desbloqueado else 0
+        return min(100, (obj.progreso_actual / obj.logro.condicion_valor) * 100)
+
+
+class ActividadEstudianteSerializer(serializers.ModelSerializer):
+    """Serializer para actividades del estudiante"""
+    tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
+    
+    class Meta:
+        model = ActividadEstudiante
+        fields = [
+            'id', 'tipo', 'tipo_display', 'descripcion',
+            'fecha', 'puntos_ganados'
+        ]
+
+
+class UsuarioBasicoSerializer(serializers.ModelSerializer):
+    """Serializer básico para mostrar info del usuario"""
+    
+    class Meta:
+        model = Usuario
+        fields = ['id', 'username', 'first_name', 'last_name', 'foto_perfil_url']
+
+
+class RespuestaForoSerializer(serializers.ModelSerializer):
+    """Serializer para respuestas del foro"""
+    autor = UsuarioBasicoSerializer(read_only=True)
+    total_votos = serializers.IntegerField(source='votos', read_only=True)
+    
+    class Meta:
+        model = RespuestaForo
+        fields = [
+            'id', 'autor', 'contenido', 'fecha_creacion',
+            'fecha_actualizacion', 'es_solucion', 'total_votos'
+        ]
+        read_only_fields = ['fecha_creacion', 'fecha_actualizacion']
+
+
+class TemaForoSerializer(serializers.ModelSerializer):
+    """Serializer para temas del foro"""
+    autor = UsuarioBasicoSerializer(read_only=True)
+    total_respuestas = serializers.SerializerMethodField()
+    ultima_actividad = serializers.DateTimeField(source='fecha_actualizacion', read_only=True)
+    
+    class Meta:
+        model = TemaForo
+        fields = [
+            'id', 'titulo', 'contenido', 'categoria', 'autor',
+            'curso', 'fecha_creacion', 'ultima_actividad',
+            'cerrado', 'resuelto', 'vistas', 'total_respuestas'
+        ]
+        read_only_fields = ['fecha_creacion', 'vistas']
+    
+    def get_total_respuestas(self, obj):
+        return obj.respuestas.count()
+
+
+class TemaForoDetalleSerializer(serializers.ModelSerializer):
+    """Serializer detallado para un tema del foro con respuestas"""
+    autor = UsuarioBasicoSerializer(read_only=True)
+    respuestas = RespuestaForoSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = TemaForo
+        fields = [
+            'id', 'titulo', 'contenido', 'categoria', 'autor',
+            'curso', 'fecha_creacion', 'fecha_actualizacion',
+            'cerrado', 'resuelto', 'vistas', 'respuestas'
         ]

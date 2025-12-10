@@ -1,11 +1,33 @@
 from django.db import models
 from usuarios.models import Creador, Estudiante
+from django.db import models
+from usuarios.models import Creador, Estudiante, Usuario 
 
 
 class Curso(models.Model):
     """Modelo principal del curso"""
+    
+    CATEGORIAS = [
+        ('MATEMATICAS', 'Matemáticas'),
+        ('CIENCIAS', 'Ciencias'),
+        ('INGENIERIA', 'Ingeniería'),
+        ('IDIOMAS', 'Idiomas'),
+        ('HUMANIDADES', 'Humanidades'),
+        ('NEGOCIOS', 'Negocios'),
+        ('ARTE', 'Arte y Diseño'),
+        ('TECNOLOGIA', 'Tecnología'),
+    ]
+    
+    NIVELES = [
+        ('BASICO', 'Básico'),
+        ('INTERMEDIO', 'Intermedio'),
+        ('AVANZADO', 'Avanzado'),
+    ]
+    
     titulo = models.CharField(max_length=200)
     descripcion = models.TextField()
+    categoria = models.CharField(max_length=50, choices=CATEGORIAS, default='MATEMATICAS')  # NUEVO
+    nivel = models.CharField(max_length=20, choices=NIVELES, default='BASICO')  # NUEVO
     imagen_portada = models.URLField(blank=True, null=True)
     creador = models.ForeignKey(Creador, on_delete=models.CASCADE, related_name='cursos')
     precio = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -20,7 +42,7 @@ class Curso(models.Model):
     
     def __str__(self):
         return self.titulo
-
+    
 
 class Modulo(models.Model):
     """Módulos o temas dentro de un curso"""
@@ -194,3 +216,144 @@ class RespuestaEstudiante(models.Model):
         db_table = 'respuesta_estudiante'
         verbose_name = 'Respuesta de Estudiante'
         verbose_name_plural = 'Respuestas de Estudiantes'
+
+
+class Logro(models.Model):
+    """Logros/Badges que pueden desbloquear los estudiantes"""
+    TIPOS = [
+        ('CURSO', 'Completar Curso'),
+        ('EXAMEN', 'Aprobar Examen'),
+        ('RACHA', 'Días Consecutivos'),
+        ('PUNTOS', 'Acumular Puntos'),
+        ('ESPECIAL', 'Logro Especial'),
+    ]
+    
+    nombre = models.CharField(max_length=100)
+    descripcion = models.TextField()
+    icono = models.CharField(max_length=10, default='🏆')
+    tipo = models.CharField(max_length=20, choices=TIPOS)
+    puntos_recompensa = models.IntegerField(default=0)
+    condicion_valor = models.IntegerField(help_text="Valor necesario para desbloquear (ej: 100 puntos, 7 días)")
+    activo = models.BooleanField(default=True)
+    
+    class Meta:
+        db_table = 'logro'
+        verbose_name = 'Logro'
+        verbose_name_plural = 'Logros'
+    
+    def __str__(self):
+        return self.nombre
+
+
+class LogroEstudiante(models.Model):
+    """Logros desbloqueados por cada estudiante"""
+    estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE, related_name='logros')
+    logro = models.ForeignKey(Logro, on_delete=models.CASCADE)
+    fecha_obtenido = models.DateTimeField(auto_now_add=True)
+    progreso_actual = models.IntegerField(default=0)
+    desbloqueado = models.BooleanField(default=False)
+    
+    class Meta:
+        db_table = 'logro_estudiante'
+        unique_together = ['estudiante', 'logro']
+        verbose_name = 'Logro de Estudiante'
+        verbose_name_plural = 'Logros de Estudiantes'
+    
+    def __str__(self):
+        return f"{self.estudiante.id_usuario.username} - {self.logro.nombre}"
+
+
+class ActividadEstudiante(models.Model):
+    """Registro de actividades del estudiante para tracking"""
+    TIPOS_ACTIVIDAD = [
+        ('LOGIN', 'Inicio de sesión'),
+        ('VER_RECURSO', 'Ver recurso'),
+        ('COMPLETAR_RECURSO', 'Completar recurso'),
+        ('INICIAR_EXAMEN', 'Iniciar examen'),
+        ('COMPLETAR_EXAMEN', 'Completar examen'),
+        ('INSCRIPCION_CURSO', 'Inscripción a curso'),
+    ]
+    
+    estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE, related_name='actividades')
+    tipo = models.CharField(max_length=30, choices=TIPOS_ACTIVIDAD)
+    descripcion = models.CharField(max_length=255)
+    fecha = models.DateTimeField(auto_now_add=True)
+    puntos_ganados = models.IntegerField(default=0)
+    
+    class Meta:
+        db_table = 'actividad_estudiante'
+        ordering = ['-fecha']
+        verbose_name = 'Actividad de Estudiante'
+        verbose_name_plural = 'Actividades de Estudiantes'
+    
+    def __str__(self):
+        return f"{self.estudiante.id_usuario.username} - {self.get_tipo_display()}"
+    
+
+class TemaForo(models.Model):
+    """Temas/Hilos del foro"""
+    CATEGORIAS = [
+        ('PREGUNTA', 'Pregunta'),
+        ('DISCUSION', 'Discusión'),
+        ('AYUDA', 'Ayuda'),
+        ('ANUNCIO', 'Anuncio'),
+    ]
+    
+    titulo = models.CharField(max_length=255)
+    contenido = models.TextField()
+    categoria = models.CharField(max_length=20, choices=CATEGORIAS, default='PREGUNTA')
+    autor = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='temas_foro')
+    curso = models.ForeignKey(Curso, on_delete=models.CASCADE, related_name='temas_foro', null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    cerrado = models.BooleanField(default=False)
+    resuelto = models.BooleanField(default=False)
+    vistas = models.IntegerField(default=0)
+    
+    class Meta:
+        db_table = 'tema_foro'
+        ordering = ['-fecha_actualizacion']
+        verbose_name = 'Tema de Foro'
+        verbose_name_plural = 'Temas de Foro'
+    
+    def __str__(self):
+        return self.titulo
+
+
+class RespuestaForo(models.Model):
+    """Respuestas a temas del foro"""
+    tema = models.ForeignKey(TemaForo, on_delete=models.CASCADE, related_name='respuestas')
+    autor = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='respuestas_foro')
+    contenido = models.TextField()
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    es_solucion = models.BooleanField(default=False)
+    votos = models.IntegerField(default=0)
+    
+    class Meta:
+        db_table = 'respuesta_foro'
+        ordering = ['-es_solucion', '-votos', 'fecha_creacion']
+        verbose_name = 'Respuesta de Foro'
+        verbose_name_plural = 'Respuestas de Foro'
+    
+    def __str__(self):
+        return f"Respuesta a: {self.tema.titulo}"
+
+
+class VotoRespuesta(models.Model):
+    """Votos en respuestas del foro"""
+    TIPOS = [
+        ('UP', 'Voto Positivo'),
+        ('DOWN', 'Voto Negativo'),
+    ]
+    
+    respuesta = models.ForeignKey(RespuestaForo, on_delete=models.CASCADE, related_name='votos_detalle')
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    tipo = models.CharField(max_length=4, choices=TIPOS)
+    fecha = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'voto_respuesta'
+        unique_together = ['respuesta', 'usuario']
+        verbose_name = 'Voto de Respuesta'
+        verbose_name_plural = 'Votos de Respuestas'

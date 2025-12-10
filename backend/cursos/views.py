@@ -6,7 +6,8 @@ from django.utils import timezone
 from .models import (
     Curso, Modulo, Recurso, Pregunta,
     Inscripcion, ProgresoRecurso, Examen,
-    IntentoExamen, RespuestaEstudiante
+    IntentoExamen, RespuestaEstudiante,
+     TemaForo, RespuestaForo, VotoRespuesta,
 )
 from .serializers import (
     CursoListSerializer, CursoDetalleSerializer,
@@ -14,7 +15,9 @@ from .serializers import (
     InscripcionSerializer, ProgresoRecursoSerializer,
     PreguntaSerializer, PreguntaConRespuestaSerializer,
     ExamenSerializer, IntentoExamenSerializer,
-    RespuestaEstudianteSerializer
+    RespuestaEstudianteSerializer,
+    TemaForoSerializer, TemaForoDetalleSerializer,
+    RespuestaForoSerializer
 )
 
 
@@ -308,3 +311,505 @@ class ExamenViewSet(viewsets.ReadOnlyModelViewSet):
             'total_preguntas': total_puntos,
             'tiempo_usado': intento.tiempo_usado
         })
+
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from django.db import models
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mi_panel(request):
+    """
+    Dashboard principal del estudiante
+    """
+    if not hasattr(request.user, 'perfil_estudiante'):
+        return Response(
+            {'error': 'Solo disponible para estudiantes'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    estudiante = request.user.perfil_estudiante
+    
+    # 1. Mis cursos inscritos
+    inscripciones = Inscripcion.objects.filter(
+        estudiante=estudiante,
+        completado=False
+    ).select_related('curso').order_by('-fecha_ultimo_acceso')[:5]
+    
+    mis_cursos = []
+    for inscripcion in inscripciones:
+        mis_cursos.append({
+            'id': inscripcion.curso.id,
+            'titulo': inscripcion.curso.titulo,
+            'imagen_portada': inscripcion.curso.imagen_portada,
+            'progreso_porcentaje': float(inscripcion.progreso_porcentaje),
+            'fecha_ultimo_acceso': inscripcion.fecha_ultimo_acceso,
+        })
+    
+    # 2. Próximos exámenes
+    proximos_examenes = IntentoExamen.objects.filter(
+        estudiante=estudiante,
+        completado=False
+    ).select_related('examen__curso')[:3]
+    
+    examenes_pendientes = []
+    for intento in proximos_examenes:
+        examenes_pendientes.append({
+            'id': intento.examen.id,
+            'titulo': intento.examen.titulo,
+            'curso': intento.examen.curso.titulo,
+            'duracion_minutos': intento.examen.duracion_minutos,
+            'fecha_inicio': intento.fecha_inicio,
+        })
+    
+    # 3. Actividad reciente
+    actividades_recientes = []
+    
+    # Últimos recursos completados
+    ultimos_progresos = ProgresoRecurso.objects.filter(
+        inscripcion__estudiante=estudiante,
+        completado=True
+    ).select_related('recurso').order_by('-fecha_completado')[:5]
+    
+    for progreso in ultimos_progresos:
+        actividades_recientes.append({
+            'tipo': 'recurso_completado',
+            'titulo': progreso.recurso.titulo,
+            'fecha': progreso.fecha_completado,
+            'icono': '📚'
+        })
+    
+    # Últimos exámenes completados
+    ultimos_examenes = IntentoExamen.objects.filter(
+        estudiante=estudiante,
+        completado=True
+    ).select_related('examen').order_by('-fecha_fin')[:3]
+    
+    for intento in ultimos_examenes:
+        actividades_recientes.append({
+            'tipo': 'examen_completado',
+            'titulo': intento.examen.titulo,
+            'puntaje': float(intento.puntaje_obtenido),
+            'aprobado': intento.aprobado,
+            'fecha': intento.fecha_fin,
+            'icono': '✅' if intento.aprobado else '❌'
+        })
+    
+    # Ordenar actividades por fecha
+    actividades_recientes.sort(
+        key=lambda x: x['fecha'],
+        reverse=True
+    )
+    
+    # 4. Estadísticas generales
+    total_cursos_inscritos = Inscripcion.objects.filter(
+        estudiante=estudiante
+    ).count()
+    
+    cursos_completados = Inscripcion.objects.filter(
+        estudiante=estudiante,
+        completado=True
+    ).count()
+    
+    total_examenes = IntentoExamen.objects.filter(
+        estudiante=estudiante,
+        completado=True
+    ).count()
+    
+    promedio_examenes = IntentoExamen.objects.filter(
+        estudiante=estudiante,
+        completado=True
+    ).aggregate(promedio=models.Avg('puntaje_obtenido'))['promedio'] or 0
+    
+    return Response({
+        'mis_cursos': mis_cursos,
+        'proximos_examenes': examenes_pendientes,
+        'actividades_recientes': actividades_recientes[:10],
+        'estadisticas': {
+            'total_cursos': total_cursos_inscritos,
+            'cursos_completados': cursos_completados,
+            'total_examenes': total_examenes,
+            'promedio_examenes': round(float(promedio_examenes), 2),
+            'nivel': request.user.nivel,
+            'puntos': request.user.puntos_gamificacion
+        }
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mis_cursos_inscritos(request):
+    """
+    Listar todos mis cursos inscritos
+    """
+    if not hasattr(request.user, 'perfil_estudiante'):
+        return Response(
+            {'error': 'Solo disponible para estudiantes'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    estudiante = request.user.perfil_estudiante
+    
+    inscripciones = Inscripcion.objects.filter(
+        estudiante=estudiante
+    ).select_related('curso__creador')
+    
+    cursos = []
+    for inscripcion in inscripciones:
+        cursos.append({
+            'inscripcion_id': inscripcion.id,
+            'curso': CursoListSerializer(inscripcion.curso).data,
+            'progreso_porcentaje': float(inscripcion.progreso_porcentaje),
+            'completado': inscripcion.completado,
+            'fecha_inscripcion': inscripcion.fecha_inscripcion,
+            'ultimo_acceso': inscripcion.fecha_ultimo_acceso,
+        })
+    
+    return Response(cursos)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def buscar_cursos(request):
+    """
+    Buscar y filtrar cursos
+    """
+    query = request.query_params.get('q', '')
+    categoria = request.query_params.get('categoria', '')
+    nivel = request.query_params.get('nivel', '')
+    es_gratuito = request.query_params.get('gratuito', '')
+    
+    cursos = Curso.objects.filter(activo=True)
+    
+    # Filtro de búsqueda por texto
+    if query:
+        cursos = cursos.filter(
+            models.Q(titulo__icontains=query) |
+            models.Q(descripcion__icontains=query)
+        )
+    
+    # Filtros adicionales
+    if categoria:
+        cursos = cursos.filter(categoria=categoria)
+    
+    if nivel:
+        cursos = cursos.filter(nivel=nivel)
+    
+    if es_gratuito:
+        cursos = cursos.filter(es_gratuito=True)
+    
+    serializer = CursoListSerializer(cursos, many=True)
+    return Response({
+        'total': cursos.count(),
+        'cursos': serializer.data
+    })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mi_progreso_detallado(request):
+    """
+    Vista detallada del progreso del estudiante
+    """
+    if not hasattr(request.user, 'perfil_estudiante'):
+        return Response(
+            {'error': 'Solo disponible para estudiantes'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    estudiante = request.user.perfil_estudiante
+    
+    # 1. Progreso por curso
+    inscripciones = Inscripcion.objects.filter(
+        estudiante=estudiante
+    ).select_related('curso')
+    
+    progreso_cursos = []
+    for inscripcion in inscripciones:
+        # Calcular recursos completados
+        total_recursos = Recurso.objects.filter(
+            modulo__curso=inscripcion.curso
+        ).count()
+        
+        recursos_completados = ProgresoRecurso.objects.filter(
+            inscripcion=inscripcion,
+            completado=True
+        ).count()
+        
+        # Calcular exámenes
+        examenes_curso = IntentoExamen.objects.filter(
+            estudiante=estudiante,
+            examen__curso=inscripcion.curso,
+            completado=True
+        )
+        
+        promedio_examenes = examenes_curso.aggregate(
+            promedio=models.Avg('puntaje_obtenido')
+        )['promedio'] or 0
+        
+        progreso_cursos.append({
+            'curso_id': inscripcion.curso.id,
+            'curso_titulo': inscripcion.curso.titulo,
+            'imagen_portada': inscripcion.curso.imagen_portada,
+            'progreso_porcentaje': float(inscripcion.progreso_porcentaje),
+            'recursos_completados': recursos_completados,
+            'total_recursos': total_recursos,
+            'total_examenes': examenes_curso.count(),
+            'promedio_examenes': round(float(promedio_examenes), 2),
+            'completado': inscripcion.completado,
+            'fecha_inscripcion': inscripcion.fecha_inscripcion,
+        })
+    
+
+    logros_estudiante = LogroEstudiante.objects.filter(
+        estudiante=estudiante
+    ).select_related('logro')
+    
+    logros_desbloqueados = []
+    logros_en_progreso = []
+    
+    for logro_est in logros_estudiante:
+        serializer = LogroEstudianteSerializer(logro_est)
+        if logro_est.desbloqueado:
+            logros_desbloqueados.append(serializer.data)
+        else:
+            logros_en_progreso.append(serializer.data)
+    
+    # 3. Estadísticas generales
+    total_puntos = request.user.puntos_gamificacion
+    nivel = request.user.nivel
+    
+    # Actividad por semana (últimos 7 días)
+    from datetime import timedelta
+    hace_7_dias = timezone.now() - timedelta(days=7)
+    
+    actividades_semana = ActividadEstudiante.objects.filter(
+        estudiante=estudiante,
+        fecha__gte=hace_7_dias
+    ).count()
+    
+    # Tiempo total dedicado (aproximado por recursos completados)
+    tiempo_total = ProgresoRecurso.objects.filter(
+        inscripcion__estudiante=estudiante,
+        completado=True
+    ).aggregate(total=models.Sum('tiempo_dedicado'))['total'] or 0
+    
+    # 4. Historial reciente
+    actividades_recientes = ActividadEstudiante.objects.filter(
+        estudiante=estudiante
+    ).order_by('-fecha')[:20]
+    
+    actividades_serializer = ActividadEstudianteSerializer(
+        actividades_recientes,
+        many=True
+    )
+    
+    return Response({
+        'progreso_cursos': progreso_cursos,
+        'logros_desbloqueados': logros_desbloqueados,
+        'logros_en_progreso': logros_en_progreso,
+        'estadisticas': {
+            'total_puntos': total_puntos,
+            'nivel': nivel,
+            'total_cursos': len(progreso_cursos),
+            'cursos_completados': sum(1 for c in progreso_cursos if c['completado']),
+            'actividades_semana': actividades_semana,
+            'tiempo_total_minutos': tiempo_total,
+            'tiempo_total_horas': round(tiempo_total / 60, 1),
+        },
+        'actividades_recientes': actividades_serializer.data
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mis_logros(request):
+    """
+    Ver todos los logros disponibles y progreso
+    """
+    if not hasattr(request.user, 'perfil_estudiante'):
+        return Response(
+            {'error': 'Solo disponible para estudiantes'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    estudiante = request.user.perfil_estudiante
+    
+    # Todos los logros activos
+    logros = Logro.objects.filter(activo=True)
+    
+    resultado = []
+    for logro in logros:
+        # Buscar si el estudiante tiene este logro
+        try:
+            logro_estudiante = LogroEstudiante.objects.get(
+                estudiante=estudiante,
+                logro=logro
+            )
+            serializer = LogroEstudianteSerializer(logro_estudiante)
+            resultado.append(serializer.data)
+        except LogroEstudiante.DoesNotExist:
+            # Logro no iniciado
+            resultado.append({
+                'logro': LogroSerializer(logro).data,
+                'progreso_actual': 0,
+                'desbloqueado': False,
+                'porcentaje_progreso': 0
+            })
+    
+    return Response(resultado)
+
+
+from rest_framework import viewsets
+
+class ForoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para el foro
+    """
+    queryset = TemaForo.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return TemaForoDetalleSerializer
+        return TemaForoSerializer
+    
+    def retrieve(self, request, *args, **kwargs):
+        """Ver detalle de un tema (incrementa vistas)"""
+        tema = self.get_object()
+        tema.vistas += 1
+        tema.save()
+        return super().retrieve(request, *args, **kwargs)
+    
+    def perform_create(self, serializer):
+        """Crear tema (asignar autor automáticamente)"""
+        serializer.save(autor=self.request.user)
+    
+    @action(detail=True, methods=['post'])
+    def responder(self, request, pk=None):
+        """Agregar una respuesta a un tema"""
+        tema = self.get_object()
+        
+        if tema.cerrado:
+            return Response(
+                {'error': 'Este tema está cerrado'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        contenido = request.data.get('contenido')
+        
+        if not contenido:
+            return Response(
+                {'error': 'El contenido es requerido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        respuesta = RespuestaForo.objects.create(
+            tema=tema,
+            autor=request.user,
+            contenido=contenido
+        )
+        
+        # Actualizar fecha del tema
+        tema.save()
+        
+        serializer = RespuestaForoSerializer(respuesta)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['post'])
+    def marcar_resuelto(self, request, pk=None):
+        """Marcar tema como resuelto"""
+        tema = self.get_object()
+        
+        if tema.autor != request.user:
+            return Response(
+                {'error': 'Solo el autor puede marcar como resuelto'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        tema.resuelto = True
+        tema.save()
+        
+        return Response({'message': 'Tema marcado como resuelto'})
+    
+    @action(detail=False, methods=['get'])
+    def mis_temas(self, request):
+        """Ver mis temas creados"""
+        temas = TemaForo.objects.filter(autor=request.user)
+        serializer = self.get_serializer(temas, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def por_curso(self, request):
+        """Filtrar temas por curso"""
+        curso_id = request.query_params.get('curso_id')
+        
+        if not curso_id:
+            return Response(
+                {'error': 'Se requiere curso_id'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        temas = TemaForo.objects.filter(curso_id=curso_id)
+        serializer = self.get_serializer(temas, many=True)
+        return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def votar_respuesta(request, respuesta_id):
+    """
+    Votar una respuesta del foro
+    """
+    tipo_voto = request.data.get('tipo')  # 'UP' o 'DOWN'
+    
+    if tipo_voto not in ['UP', 'DOWN']:
+        return Response(
+            {'error': 'Tipo de voto inválido'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        respuesta = RespuestaForo.objects.get(id=respuesta_id)
+    except RespuestaForo.DoesNotExist:
+        return Response(
+            {'error': 'Respuesta no encontrada'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Verificar si ya votó
+    voto_existente = VotoRespuesta.objects.filter(
+        respuesta=respuesta,
+        usuario=request.user
+    ).first()
+    
+    if voto_existente:
+        # Cambiar voto o eliminarlo si es el mismo
+        if voto_existente.tipo == tipo_voto:
+            # Eliminar voto
+            voto_existente.delete()
+            respuesta.votos += 1 if tipo_voto == 'DOWN' else -1
+            mensaje = 'Voto eliminado'
+        else:
+            # Cambiar voto
+            voto_existente.tipo = tipo_voto
+            voto_existente.save()
+            respuesta.votos += 2 if tipo_voto == 'UP' else -2
+            mensaje = 'Voto actualizado'
+    else:
+        # Crear nuevo voto
+        VotoRespuesta.objects.create(
+            respuesta=respuesta,
+            usuario=request.user,
+            tipo=tipo_voto
+        )
+        respuesta.votos += 1 if tipo_voto == 'UP' else -1
+        mensaje = 'Voto registrado'
+    
+    respuesta.save()
+    
+    return Response({
+        'message': mensaje,
+        'total_votos': respuesta.votos
+    })
