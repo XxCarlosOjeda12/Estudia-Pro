@@ -4,7 +4,9 @@ from .models import (
     Inscripcion, ProgresoRecurso, Examen,
     IntentoExamen, RespuestaEstudiante,
     Logro, LogroEstudiante, ActividadEstudiante,
-    TemaForo, RespuestaForo, VotoRespuesta
+    TemaForo, RespuestaForo, VotoRespuesta,
+    RecursoComunidad, CalificacionRecurso, DescargaRecurso,
+    Formulario, PreguntaFormulario, RespuestaFormulario, DetalleRespuesta
 )
 from usuarios.models import Creador
 from usuarios.models import Usuario
@@ -275,3 +277,143 @@ class TemaForoDetalleSerializer(serializers.ModelSerializer):
             'curso', 'fecha_creacion', 'fecha_actualizacion',
             'cerrado', 'resuelto', 'vistas', 'respuestas'
         ]
+
+
+# ========== Recursos de Comunidad ==========
+
+class CalificacionRecursoSerializer(serializers.ModelSerializer):
+    """Serializer para calificaciones de recursos"""
+    usuario = UsuarioBasicoSerializer(read_only=True)
+    
+    class Meta:
+        model = CalificacionRecurso
+        fields = ['id', 'usuario', 'calificacion', 'comentario', 'fecha']
+        read_only_fields = ['fecha']
+
+
+class RecursoComunidadSerializer(serializers.ModelSerializer):
+    """Serializer para recursos de comunidad"""
+    autor = UsuarioBasicoSerializer(read_only=True)
+    curso_titulo = serializers.CharField(source='curso.titulo', read_only=True)
+    total_calificaciones = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = RecursoComunidad
+        fields = [
+            'id', 'titulo', 'descripcion', 'tipo', 'archivo_url',
+            'contenido_texto', 'autor', 'curso', 'curso_titulo',
+            'modulo', 'fecha_creacion', 'descargas',
+            'calificacion_promedio', 'total_calificaciones',
+            'aprobado', 'activo'
+        ]
+        read_only_fields = ['descargas', 'calificacion_promedio', 'aprobado']
+    
+    def get_total_calificaciones(self, obj):
+        return obj.calificaciones.count()
+
+
+class RecursoComunidadDetalleSerializer(serializers.ModelSerializer):
+    """Serializer detallado con calificaciones"""
+    autor = UsuarioBasicoSerializer(read_only=True)
+    calificaciones = CalificacionRecursoSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = RecursoComunidad
+        fields = [
+            'id', 'titulo', 'descripcion', 'tipo', 'archivo_url',
+            'contenido_texto', 'autor', 'curso', 'modulo',
+            'fecha_creacion', 'descargas', 'calificacion_promedio',
+            'calificaciones', 'aprobado', 'activo'
+        ]
+
+
+# ========== Formularios ==========
+
+class DetalleRespuestaSerializer(serializers.ModelSerializer):
+    """Serializer para detalles de respuesta"""
+    pregunta_texto = serializers.CharField(source='pregunta.texto_pregunta', read_only=True)
+    
+    class Meta:
+        model = DetalleRespuesta
+        fields = [
+            'pregunta', 'pregunta_texto', 'respuesta_texto',
+            'respuesta_opcion', 'respuesta_multiple'
+        ]
+
+
+class PreguntaFormularioSerializer(serializers.ModelSerializer):
+    """Serializer para preguntas de formulario"""
+    
+    class Meta:
+        model = PreguntaFormulario
+        fields = [
+            'id', 'texto_pregunta', 'tipo', 'opciones',
+            'requerida', 'orden'
+        ]
+
+
+class FormularioSerializer(serializers.ModelSerializer):
+    """Serializer para formularios"""
+    creador = UsuarioBasicoSerializer(read_only=True)
+    total_respuestas = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Formulario
+        fields = [
+            'id', 'titulo', 'descripcion', 'tipo', 'curso',
+            'creador', 'fecha_creacion', 'fecha_cierre',
+            'activo', 'anonimo', 'total_respuestas'
+        ]
+        read_only_fields = ['fecha_creacion']
+    
+    def get_total_respuestas(self, obj):
+        return obj.respuestas.count()
+
+
+class FormularioDetalleSerializer(serializers.ModelSerializer):
+    """Serializer detallado con preguntas"""
+    creador = UsuarioBasicoSerializer(read_only=True)
+    preguntas = PreguntaFormularioSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = Formulario
+        fields = [
+            'id', 'titulo', 'descripcion', 'tipo', 'curso',
+            'creador', 'fecha_creacion', 'fecha_cierre',
+            'activo', 'anonimo', 'preguntas'
+        ]
+
+
+class RespuestaFormularioSerializer(serializers.ModelSerializer):
+    """Serializer para respuestas de formulario"""
+    detalles = DetalleRespuestaSerializer(many=True)
+    
+    class Meta:
+        model = RespuestaFormulario
+        fields = ['id', 'formulario', 'fecha', 'detalles']
+        read_only_fields = ['fecha']
+    
+    def create(self, validated_data):
+        detalles_data = validated_data.pop('detalles')
+        
+        # Crear respuesta (anónima o con usuario)
+        formulario = validated_data['formulario']
+        if formulario.anonimo:
+            respuesta = RespuestaFormulario.objects.create(
+                formulario=formulario,
+                usuario=None
+            )
+        else:
+            respuesta = RespuestaFormulario.objects.create(
+                formulario=formulario,
+                usuario=self.context['request'].user
+            )
+        
+        # Crear detalles de respuesta
+        for detalle_data in detalles_data:
+            DetalleRespuesta.objects.create(
+                respuesta_formulario=respuesta,
+                **detalle_data
+            )
+        
+        return respuesta

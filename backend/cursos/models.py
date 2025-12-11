@@ -357,3 +357,150 @@ class VotoRespuesta(models.Model):
         unique_together = ['respuesta', 'usuario']
         verbose_name = 'Voto de Respuesta'
         verbose_name_plural = 'Votos de Respuestas'
+
+
+class RecursoComunidad(models.Model):
+    """Recursos compartidos por la comunidad"""
+    TIPOS = [
+        ('DOCUMENTO', 'Documento'),
+        ('VIDEO', 'Video'),
+        ('ENLACE', 'Enlace'),
+        ('CODIGO', 'Código'),
+        ('PRESENTACION', 'Presentación'),
+    ]
+    
+    titulo = models.CharField(max_length=200)
+    descripcion = models.TextField()
+    tipo = models.CharField(max_length=20, choices=TIPOS)
+    archivo_url = models.URLField(blank=True, null=True)
+    contenido_texto = models.TextField(blank=True)
+    autor = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='recursos_compartidos')
+    curso = models.ForeignKey(Curso, on_delete=models.CASCADE, related_name='recursos_comunidad', null=True, blank=True)
+    modulo = models.ForeignKey(Modulo, on_delete=models.CASCADE, related_name='recursos_comunidad', null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    descargas = models.IntegerField(default=0)
+    calificacion_promedio = models.DecimalField(max_digits=3, decimal_places=2, default=0)
+    aprobado = models.BooleanField(default=False)
+    activo = models.BooleanField(default=True)
+    
+    class Meta:
+        db_table = 'recurso_comunidad'
+        ordering = ['-fecha_creacion']
+        verbose_name = 'Recurso de Comunidad'
+        verbose_name_plural = 'Recursos de Comunidad'
+    
+    def __str__(self):
+        return self.titulo
+
+
+class CalificacionRecurso(models.Model):
+    """Calificaciones de recursos de comunidad"""
+    recurso = models.ForeignKey(RecursoComunidad, on_delete=models.CASCADE, related_name='calificaciones')
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    calificacion = models.IntegerField(choices=[(i, i) for i in range(1, 6)])  # 1-5 estrellas
+    comentario = models.TextField(blank=True)
+    fecha = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'calificacion_recurso'
+        unique_together = ['recurso', 'usuario']
+        verbose_name = 'Calificación de Recurso'
+        verbose_name_plural = 'Calificaciones de Recursos'
+    
+    def __str__(self):
+        return f"{self.usuario.username} - {self.recurso.titulo} - {self.calificacion}★"
+
+
+class DescargaRecurso(models.Model):
+    """Registro de descargas de recursos"""
+    recurso = models.ForeignKey(RecursoComunidad, on_delete=models.CASCADE, related_name='historial_descargas')
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    fecha = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'descarga_recurso'
+        verbose_name = 'Descarga de Recurso'
+        verbose_name_plural = 'Descargas de Recursos'
+
+class Formulario(models.Model):
+    """Formularios y encuestas"""
+    TIPOS = [
+        ('ENCUESTA', 'Encuesta'),
+        ('FEEDBACK', 'Feedback'),
+        ('EVALUACION', 'Evaluación'),
+    ]
+    
+    titulo = models.CharField(max_length=200)
+    descripcion = models.TextField()
+    tipo = models.CharField(max_length=20, choices=TIPOS)
+    curso = models.ForeignKey(Curso, on_delete=models.CASCADE, related_name='formularios', null=True, blank=True)
+    creador = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='formularios_creados')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_cierre = models.DateTimeField(null=True, blank=True)
+    activo = models.BooleanField(default=True)
+    anonimo = models.BooleanField(default=False)
+    
+    class Meta:
+        db_table = 'formulario'
+        ordering = ['-fecha_creacion']
+        verbose_name = 'Formulario'
+        verbose_name_plural = 'Formularios'
+    
+    def __str__(self):
+        return self.titulo
+
+
+class PreguntaFormulario(models.Model):
+    """Preguntas de un formulario"""
+    TIPOS_PREGUNTA = [
+        ('TEXTO_CORTO', 'Texto Corto'),
+        ('TEXTO_LARGO', 'Texto Largo'),
+        ('OPCION_MULTIPLE', 'Opción Múltiple'),
+        ('CASILLAS', 'Casillas de Verificación'),
+        ('ESCALA', 'Escala (1-5)'),
+        ('SI_NO', 'Sí/No'),
+    ]
+    
+    formulario = models.ForeignKey(Formulario, on_delete=models.CASCADE, related_name='preguntas')
+    texto_pregunta = models.TextField()
+    tipo = models.CharField(max_length=20, choices=TIPOS_PREGUNTA)
+    opciones = models.JSONField(null=True, blank=True)  # Para opciones múltiples
+    requerida = models.BooleanField(default=False)
+    orden = models.IntegerField(default=0)
+    
+    class Meta:
+        db_table = 'pregunta_formulario'
+        ordering = ['orden']
+        verbose_name = 'Pregunta de Formulario'
+        verbose_name_plural = 'Preguntas de Formulario'
+    
+    def __str__(self):
+        return f"{self.formulario.titulo} - {self.texto_pregunta[:50]}"
+
+
+class RespuestaFormulario(models.Model):
+    """Respuestas a formularios"""
+    formulario = models.ForeignKey(Formulario, on_delete=models.CASCADE, related_name='respuestas')
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, null=True, blank=True)  # Null si es anónimo
+    fecha = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'respuesta_formulario'
+        ordering = ['-fecha']
+        verbose_name = 'Respuesta de Formulario'
+        verbose_name_plural = 'Respuestas de Formularios'
+
+
+class DetalleRespuesta(models.Model):
+    """Detalles de cada respuesta"""
+    respuesta_formulario = models.ForeignKey(RespuestaFormulario, on_delete=models.CASCADE, related_name='detalles')
+    pregunta = models.ForeignKey(PreguntaFormulario, on_delete=models.CASCADE)
+    respuesta_texto = models.TextField(blank=True)
+    respuesta_opcion = models.CharField(max_length=255, blank=True)
+    respuesta_multiple = models.JSONField(null=True, blank=True)  # Para casillas múltiples
+    
+    class Meta:
+        db_table = 'detalle_respuesta'
+        verbose_name = 'Detalle de Respuesta'
+        verbose_name_plural = 'Detalles de Respuestas'

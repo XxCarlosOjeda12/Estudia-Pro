@@ -7,7 +7,9 @@ router.register(r'cursos', views.CursoViewSet, basename='curso')
 router.register(r'recursos', views.RecursoViewSet, basename='recurso')
 router.register(r'preguntas', views.PreguntaViewSet, basename='pregunta')
 router.register(r'examenes', views.ExamenViewSet, basename='examen')
-router.register(r'foro', views.ForoViewSet, basename='foro')  # NUEVO
+router.register(r'foro', views.ForoViewSet, basename='foro')
+router.register(r'recursos-comunidad', views.RecursoComunidadViewSet, basename='recurso-comunidad') 
+router.register(r'formularios', views.FormularioViewSet, basename='formulario')  
 
 urlpatterns = [
     path('', include(router.urls)),

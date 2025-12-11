@@ -4,7 +4,9 @@ from .models import (
     Inscripcion, ProgresoRecurso, Examen, 
     IntentoExamen, RespuestaEstudiante,
     Logro, LogroEstudiante, ActividadEstudiante,
-    TemaForo, RespuestaForo, VotoRespuesta
+    TemaForo, RespuestaForo, VotoRespuesta,
+    RecursoComunidad, CalificacionRecurso, DescargaRecurso,
+    Formulario, PreguntaFormulario, RespuestaFormulario, DetalleRespuesta
 )
 
 
@@ -111,3 +113,51 @@ class RespuestaForoAdmin(admin.ModelAdmin):
 class VotoRespuestaAdmin(admin.ModelAdmin):
     list_display = ['respuesta', 'usuario', 'tipo', 'fecha']
     list_filter = ['tipo']
+
+
+@admin.register(RecursoComunidad)
+class RecursoComunidadAdmin(admin.ModelAdmin):
+    list_display = ['titulo', 'autor', 'tipo', 'curso', 'descargas', 'calificacion_promedio', 'aprobado', 'activo']
+    list_filter = ['tipo', 'aprobado', 'activo']
+    search_fields = ['titulo', 'descripcion']
+    actions = ['aprobar_recursos']
+    
+    def aprobar_recursos(self, request, queryset):
+        queryset.update(aprobado=True)
+    aprobar_recursos.short_description = "Aprobar recursos seleccionados"
+
+
+@admin.register(CalificacionRecurso)
+class CalificacionRecursoAdmin(admin.ModelAdmin):
+    list_display = ['recurso', 'usuario', 'calificacion', 'fecha']
+    list_filter = ['calificacion']
+
+
+@admin.register(DescargaRecurso)
+class DescargaRecursoAdmin(admin.ModelAdmin):
+    list_display = ['recurso', 'usuario', 'fecha']
+    list_filter = ['fecha']
+
+
+class PreguntaFormularioInline(admin.TabularInline):
+    model = PreguntaFormulario
+    extra = 1
+
+
+@admin.register(Formulario)
+class FormularioAdmin(admin.ModelAdmin):
+    list_display = ['titulo', 'tipo', 'creador', 'curso', 'fecha_creacion', 'activo']
+    list_filter = ['tipo', 'activo']
+    search_fields = ['titulo']
+    inlines = [PreguntaFormularioInline]
+
+
+@admin.register(RespuestaFormulario)
+class RespuestaFormularioAdmin(admin.ModelAdmin):
+    list_display = ['formulario', 'usuario', 'fecha']
+    list_filter = ['fecha']
+
+
+@admin.register(DetalleRespuesta)
+class DetalleRespuestaAdmin(admin.ModelAdmin):
+    list_display = ['respuesta_formulario', 'pregunta', 'respuesta_texto']

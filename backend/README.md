@@ -107,3 +107,4 @@ Variables principales:
 - `DB_NAME` - Nombre de la base de datos
 - `CORS_ALLOWED_ORIGINS` - Orígenes permitidos para CORS
 
+

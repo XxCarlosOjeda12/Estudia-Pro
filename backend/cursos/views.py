@@ -7,7 +7,9 @@ from .models import (
     Curso, Modulo, Recurso, Pregunta,
     Inscripcion, ProgresoRecurso, Examen,
     IntentoExamen, RespuestaEstudiante,
-     TemaForo, RespuestaForo, VotoRespuesta,
+    TemaForo, RespuestaForo, VotoRespuesta,
+    RecursoComunidad, CalificacionRecurso, DescargaRecurso,
+    Formulario, PreguntaFormulario, RespuestaFormulario, DetalleRespuesta
 )
 from .serializers import (
     CursoListSerializer, CursoDetalleSerializer,
@@ -17,7 +19,10 @@ from .serializers import (
     ExamenSerializer, IntentoExamenSerializer,
     RespuestaEstudianteSerializer,
     TemaForoSerializer, TemaForoDetalleSerializer,
-    RespuestaForoSerializer
+    RespuestaForoSerializer,
+    RecursoComunidadSerializer, RecursoComunidadDetalleSerializer,
+    FormularioSerializer, FormularioDetalleSerializer,
+    RespuestaFormularioSerializer
 )
 
 
@@ -813,3 +818,270 @@ def votar_respuesta(request, respuesta_id):
         'message': mensaje,
         'total_votos': respuesta.votos
     })
+
+
+# ========== Recursos de Comunidad ==========
+
+class RecursoComunidadViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para recursos de comunidad
+    """
+    queryset = RecursoComunidad.objects.filter(activo=True, aprobado=True)
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return RecursoComunidadDetalleSerializer
+        return RecursoComunidadSerializer
+    
+    def perform_create(self, serializer):
+        """Crear recurso (asignar autor automáticamente)"""
+        serializer.save(autor=self.request.user, aprobado=False)
+    
+    @action(detail=True, methods=['post'])
+    def descargar(self, request, pk=None):
+        """Registrar descarga de recurso"""
+        recurso = self.get_object()
+        
+        # Registrar descarga
+        DescargaRecurso.objects.create(
+            recurso=recurso,
+            usuario=request.user
+        )
+        
+        # Incrementar contador
+        recurso.descargas += 1
+        recurso.save()
+        
+        return Response({
+            'message': 'Descarga registrada',
+            'total_descargas': recurso.descargas,
+            'url': recurso.archivo_url
+        })
+    
+    @action(detail=True, methods=['post'])
+    def calificar(self, request, pk=None):
+        """Calificar un recurso"""
+        recurso = self.get_object()
+        calificacion_valor = request.data.get('calificacion')
+        comentario = request.data.get('comentario', '')
+        
+        if not calificacion_valor or calificacion_valor not in [1, 2, 3, 4, 5]:
+            return Response(
+                {'error': 'Calificación debe ser entre 1 y 5'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Crear o actualizar calificación
+        calificacion, created = CalificacionRecurso.objects.update_or_create(
+            recurso=recurso,
+            usuario=request.user,
+            defaults={
+                'calificacion': calificacion_valor,
+                'comentario': comentario
+            }
+        )
+        
+        # Recalcular promedio
+        promedio = CalificacionRecurso.objects.filter(
+            recurso=recurso
+        ).aggregate(promedio=models.Avg('calificacion'))['promedio']
+        
+        recurso.calificacion_promedio = round(promedio, 2)
+        recurso.save()
+        
+        return Response({
+            'message': 'Calificación registrada' if created else 'Calificación actualizada',
+            'calificacion_promedio': float(recurso.calificacion_promedio)
+        })
+    
+    @action(detail=False, methods=['get'])
+    def mis_recursos(self, request):
+        """Ver mis recursos subidos"""
+        recursos = RecursoComunidad.objects.filter(autor=request.user)
+        serializer = self.get_serializer(recursos, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def por_curso(self, request):
+        """Filtrar recursos por curso"""
+        curso_id = request.query_params.get('curso_id')
+        
+        if not curso_id:
+            return Response(
+                {'error': 'Se requiere curso_id'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        recursos = self.queryset.filter(curso_id=curso_id)
+        serializer = self.get_serializer(recursos, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def buscar(self, request):
+        """Buscar recursos"""
+        query = request.query_params.get('q', '')
+        tipo = request.query_params.get('tipo', '')
+        
+        recursos = self.queryset
+        
+        if query:
+            recursos = recursos.filter(
+                models.Q(titulo__icontains=query) |
+                models.Q(descripcion__icontains=query)
+            )
+        
+        if tipo:
+            recursos = recursos.filter(tipo=tipo)
+        
+        # Ordenar por calificación
+        recursos = recursos.order_by('-calificacion_promedio', '-descargas')
+        
+        serializer = self.get_serializer(recursos, many=True)
+        return Response(serializer.data)
+
+
+# ========== Formularios ==========
+
+class FormularioViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para formularios y encuestas
+    """
+    queryset = Formulario.objects.filter(activo=True)
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return FormularioDetalleSerializer
+        return FormularioSerializer
+    
+    def perform_create(self, serializer):
+        """Crear formulario (solo creadores y admins)"""
+        if not (hasattr(self.request.user, 'perfil_creador') or 
+                hasattr(self.request.user, 'perfil_administrador')):
+            return Response(
+                {'error': 'Solo creadores y administradores pueden crear formularios'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        serializer.save(creador=self.request.user)
+    
+    @action(detail=True, methods=['post'])
+    def responder(self, request, pk=None):
+        """Responder un formulario"""
+        formulario = self.get_object()
+        
+        # Verificar si ya respondió (si no es anónimo)
+        if not formulario.anonimo:
+            if RespuestaFormulario.objects.filter(
+                formulario=formulario,
+                usuario=request.user
+            ).exists():
+                return Response(
+                    {'error': 'Ya has respondido este formulario'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Validar que el formulario esté activo
+        if formulario.fecha_cierre and timezone.now() > formulario.fecha_cierre:
+            return Response(
+                {'error': 'Este formulario ya está cerrado'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Crear respuesta
+        respuestas_data = request.data.get('respuestas', [])
+        
+        serializer = RespuestaFormularioSerializer(
+            data={
+                'formulario': formulario.id,
+                'detalles': respuestas_data
+            },
+            context={'request': request}
+        )
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {'message': 'Respuesta registrada exitosamente'},
+                status=status.HTTP_201_CREATED
+            )
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=True, methods=['get'])
+    def resultados(self, request, pk=None):
+        """Ver resultados de un formulario (solo creador)"""
+        formulario = self.get_object()
+        
+        if formulario.creador != request.user:
+            return Response(
+                {'error': 'Solo el creador puede ver los resultados'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        respuestas = RespuestaFormulario.objects.filter(
+            formulario=formulario
+        ).prefetch_related('detalles')
+        
+        # Estadísticas por pregunta
+        preguntas = formulario.preguntas.all()
+        estadisticas = []
+        
+        for pregunta in preguntas:
+            detalles = DetalleRespuesta.objects.filter(pregunta=pregunta)
+            
+            if pregunta.tipo == 'ESCALA' or pregunta.tipo == 'OPCION_MULTIPLE':
+                # Contar opciones
+                from collections import Counter
+                opciones_count = Counter([
+                    d.respuesta_opcion for d in detalles if d.respuesta_opcion
+                ])
+                
+                estadisticas.append({
+                    'pregunta': pregunta.texto_pregunta,
+                    'tipo': pregunta.tipo,
+                    'total_respuestas': detalles.count(),
+                    'distribución': dict(opciones_count)
+                })
+            else:
+                # Respuestas de texto
+                estadisticas.append({
+                    'pregunta': pregunta.texto_pregunta,
+                    'tipo': pregunta.tipo,
+                    'total_respuestas': detalles.count(),
+                    'respuestas': [d.respuesta_texto for d in detalles if d.respuesta_texto][:10]  # Primeras 10
+                })
+        
+        return Response({
+            'total_respuestas': respuestas.count(),
+            'estadisticas': estadisticas
+        })
+    
+    @action(detail=False, methods=['get'])
+    def disponibles(self, request):
+        """Formularios disponibles para responder"""
+        # Formularios activos y no vencidos
+        formularios = Formulario.objects.filter(
+            activo=True
+        ).filter(
+            models.Q(fecha_cierre__isnull=True) |
+            models.Q(fecha_cierre__gt=timezone.now())
+        )
+        
+        # Excluir los que ya respondió (si no son anónimos)
+        if hasattr(request.user, 'perfil_estudiante'):
+            respondidos = RespuestaFormulario.objects.filter(
+                usuario=request.user
+            ).values_list('formulario_id', flat=True)
+            
+            formularios = formularios.exclude(id__in=respondidos)
+        
+        serializer = self.get_serializer(formularios, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def mis_formularios(self, request):
+        """Formularios que he creado"""
+        formularios = Formulario.objects.filter(creador=request.user)
+        serializer = self.get_serializer(formularios, many=True)
+        return Response(serializer.data)
