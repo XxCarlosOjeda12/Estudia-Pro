@@ -69,31 +69,51 @@ Base de datos: SQLite (desarrollo) / PostgreSQL (producción)
 
 ## Instalación
 1. Clonar el repositorio
-bashgit clone <url-del-repositorio>
+```bash
+git clone <url-del-repositorio>
 cd Estudia-Pro/backend
+```
+
 2. Crear entorno virtual
-bash# Windows
+```bash
+# Windows
 python -m venv venv
 venv\Scripts\activate
 
 # Mac/Linux
 python3 -m venv venv
 source venv/bin/activate
+```
+
 3. Instalar dependencias
-bashpip install -r requirements.txt
+```bash
+pip install -r requirements.txt
+```
+
 4. Configurar variables de entorno (opcional)
 Crea un archivo .env en la raíz:
-envSECRET_KEY=tu-secret-key-aqui
+```env
+SECRET_KEY=tu-secret-key-aqui
 DEBUG=True
+```
+
 5. Ejecutar migraciones
-bashpython manage.py makemigrations
+```bash
+python manage.py makemigrations
 python manage.py migrate
+```
+
 6. Crear superusuario
-bashpython manage.py createsuperuser
+```bash
+python manage.py createsuperuser
+```
+
 7. Poblar base de datos (opcional)
 
-Curso de Cálculo:
-bashpython manage.py poblar_calculo
+**Curso de Cálculo:**
+```bash
+python manage.py poblar_calculo
+```
 Este comando crea:
 
 Curso de "Cálculo Diferencial"
@@ -102,8 +122,10 @@ Recursos de aprendizaje
 Preguntas de prueba
 Exámenes
 
-Recursos de Comunidad y Formularios:
-bashpython manage.py poblar_comunidad
+**Recursos de Comunidad y Formularios:**
+```bash
+python manage.py poblar_comunidad
+```
 Este comando crea:
 
 Recursos de comunidad compartidos (documentos, videos, código)
@@ -111,17 +133,23 @@ Formularios de encuesta y feedback
 Preguntas para formularios
 
 8. Ejecutar servidor
-bashpython manage.py runserver
+```bash
+python manage.py runserver
+```
 El servidor estará disponible en: http://127.0.0.1:8000/
 
-Configuración
-CORS (para frontend)
+## Configuración
+
+### CORS (para frontend)
 En backend/settings.py:
-pythonCORS_ALLOWED_ORIGINS = [
+```python
+CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React
     "http://localhost:5173",  # Vite
 ]
-Admin de Django
+```
+
+### Admin de Django
 Accede al panel administrativo en: http://127.0.0.1:8000/admin/
 
 ## Estructura del Proyecto
@@ -336,8 +364,10 @@ Campos: titulo, tipo, anonimo, fecha_cierre
 
 
 ## Uso
-Ejemplo: Registrar un estudiante
-bashPOST http://127.0.0.1:8000/api/auth/register/
+
+### Ejemplo: Registrar un estudiante
+```bash
+POST http://127.0.0.1:8000/api/auth/register/
 Content-Type: application/json
 
 {
@@ -351,16 +381,22 @@ Content-Type: application/json
     "nivel_escolar": "Universidad",
     "id_institucion": 1
 }
-Ejemplo: Login
-bashPOST http://127.0.0.1:8000/api/auth/login/
+```
+
+### Ejemplo: Login
+```bash
+POST http://127.0.0.1:8000/api/auth/login/
 Content-Type: application/json
 
 {
     "username": "estudiante1",
     "password": "password123"
 }
+```
+
 Respuesta:
-json{
+```json
+{
     "token": "a1b2c3d4e5f6...",
     "usuario": {
         "id": 1,
@@ -370,17 +406,29 @@ json{
         ...
     }
 }
-Ejemplo: Usar el token en peticiones
-bashGET http://127.0.0.1:8000/api/mi-panel/
+```
+
+### Ejemplo: Usar el token en peticiones
+```bash
+GET http://127.0.0.1:8000/api/mi-panel/
 Authorization: Token a1b2c3d4e5f6...
-Ejemplo: Inscribirse a un curso
-bashPOST http://127.0.0.1:8000/api/cursos/1/inscribirse/
+```
+
+### Ejemplo: Inscribirse a un curso
+```bash
+POST http://127.0.0.1:8000/api/cursos/1/inscribirse/
 Authorization: Token a1b2c3d4e5f6...
-Ejemplo: Iniciar examen
-bashPOST http://127.0.0.1:8000/api/examenes/1/iniciar/
+```
+
+### Ejemplo: Iniciar examen
+```bash
+POST http://127.0.0.1:8000/api/examenes/1/iniciar/
 Authorization: Token a1b2c3d4e5f6...
+```
+
 Respuesta:
-json{
+```json
+{
     "intento_id": 1,
     "duracion_minutos": 60,
     "preguntas": [
@@ -393,6 +441,7 @@ json{
         }
     ]
 }
+```
 
 ## Autenticación
 Este proyecto usa Token Authentication de Django REST Framework.
@@ -455,22 +504,31 @@ Logros
 
 
 ## Troubleshooting
-Error: "No module named 'django'"
-bash# Asegúrate de que el entorno virtual esté activado
+
+### Error: "No module named 'django'"
+```bash
+# Asegúrate de que el entorno virtual esté activado
 venv\Scripts\activate  # Windows
 source venv/bin/activate  # Mac/Linux
 
 # Instala las dependencias
 pip install -r requirements.txt
-Error: "no such table: usuario"
-bash# Ejecuta las migraciones
+```
+
+### Error: "no such table: usuario"
+```bash
+# Ejecuta las migraciones
 python manage.py makemigrations
 python manage.py migrate
-Error: CORS
-bash# Verifica que django-cors-headers esté instalado
+```
+
+### Error: CORS
+```bash
+# Verifica que django-cors-headers esté instalado
 pip install django-cors-headers
 
 # Verifica settings.py:
 # - 'corsheaders' en INSTALLED_APPS
 # - 'corsheaders.middleware.CorsMiddleware' en MIDDLEWARE
 # - CORS_ALLOW_ALL_ORIGINS = True (desarrollo)
+```
