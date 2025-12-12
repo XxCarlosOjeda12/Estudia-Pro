@@ -1,0 +1,63 @@
+/* Controles del módulo de exámenes */
+.math-keyboard-button {
+    transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.math-keyboard-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 25px -8px rgba(139, 92, 246, 0.55);
+}
+
+.math-keyboard-panel {
+    border: 1px dashed rgba(139, 92, 246, 0.5);
+    background: rgba(139, 92, 246, 0.06);
+    color: #1f2937;
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.dark .math-keyboard-panel {
+    background: rgba(139, 92, 246, 0.12);
+    color: #e2e8f0;
+}
+
+.math-keyboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.35rem;
+}
+
+.keyboard-close {
+    background: transparent;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    color: inherit;
+    border-radius: 0.5rem;
+    padding: 0.15rem 0.5rem;
+}
+
+.keyboard-close:hover {
+    background: rgba(148, 163, 184, 0.2);
+}
+
+.math-field {
+    padding: 0.6rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    font-size: 1.1rem;
+    background: white;
+}
+
+.dark .math-field {
+    background: #1e293b;
+    border-color: #475569;
+    color: white;
+}
+
+.exam-mode {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}

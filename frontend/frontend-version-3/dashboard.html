@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estudia-Pro: Tu Aliado Académico en Matemáticas</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- KaTeX for Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+        integrity="sha384-n8MVd4RsNIU0KOVwM8SpOKDaH51OQ58JCFJelMUTuR4cp7jsss5uhHpkpSa5MjoC" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
+        integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8"
+        crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+        integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05"
+        crossorigin="anonymous"></script>
+
+    <!-- Chart.js for Progress Graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- MathLive for advanced math keyboard -->
+    <script src="https://cdn.jsdelivr.net/npm/mathlive"></script>
+
+    <!-- PDF.js for PDF preview -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+
+    <!-- CSS Personalizado -->
+    <link rel="stylesheet" href="css/estilos-principal.css">
+
+
+</head>
+
+<body class="bg-light-bg dark:bg-dark-bg text-slate-800 dark:text-slate-200 transition-colors duration-300">
+
+    <!-- App Container -->
+    <div id="app-container">
+
+        <!-- MAIN APP LAYOUT -->
+        <div id="main-app">
+            <!-- Mobile menu button -->
+            <button id="hamburger-btn" class="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-primary text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+
+            <div class="flex h-screen bg-light-bg dark:bg-dark-bg">
+                <!-- Sidebar -->
+                <aside id="sidebar"
+                    class="w-64 glass-effect-light p-4 flex-shrink-0 flex flex-col transition-all duration-300 mobile-hidden">
+                    <div class="flex items-center mb-8">
+                        <h1 class="text-2xl font-bold text-primary">Estudia-Pro</h1>
+                    </div>
+                    <nav id="main-nav" class="flex-grow space-y-2">
+                        <!-- Navigation items will be injected here -->
+                    </nav>
+                    <div class="mt-auto">
+                        <div id="user-subjects" class="mb-6 hidden">
+                            <h3 class="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2 px-3">Mis
+                                Materias</h3>
+                            <div id="user-subjects-list" class="space-y-1">
+                                <!-- User subjects will be injected here -->
+                            </div>
+                        </div>
+                        <div id="user-profile" class="flex items-center p-2 rounded-lg mb-4">
+                            <img id="user-avatar" src="https://placehold.co/40x40/8b5cf6/ffffff?text=DY"
+                                alt="User avatar" class="rounded-full w-10 h-10 mr-3">
+                            <div>
+                                <p id="user-name" class="font-semibold"></p>
+                                <p id="user-role" class="text-xs text-slate-500 dark:text-slate-400"></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between p-2">
+                            <label for="theme-toggle" class="text-sm">Modo Oscuro</label>
+                            <button id="theme-toggle"
+                                class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors bg-slate-300 dark:bg-slate-700">
+                                <span class="sr-only">Enable dark mode</span>
+                                <span
+                                    class="inline-block w-4 h-4 transform bg-white rounded-full transition-transform translate-x-1 dark:translate-x-6"></span>
+                            </button>
+                        </div>
+                        <button onclick="app.logout()"
+                            class="w-full mt-4 flex items-center justify-center text-sm p-2 rounded-lg hover:bg-red-500/20 text-red-500 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Cerrar Sesión
+                        </button>
+                    </div>
+                </aside>
+
+                <!-- Mobile Menu -->
+                <div id="mobile-menu"
+                    class="fixed inset-0 bg-dark-bg/95 z-40 transform -translate-x-full transition-transform duration-300 md:hidden">
+                    <div class="p-4">
+                        <div class="flex justify-between items-center mb-8">
+                            <h1 class="text-2xl font-bold text-primary">Estudia-Pro</h1>
+                            <button id="close-mobile-menu" class="p-2 text-slate-400 hover:text-white">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <nav id="mobile-nav" class="space-y-4 mb-8">
+                            <!-- Navigation items will be injected here -->
+                        </nav>
+                        <div id="mobile-user-subjects" class="mb-6 hidden">
+                            <h3 class="text-sm font-semibold uppercase text-slate-400 mb-3">Mis Materias</h3>
+                            <div id="mobile-user-subjects-list" class="space-y-2">
+                                <!-- User subjects will be injected here -->
+                            </div>
+                        </div>
+                        <div class="border-t border-slate-700 pt-4">
+                            <div class="flex items-center p-2 rounded-lg mb-4">
+                                <img src="https://placehold.co/40x40/8b5cf6/ffffff?text=DY" alt="User avatar"
+                                    class="rounded-full w-10 h-10 mr-3">
+                                <div>
+                                    <p id="mobile-user-name" class="font-semibold"></p>
+                                    <p id="mobile-user-role" class="text-xs text-slate-400"></p>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between p-2 mb-4">
+                                <label for="mobile-theme-toggle" class="text-sm">Modo Oscuro</label>
+                                <button id="mobile-theme-toggle"
+                                    class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors bg-slate-700">
+                                    <span class="sr-only">Enable dark mode</span>
+                                    <span
+                                        class="inline-block w-4 h-4 transform bg-white rounded-full transition-transform translate-x-6"></span>
+                                </button>
+                            </div>
+                            <button onclick="app.logout()"
+                                class="w-full flex items-center justify-center text-sm p-2 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 h-4 w-4" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                Cerrar Sesión
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Content -->
+                <main class="flex-1 p-6 overflow-y-auto">
+                    <div id="main-content">
+                        <!-- Pages will be rendered here -->
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS CONTAINER -->
+    <div id="modals-container"></div>
+
+    <!-- NOTIFICATIONS CONTAINER -->
+    <div id="notifications-container" class="notification"></div>
+
+    <!-- JavaScript -->
+    <script src="js/utilidades/constantes.js"></script>
+    <script src="js/modulos/interfaz.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>

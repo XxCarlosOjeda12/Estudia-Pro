@@ -1,0 +1,44 @@
+/* Estilos específicos para login y registro */
+.page {
+    display: none;
+    animation: fadeIn 0.4s ease;
+}
+
+.page.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-card {
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
+    border: 1px solid rgba(99, 102, 241, 0.12);
+}
+
+.tab-button.active {
+    color: #8b5cf6;
+    border-color: #8b5cf6;
+}
+
+.toggle-password svg {
+    pointer-events: none;
+}
+
+/* Inputs consistentes en formularios */
+input[type="email"],
+input[type="password"],
+input[type="text"],
+select,
+textarea {
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+    border-color: #8b5cf6;
+}
