@@ -7,6 +7,7 @@ from .models import (
     Curso, Modulo, Recurso, Pregunta,
     Inscripcion, ProgresoRecurso, Examen,
     IntentoExamen, RespuestaEstudiante,
+    Logro, LogroEstudiante, ActividadEstudiante,  
     TemaForo, RespuestaForo, VotoRespuesta,
     RecursoComunidad, CalificacionRecurso, DescargaRecurso,
     Formulario, PreguntaFormulario, RespuestaFormulario, DetalleRespuesta
@@ -18,6 +19,7 @@ from .serializers import (
     PreguntaSerializer, PreguntaConRespuestaSerializer,
     ExamenSerializer, IntentoExamenSerializer,
     RespuestaEstudianteSerializer,
+    LogroSerializer, LogroEstudianteSerializer, ActividadEstudianteSerializer,  
     TemaForoSerializer, TemaForoDetalleSerializer,
     RespuestaForoSerializer,
     RecursoComunidadSerializer, RecursoComunidadDetalleSerializer,

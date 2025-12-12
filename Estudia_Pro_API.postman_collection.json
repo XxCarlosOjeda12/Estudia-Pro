@@ -1,0 +1,956 @@
+{
+	"info": {
+		"_postman_id": "estudia-pro-api",
+		"name": "Estudia Pro API",
+		"description": "Colección completa de endpoints para Estudia Pro",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000"
+		},
+		{
+			"key": "token",
+			"value": "42901f05b5fae08b792484a3ffdac013e560f67f"
+		}
+	],
+	"item": [
+		{
+			"name": " Autenticación",
+			"item": [
+				{
+					"name": "Registrar Usuario (Estudiante)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"nuevo_estudiante\",\n    \"email\": \"nuevo@test.com\",\n    \"password\": \"password123\",\n    \"password_confirm\": \"password123\",\n    \"first_name\": \"Nuevo\",\n    \"last_name\": \"Usuario\",\n    \"rol\": \"ESTUDIANTE\",\n    \"nivel_escolar\": \"Universidad\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "register", ""]
+						}
+					}
+				},
+				{
+					"name": "Registrar Usuario (Creador)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"creador1\",\n    \"email\": \"creador@test.com\",\n    \"password\": \"password123\",\n    \"password_confirm\": \"password123\",\n    \"first_name\": \"Pedro\",\n    \"last_name\": \"Creador\",\n    \"rol\": \"CREADOR\",\n    \"especialidad\": \"Matemáticas\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "register", ""]
+						}
+					}
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.token) {",
+									"    pm.collectionVariables.set('token', jsonData.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"estudiante1\",\n    \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login", ""]
+						}
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/logout/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "logout", ""]
+						}
+					}
+				},
+				{
+					"name": "Ver Perfil",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/profile/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "profile", ""]
+						}
+					}
+				},
+				{
+					"name": "Verificar Rol",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/verificar-rol/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "verificar-rol", ""]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": " Cursos",
+			"item": [
+				{
+					"name": "Listar Cursos",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/cursos/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "cursos", ""]
+						}
+					}
+				},
+				{
+					"name": "Detalle de Curso",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/cursos/1/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "cursos", "1", ""]
+						}
+					}
+				},
+				{
+					"name": "Módulos de un Curso",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/cursos/1/modulos/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "cursos", "1", "modulos", ""]
+						}
+					}
+				},
+				{
+					"name": "Inscribirse a Curso",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/cursos/1/inscribirse/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "cursos", "1", "inscribirse", ""]
+						}
+					}
+				},
+				{
+					"name": "Mi Progreso en Curso",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/cursos/1/mi_progreso/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "cursos", "1", "mi_progreso", ""]
+						}
+					}
+				},
+				{
+					"name": "Buscar Cursos",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/buscar-cursos/?q=calculo",
+							"host": ["{{base_url}}"],
+							"path": ["api", "buscar-cursos", ""],
+							"query": [
+								{
+									"key": "q",
+									"value": "calculo"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Buscar por Categoría",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/buscar-cursos/?categoria=MATEMATICAS",
+							"host": ["{{base_url}}"],
+							"path": ["api", "buscar-cursos", ""],
+							"query": [
+								{
+									"key": "categoria",
+									"value": "MATEMATICAS"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": " Dashboard",
+			"item": [
+				{
+					"name": "Mi Panel (Dashboard)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/mi-panel/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "mi-panel", ""]
+						}
+					}
+				},
+				{
+					"name": "Mis Cursos Inscritos",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/mis-cursos/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "mis-cursos", ""]
+						}
+					}
+				},
+				{
+					"name": "Mi Progreso Detallado",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/mi-progreso/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "mi-progreso", ""]
+						}
+					}
+				},
+				{
+					"name": "Mis Logros",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/mis-logros/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "mis-logros", ""]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": " Recursos",
+			"item": [
+				{
+					"name": "Listar Recursos",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/recursos/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "recursos", ""]
+						}
+					}
+				},
+				{
+					"name": "Detalle de Recurso",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/recursos/1/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "recursos", "1", ""]
+						}
+					}
+				},
+				{
+					"name": "Marcar Recurso Completado",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tiempo_dedicado\": 15\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/recursos/1/marcar_completado/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "recursos", "1", "marcar_completado", ""]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": " Preguntas",
+			"item": [
+				{
+					"name": "Listar Preguntas",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/preguntas/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "preguntas", ""]
+						}
+					}
+				},
+				{
+					"name": "Preguntas por Módulo",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/preguntas/por_modulo/?modulo_id=1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "preguntas", "por_modulo", ""],
+							"query": [
+								{
+									"key": "modulo_id",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Preguntas por Dificultad",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/preguntas/por_dificultad/?dificultad=FACIL",
+							"host": ["{{base_url}}"],
+							"path": ["api", "preguntas", "por_dificultad", ""],
+							"query": [
+								{
+									"key": "dificultad",
+									"value": "FACIL"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": " Exámenes",
+			"item": [
+				{
+					"name": "Listar Exámenes",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/examenes/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "examenes", ""]
+						}
+					}
+				},
+				{
+					"name": "Detalle de Examen",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/examenes/1/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "examenes", "1", ""]
+						}
+					}
+				},
+				{
+					"name": "Iniciar Examen",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/examenes/1/iniciar/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "examenes", "1", "iniciar", ""]
+						}
+					}
+				},
+				{
+					"name": "Enviar Respuestas Examen",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"intento_id\": 1,\n    \"respuestas\": [\n        {\"pregunta_id\": 1, \"respuesta\": \"B\", \"tiempo\": 30},\n        {\"pregunta_id\": 2, \"respuesta\": \"C\", \"tiempo\": 45}\n    ],\n    \"tiempo_total\": 120\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/examenes/1/enviar_respuestas/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "examenes", "1", "enviar_respuestas", ""]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": " Foro",
+			"item": [
+				{
+					"name": "Listar Temas",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/foro/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "foro", ""]
+						}
+					}
+				},
+				{
+					"name": "Crear Tema",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"titulo\": \"Duda sobre límites\",\n    \"contenido\": \"¿Alguien me puede explicar cómo resolver límites indeterminados?\",\n    \"categoria\": \"PREGUNTA\",\n    \"curso\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/foro/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "foro", ""]
+						}
+					}
+				},
+				{
+					"name": "Ver Tema con Respuestas",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/foro/1/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "foro", "1", ""]
+						}
+					}
+				},
+				{
+					"name": "Responder Tema",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"contenido\": \"Para resolver límites indeterminados puedes usar L'Hôpital o factorización.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/foro/1/responder/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "foro", "1", "responder", ""]
+						}
+					}
+				},
+				{
+					"name": "Mis Temas",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/foro/mis_temas/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "foro", "mis_temas", ""]
+						}
+					}
+				},
+				{
+					"name": "Temas por Curso",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/foro/por_curso/?curso_id=1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "foro", "por_curso", ""],
+							"query": [
+								{
+									"key": "curso_id",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Votar Respuesta",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tipo\": \"UP\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/foro/respuesta/1/votar/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "foro", "respuesta", "1", "votar", ""]
+						}
+					}
+				},
+				{
+					"name": "Marcar Resuelto",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/foro/1/marcar_resuelto/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "foro", "1", "marcar_resuelto", ""]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": " Recursos Comunidad",
+			"item": [
+				{
+					"name": "Listar Recursos Comunidad",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/recursos-comunidad/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "recursos-comunidad", ""]
+						}
+					}
+				},
+				{
+					"name": "Subir Recurso",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"titulo\": \"Formulario de derivadas\",\n    \"descripcion\": \"Resumen de todas las reglas de derivación\",\n    \"tipo\": \"DOCUMENTO\",\n    \"archivo_url\": \"https://example.com/formulario.pdf\",\n    \"curso\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/recursos-comunidad/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "recursos-comunidad", ""]
+						}
+					}
+				},
+				{
+					"name": "Descargar Recurso",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/recursos-comunidad/1/descargar/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "recursos-comunidad", "1", "descargar", ""]
+						}
+					}
+				},
+				{
+					"name": "Calificar Recurso",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"calificacion\": 5,\n    \"comentario\": \"Excelente recurso, muy útil\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/recursos-comunidad/1/calificar/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "recursos-comunidad", "1", "calificar", ""]
+						}
+					}
+				},
+				{
+					"name": "Mis Recursos",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/recursos-comunidad/mis_recursos/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "recursos-comunidad", "mis_recursos", ""]
+						}
+					}
+				},
+				{
+					"name": "Buscar Recursos",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/recursos-comunidad/buscar/?q=derivadas",
+							"host": ["{{base_url}}"],
+							"path": ["api", "recursos-comunidad", "buscar", ""],
+							"query": [
+								{
+									"key": "q",
+									"value": "derivadas"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": " Formularios",
+			"item": [
+				{
+					"name": "Listar Formularios",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/formularios/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "formularios", ""]
+						}
+					}
+				},
+				{
+					"name": "Formularios Disponibles",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/formularios/disponibles/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "formularios", "disponibles", ""]
+						}
+					}
+				},
+				{
+					"name": "Ver Formulario",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/formularios/1/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "formularios", "1", ""]
+						}
+					}
+				},
+				{
+					"name": "Responder Formulario",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"respuestas\": [\n        {\"pregunta\": 1, \"respuesta_texto\": \"Muy bueno\"},\n        {\"pregunta\": 2, \"respuesta_opcion\": \"5\"}\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/formularios/1/responder/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "formularios", "1", "responder", ""]
+						}
+					}
+				}
+			]
+		}
+	]
+}

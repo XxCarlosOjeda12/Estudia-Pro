@@ -91,6 +91,8 @@ python manage.py migrate
 6. Crear superusuario
 bashpython manage.py createsuperuser
 7. Poblar base de datos (opcional)
+
+Curso de Cálculo:
 bashpython manage.py poblar_calculo
 Este comando crea:
 
@@ -100,11 +102,19 @@ Recursos de aprendizaje
 Preguntas de prueba
 Exámenes
 
+Recursos de Comunidad y Formularios:
+bashpython manage.py poblar_comunidad
+Este comando crea:
+
+Recursos de comunidad compartidos (documentos, videos, código)
+Formularios de encuesta y feedback
+Preguntas para formularios
+
 8. Ejecutar servidor
 bashpython manage.py runserver
 El servidor estará disponible en: http://127.0.0.1:8000/
 
-⚙️ Configuración
+Configuración
 CORS (para frontend)
 En backend/settings.py:
 pythonCORS_ALLOWED_ORIGINS = [
@@ -132,40 +142,107 @@ backend/
 │   ├── urls.py
 │   └── management/
 │       └── commands/
-│           └── poblar_calculo.py
+│           ├── poblar_calculo.py
+│           └── poblar_comunidad.py
 ├── manage.py
 ├── requirements.txt
 ├── .gitignore
 └── README.md
 
-🌐 API Endpoints
-Autenticación
-MétodoEndpointDescripciónAuthPOST/api/auth/register/Registrar usuarioNoPOST/api/auth/login/Iniciar sesiónNoPOST/api/auth/logout/Cerrar sesiónSíGET/api/auth/profile/Ver perfilSíGET/api/auth/verificar-rol/Verificar rol del usuarioSí
-Dashboard
-MétodoEndpointDescripciónAuthGET/api/mi-panel/Dashboard completo del estudianteSíGET/api/mis-cursos/Mis cursos inscritosSí
-Cursos
-MétodoEndpointDescripciónAuthGET/api/cursos/Listar todos los cursosSíGET/api/cursos/{id}/Detalle de un cursoSíGET/api/cursos/{id}/modulos/Módulos de un cursoSíPOST/api/cursos/{id}/inscribirse/Inscribirse a un cursoSíGET/api/cursos/{id}/mi_progreso/Ver mi progreso en el cursoSíGET/api/buscar-cursos/Buscar y filtrar cursosSí
-Parámetros de búsqueda:
+## API Endpoints
 
-?q=texto - Búsqueda por texto
-?categoria=MATEMATICAS - Filtrar por categoría
-?nivel=BASICO - Filtrar por nivel
-?gratuito=true - Solo cursos gratuitos
+### Autenticación
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| POST | `/api/auth/register/` | Registrar usuario | No |
+| POST | `/api/auth/login/` | Iniciar sesión | No |
+| POST | `/api/auth/logout/` | Cerrar sesión | Sí |
+| GET | `/api/auth/profile/` | Ver perfil | Sí |
+| GET | `/api/auth/verificar-rol/` | Verificar rol del usuario | Sí |
 
-Recursos
-MétodoEndpointDescripciónAuthGET/api/recursos/Listar recursosSíGET/api/recursos/{id}/Detalle de un recursoSíPOST/api/recursos/{id}/marcar_completado/Marcar recurso como completadoSí
-Preguntas
-MétodoEndpointDescripciónAuthGET/api/preguntas/Listar preguntasSíGET/api/preguntas/por_modulo/?modulo_id=1Preguntas por móduloSíGET/api/preguntas/por_dificultad/?dificultad=FACILFiltrar por dificultadSí
-Exámenes
-MétodoEndpointDescripciónAuthGET/api/examenes/Listar exámenesSíGET/api/examenes/{id}/Detalle de un examenSíPOST/api/examenes/{id}/iniciar/Iniciar examenSíPOST/api/examenes/{id}/enviar_respuestas/Enviar respuestas y calificarSí
-Progreso y Logros
-MétodoEndpointDescripciónAuthGET/api/mi-progreso/Progreso detalladoSíGET/api/mis-logros/Mis logros y badgesSí
-Foro
-MétodoEndpointDescripciónAuthGET/api/foro/Listar temas del foroSíPOST/api/foro/Crear nuevo temaSíGET/api/foro/{id}/Ver tema con respuestasSíPOST/api/foro/{id}/responder/Responder a un temaSíPOST/api/foro/{id}/marcar_resuelto/Marcar como resueltoSíGET/api/foro/mis_temas/Mis temas creadosSíGET/api/foro/por_curso/?curso_id=1Temas por cursoSíPOST/api/foro/respuesta/{id}/votar/Votar respuestaSí
-Recursos de Comunidad
-MétodoEndpointDescripciónAuthGET/api/recursos-comunidad/Listar recursos compartidosSíPOST/api/recursos-comunidad/Subir recursoSíGET/api/recursos-comunidad/{id}/Detalle del recursoSíPOST/api/recursos-comunidad/{id}/descargar/Descargar recursoSíPOST/api/recursos-comunidad/{id}/calificar/Calificar recursoSíGET/api/recursos-comunidad/mis_recursos/Mis recursos subidosSíGET/api/recursos-comunidad/buscar/Buscar recursosSí
-Formularios
-MétodoEndpointDescripciónAuthGET/api/formularios/Listar formulariosSíPOST/api/formularios/Crear formularioSíGET/api/formularios/{id}/Ver formularioSíPOST/api/formularios/{id}/responder/Responder formularioSíGET/api/formularios/{id}/resultados/Ver resultados (creador)SíGET/api/formularios/disponibles/Formularios disponiblesSíGET/api/formularios/mis_formularios/Mis formularios creadosSí
+### Dashboard
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/mi-panel/` | Dashboard completo del estudiante | Sí |
+| GET | `/api/mis-cursos/` | Mis cursos inscritos | Sí |
+
+### Cursos
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/cursos/` | Listar todos los cursos | Sí |
+| GET | `/api/cursos/{id}/` | Detalle de un curso | Sí |
+| GET | `/api/cursos/{id}/modulos/` | Módulos de un curso | Sí |
+| POST | `/api/cursos/{id}/inscribirse/` | Inscribirse a un curso | Sí |
+| GET | `/api/cursos/{id}/mi_progreso/` | Ver mi progreso en el curso | Sí |
+| GET | `/api/buscar-cursos/` | Buscar y filtrar cursos | Sí |
+
+**Parámetros de búsqueda:**
+- `?q=texto` - Búsqueda por texto
+- `?categoria=MATEMATICAS` - Filtrar por categoría
+- `?nivel=BASICO` - Filtrar por nivel
+- `?gratuito=true` - Solo cursos gratuitos
+
+### Recursos
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/recursos/` | Listar recursos | Sí |
+| GET | `/api/recursos/{id}/` | Detalle de un recurso | Sí |
+| POST | `/api/recursos/{id}/marcar_completado/` | Marcar recurso como completado | Sí |
+
+### Preguntas
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/preguntas/` | Listar preguntas | Sí |
+| GET | `/api/preguntas/por_modulo/?modulo_id=1` | Preguntas por módulo | Sí |
+| GET | `/api/preguntas/por_dificultad/?dificultad=FACIL` | Filtrar por dificultad | Sí |
+
+### Exámenes
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/examenes/` | Listar exámenes | Sí |
+| GET | `/api/examenes/{id}/` | Detalle de un examen | Sí |
+| POST | `/api/examenes/{id}/iniciar/` | Iniciar examen | Sí |
+| POST | `/api/examenes/{id}/enviar_respuestas/` | Enviar respuestas y calificar | Sí |
+
+### Progreso y Logros
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/mi-progreso/` | Progreso detallado | Sí |
+| GET | `/api/mis-logros/` | Mis logros y badges | Sí |
+
+### Foro
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/foro/` | Listar temas del foro | Sí |
+| POST | `/api/foro/` | Crear nuevo tema | Sí |
+| GET | `/api/foro/{id}/` | Ver tema con respuestas | Sí |
+| POST | `/api/foro/{id}/responder/` | Responder a un tema | Sí |
+| POST | `/api/foro/{id}/marcar_resuelto/` | Marcar como resuelto | Sí |
+| GET | `/api/foro/mis_temas/` | Mis temas creados | Sí |
+| GET | `/api/foro/por_curso/?curso_id=1` | Temas por curso | Sí |
+| POST | `/api/foro/respuesta/{id}/votar/` | Votar respuesta | Sí |
+
+### Recursos de Comunidad
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/recursos-comunidad/` | Listar recursos compartidos | Sí |
+| POST | `/api/recursos-comunidad/` | Subir recurso | Sí |
+| GET | `/api/recursos-comunidad/{id}/` | Detalle del recurso | Sí |
+| POST | `/api/recursos-comunidad/{id}/descargar/` | Descargar recurso | Sí |
+| POST | `/api/recursos-comunidad/{id}/calificar/` | Calificar recurso | Sí |
+| GET | `/api/recursos-comunidad/mis_recursos/` | Mis recursos subidos | Sí |
+| GET | `/api/recursos-comunidad/buscar/` | Buscar recursos | Sí |
+
+### Formularios
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/formularios/` | Listar formularios | Sí |
+| POST | `/api/formularios/` | Crear formulario | Sí |
+| GET | `/api/formularios/{id}/` | Ver formulario | Sí |
+| POST | `/api/formularios/{id}/responder/` | Responder formulario | Sí |
+| GET | `/api/formularios/{id}/resultados/` | Ver resultados (creador) | Sí |
+| GET | `/api/formularios/disponibles/` | Formularios disponibles | Sí |
+| GET | `/api/formularios/mis_formularios/` | Mis formularios creados | Sí |
 
 ## Modelos
 App: usuarios
