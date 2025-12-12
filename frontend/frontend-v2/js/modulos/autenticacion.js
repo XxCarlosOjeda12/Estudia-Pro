@@ -5,6 +5,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const identifierInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const demoModeToggle = document.getElementById('demo-mode-toggle');
+    const demoProfilesWrapper = document.getElementById('demo-profiles');
+    const demoProfileButtons = document.querySelectorAll('[data-demo-profile]');
+    const demoProfilesData = window.HARDCODED_DATA?.demoUsers || {};
 
     // Handle Login Submit
     if (loginForm) {
@@ -77,6 +80,9 @@ document.addEventListener('DOMContentLoaded', () => {
             demoModeToggle.classList.toggle('text-primary', enabled);
             demoModeToggle.classList.toggle('bg-slate-200', !enabled);
             demoModeToggle.classList.toggle('text-slate-500', !enabled);
+            if (demoProfilesWrapper) {
+                demoProfilesWrapper.classList.toggle('hidden', !enabled);
+            }
         };
 
         renderDemoState();
@@ -84,6 +90,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const enabled = window.EstudiaProDemo.toggle();
             renderDemoState();
             Global.showNotification('Modo Demo', enabled ? 'Ahora verás datos de prueba incrustados.' : 'Modo real activado, usa tu backend en http://127.0.0.1:8000/api');
+        });
+    }
+
+    if (demoProfileButtons.length) {
+        demoProfileButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (!window.EstudiaProDemo?.isEnabled()) {
+                    Global.showNotification('Modo Demo', 'Activa el modo demo para usar estos perfiles.');
+                    return;
+                }
+                const profileKey = btn.getAttribute('data-demo-profile');
+                const profile = demoProfilesData?.[profileKey];
+                if (profile && identifierInput && passwordInput) {
+                    identifierInput.value = profile.email || profile.username;
+                    passwordInput.value = profile.password || 'demo123';
+                    identifierInput.focus();
+                }
+            });
         });
     }
 });

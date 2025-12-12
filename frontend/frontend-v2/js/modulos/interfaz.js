@@ -6,11 +6,14 @@ const app = {
         currentUser: null,
         currentSubject: null,
         currentExam: null,
+        currentForumTopic: null,
         isLoading: false,
         theme: localStorage.getItem('theme') || 'dark',
         cache: {
             subjects: [],
-            resources: []
+            resources: [],
+            exams: [],
+            forums: []
         },
         notifications: []
     },
@@ -75,13 +78,11 @@ const app = {
             });
         }
 
-        // Logout
-        document.querySelectorAll('#logout-btn, #mobile-logout-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                e.preventDefault();
-                await apiService.logout();
-                localStorage.removeItem('authToken');
-                window.location.href = 'login.html';
+        // Logout buttons
+        document.querySelectorAll('[data-action="logout"]').forEach(btn => {
+            btn.addEventListener('click', async (event) => {
+                event.preventDefault();
+                await this.logout();
             });
         });
 
@@ -91,6 +92,19 @@ const app = {
                 this.dom.mobileMenu.classList.add('hidden');
             }
         });
+    },
+
+    async logout() {
+        try {
+            await apiService.logout();
+        } catch (error) {
+            console.warn('Logout error (ignorado en demo):', error);
+        } finally {
+            this.destroyExamContext();
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            window.location.href = 'login.html';
+        }
     },
 
     async loadUserProfile() {
@@ -129,6 +143,9 @@ const app = {
         if (this.state.currentPage === 'examen' && page !== 'examen') {
             this.destroyExamContext();
         }
+        if (page !== 'foro-tema') {
+            this.state.currentForumTopic = null;
+        }
         this.state.currentPage = page;
 
         if (context) {
@@ -148,7 +165,22 @@ const app = {
                 } catch (e) { console.error(e); }
             }
             if (context.forumId) {
-                // Set forum context if needed
+                try {
+                    this.state.currentForumTopic = await apiService.getForumTopic(context.forumId);
+                } catch (error) {
+                    console.error('Error cargando tema del foro:', error);
+                    Global.showNotification('Foro', 'No se pudo abrir el tema seleccionado.');
+                }
+            }
+        }
+
+        if (page === 'examen') {
+            try {
+                await this.prepareExamContext(context);
+            } catch (error) {
+                Global.showNotification('Examen', error.message || 'No se pudo cargar el examen.');
+                this.state.currentPage = 'materia';
+                return;
             }
         }
 
@@ -156,7 +188,9 @@ const app = {
         window.scrollTo(0, 0);
 
         // Close mobile menu
-        this.dom.mobileMenu.classList.add('hidden');
+        if (this.dom.mobileMenu) {
+            this.dom.mobileMenu.classList.add('hidden');
+        }
     },
 
     async render() {
@@ -189,7 +223,7 @@ const app = {
         ];
 
         // Role based nav adjustments
-        if (this.state.currentUser.role === 'admin') {
+        if (this.state.currentUser.role === 'administrador') {
             pages.push({ id: 'gestion-usuarios', name: 'Usuarios', icon: 'users' });
             pages.push({ id: 'gestion-materias', name: 'Gestión Materias', icon: 'book' });
         }
@@ -319,6 +353,9 @@ const app = {
                 case 'gestion-materias':
                     pageContent = await this.getGestionMateriasHTML();
                     break;
+                case 'foro-tema':
+                    pageContent = await this.getForoTemaHTML();
+                    break;
                 default:
                     pageContent = `<h2 class="text-2xl font-bold">Página no encontrada</h2>`;
             }
@@ -354,6 +391,9 @@ const app = {
             case 'recursos':
                 this.initRecursosListeners();
                 break;
+            case 'foro-tema':
+                this.initForoTemaListeners();
+                break;
         }
     },
 
@@ -366,6 +406,7 @@ const app = {
     },
 
     async fetchUserSubjects() {
+        if (this.state.currentUser?.role !== 'estudiante') return [];
         return await apiService.getUserSubjects();
     },
 
@@ -377,7 +418,10 @@ const app = {
     },
 
     async fetchExams(refresh = false) {
-        return await apiService.getAllExams();
+        if (!this.state.cache.exams.length || refresh) {
+            this.state.cache.exams = await apiService.getAllExams();
+        }
+        return this.state.cache.exams;
     },
 
     async fetchTutors(refresh = false) {
@@ -385,7 +429,10 @@ const app = {
     },
 
     async fetchForums(refresh = false) {
-        return await apiService.getAllForums();
+        if (!this.state.cache.forums.length || refresh) {
+            this.state.cache.forums = await apiService.getAllForums();
+        }
+        return this.state.cache.forums;
     },
 
     async loadNotifications(force = false) {
@@ -424,7 +471,7 @@ const app = {
     async getPanelHTML() {
         if (this.state.currentUser.role === 'estudiante') return await this.getStudentPanelHTML();
         if (this.state.currentUser.role === 'creador') return await this.getCreatorPanelHTML();
-        if (this.state.currentUser.role === 'admin') return await this.getAdminPanelHTML();
+        if (this.state.currentUser.role === 'administrador') return await this.getAdminPanelHTML();
         return '<h2>Panel no disponible</h2>';
     },
 
@@ -526,11 +573,125 @@ const app = {
     },
 
     async getCreatorPanelHTML() {
-        return `<div class="page active"><h1 class="text-3xl font-bold">Panel Creador</h1><p>Bienvenido creador.</p></div>`;
+        const creatorData = this.state.currentUser?.raw?.dashboard || {};
+        const resources = (await this.fetchResources()).filter(res => res.author === this.state.currentUser.name);
+        const tutoring = creatorData.tutoring || [];
+
+        return `
+            <div class="page active">
+                <h1 class="text-3xl font-bold mb-6">Panel de Creador</h1>
+                <p class="text-slate-500 dark:text-slate-400 mb-8">Bienvenido, ${this.state.currentUser.name}. Gestiona tus recursos y tutorías.</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <div class="glass-effect-light p-5 rounded-2xl text-center">
+                        <p class="text-xs uppercase text-slate-500 tracking-widest">Recursos Publicados</p>
+                        <p class="text-4xl font-bold text-primary mt-2">${creatorData.published ?? resources.length}</p>
+                    </div>
+                    <div class="glass-effect-light p-5 rounded-2xl text-center">
+                        <p class="text-xs uppercase text-slate-500 tracking-widest">Rating Promedio</p>
+                        <p class="text-4xl font-bold text-primary mt-2">${creatorData.rating ?? '4.8'}</p>
+                    </div>
+                    <div class="glass-effect-light p-5 rounded-2xl text-center">
+                        <p class="text-xs uppercase text-slate-500 tracking-widest">Estudiantes Ayudados</p>
+                        <p class="text-4xl font-bold text-primary mt-2">${creatorData.studentsHelped ?? 0}</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glass-effect-light p-6 rounded-2xl">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-bold">Tus Recursos</h2>
+                            <button onclick="app.navigateTo('mis-recursos')" class="text-sm text-primary hover:underline">Gestionar</button>
+                        </div>
+                        ${resources.length
+                            ? `<ul class="space-y-3">${resources.slice(0, 4).map(res => `
+                                    <li class="flex items-center justify-between text-sm">
+                                        <span>${res.title}</span>
+                                        <span class="text-slate-400">${res.sales || res.downloads || 0} ventas</span>
+                                    </li>
+                                `).join('')}</ul>`
+                            : '<p class="text-slate-500">Aún no has publicado recursos.</p>'
+                        }
+                    </div>
+                    <div class="glass-effect-light p-6 rounded-2xl">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-bold">Tus Tutorías</h2>
+                            <button onclick="app.navigateTo('tutorias')" class="text-sm text-primary hover:underline">Gestionar</button>
+                        </div>
+                        ${tutoring.length
+                            ? `<ul class="space-y-3">${tutoring.map(item => `
+                                    <li class="flex items-center justify-between text-sm">
+                                        <div>
+                                            <p class="font-semibold">${item.student}</p>
+                                            <p class="text-slate-500">${item.subject} • ${item.date}</p>
+                                        </div>
+                                        <span class="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">${item.duration}</span>
+                                    </li>
+                                `).join('')}</ul>`
+                            : '<p class="text-slate-500">No tienes tutorías programadas.</p>'
+                        }
+                    </div>
+                </div>
+            </div>
+        `;
     },
 
     async getAdminPanelHTML() {
-        return `<div class="page active"><h1 class="text-3xl font-bold">Panel Admin</h1><p>Bienvenido admin.</p></div>`;
+        const adminData = this.state.currentUser?.raw?.adminMetrics || {};
+        const subjects = await this.fetchSubjects();
+        const users = await apiService.getAllUsers();
+
+        return `
+            <div class="page active">
+                <h1 class="text-3xl font-bold mb-6">Panel de Administración</h1>
+                <p class="text-slate-500 dark:text-slate-400 mb-8">Bienvenido, ${this.state.currentUser.name}. Gestiona la plataforma.</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <div class="glass-effect-light p-5 rounded-2xl text-center">
+                        <p class="text-xs uppercase text-slate-500 tracking-widest">Usuarios Registrados</p>
+                        <p class="text-4xl font-bold text-primary mt-2">${adminData.users ?? users.length}</p>
+                    </div>
+                    <div class="glass-effect-light p-5 rounded-2xl text-center">
+                        <p class="text-xs uppercase text-slate-500 tracking-widest">Materias en Catálogo</p>
+                        <p class="text-4xl font-bold text-primary mt-2">${adminData.subjects ?? subjects.length}</p>
+                    </div>
+                    <div class="glass-effect-light p-5 rounded-2xl text-center">
+                        <p class="text-xs uppercase text-slate-500 tracking-widest">Recursos Publicados</p>
+                        <p class="text-4xl font-bold text-primary mt-2">${adminData.resources ?? (await this.fetchResources()).length}</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glass-effect-light p-6 rounded-2xl">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-bold">Gestión de Usuarios</h2>
+                            <button onclick="app.navigateTo('gestion-usuarios')" class="text-sm text-primary hover:underline">Ver todos</button>
+                        </div>
+                        <ul class="space-y-2 text-sm">
+                            ${users.slice(0, 5).map(user => `
+                                <li class="flex items-center justify-between">
+                                    <span>${user.name}</span>
+                                    <span class="text-xs uppercase text-slate-400">${user.role}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    <div class="glass-effect-light p-6 rounded-2xl">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-bold">Gestión de Materias</h2>
+                            <button onclick="app.navigateTo('gestion-materias')" class="text-sm text-primary hover:underline">Administrar</button>
+                        </div>
+                        <ul class="space-y-2 text-sm">
+                            ${subjects.slice(0, 5).map(sub => `
+                                <li class="flex items-center justify-between">
+                                    <span>${sub.title}</span>
+                                    <span class="text-xs text-slate-400">${sub.level || 'General'}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
     },
 
     async getExplorarHTML() {
@@ -548,7 +709,10 @@ const app = {
                         <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
-                        <input type="text" id="search-materias" placeholder="Explora materias, temas o escuelas..." class="w-full p-3 pl-12 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none">
+                        <input type="text" id="search-materias" list="subjects-suggestions" placeholder="Explora materias, temas o escuelas..." class="w-full p-3 pl-12 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none">
+                        <datalist id="subjects-suggestions">
+                            ${subjects.map(s => `<option value="${s.title}"></option>`).join('')}
+                        </datalist>
                     </div>
                     <div class="search-chips flex flex-wrap gap-2 mt-3">
                         ${spotlight.map(term => `<button type="button" data-search-chip="${term}" class="px-3 py-1 text-xs rounded-full border border-slate-200 dark:border-slate-600">${term}</button>`).join('')}
@@ -556,7 +720,7 @@ const app = {
                 </div>
                 <div id="explorar-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     ${subjects.map(s => `
-                        <div class="materia-card glass-effect-light p-6 rounded-2xl" data-title="${(s.title || '').toLowerCase()}" data-level="${(s.level || '').toLowerCase()}" data-school="${(s.school || '').toLowerCase()}">
+                        <div class="materia-card glass-effect-light p-6 rounded-2xl" data-title="${s.title || ''}" data-level="${s.level || ''}" data-school="${s.school || ''}">
                             <div class="flex items-center justify-between mb-3">
                                 <span class="text-xs font-semibold bg-primary/15 text-primary py-1 px-2 rounded-full">${s.level || 'General'}</span>
                                 <span class="text-xs text-slate-500 dark:text-slate-400">${s.school || 'ESCOM'}</span>
@@ -597,6 +761,8 @@ const app = {
         try {
             const userSubjects = await this.fetchUserSubjects();
             const userSubject = userSubjects.find(s => s.id === subject.id);
+            const exams = await this.fetchExams();
+            const subjectExam = exams.find(exam => exam.subjectId === subject.id);
 
             return `
                 <div class="page active">
@@ -661,10 +827,13 @@ const app = {
                                         <button class="flex-1 text-xs py-2 bg-blue-500/80 text-white rounded-md hover:bg-blue-500" onclick="app.openExternalSearch('chatgpt', 'Crea un quiz de nivel avanzado sobre ${subject.title}')">Avanzado</button>
                                     </div>
                                 </div>
-                                 <div class="bg-green-500/10 p-4 rounded-xl">
+                                <div class="bg-green-500/10 p-4 rounded-xl">
                                     <h3 class="font-semibold">Simulacro de Examen</h3>
                                     <p class="text-sm text-slate-500 dark:text-slate-400 mb-3">Practica con un examen basado en parciales reales.</p>
-                                    <button onclick="app.navigateTo('examen', {examId: 'exam01'})" class="w-full py-2 bg-green-500/80 hover:bg-green-500 text-white rounded-md">Empezar Simulacro</button>
+                                    ${subjectExam
+                                        ? `<button onclick="app.navigateTo('examen', {subjectId: '${subject.id}', examId: '${subjectExam.id}'})" class="w-full py-2 bg-green-500/80 hover:bg-green-500 text-white rounded-md">Empezar Simulacro</button>`
+                                        : `<button disabled class="w-full py-2 bg-green-500/40 text-white rounded-md opacity-60 cursor-not-allowed">Sin simulacro disponible</button>`
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -716,7 +885,10 @@ const app = {
                             <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
-                            <input type="text" id="search-recursos" placeholder="Buscar recursos..." class="w-full p-3 pl-12 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none">
+                            <input type="text" id="search-recursos" list="resources-suggestions" placeholder="Buscar recursos..." class="w-full p-3 pl-12 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none">
+                            <datalist id="resources-suggestions">
+                                ${resources.map(res => `<option value="${res.title}"></option>`).join('')}
+                            </datalist>
                             <div class="search-chips flex flex-wrap gap-2 mt-2">
                                 ${spotlight.map(term => `<button type="button" data-resource-chip="${term}" class="px-3 py-1 text-xs rounded-full border border-slate-200 dark:border-slate-600">${term}</button>`).join('')}
                             </div>
@@ -737,7 +909,7 @@ const app = {
                         ${resources.map(res => {
                 const isPurchased = purchasedIds.includes(res.id) || res.free;
                 return `
-                            <div class="recurso-card glass-effect-light p-6 rounded-2xl flex flex-col" data-title="${res.title.toLowerCase()}" data-subject="${(res.subjectName || '').toLowerCase()}" data-type="${res.type}">
+                            <div class="recurso-card glass-effect-light p-6 rounded-2xl flex flex-col" data-title="${res.title}" data-subject="${res.subjectName || ''}" data-type="${res.type}">
                                 <span class="text-xs font-semibold bg-primary/20 text-primary py-1 px-2 rounded-full self-start">${res.subjectName || 'General'}</span>
                                 <h3 class="text-xl font-bold mt-3">${res.title}</h3>
                                 <p class="text-sm text-slate-500 dark:text-slate-400">Por: ${res.author}</p>
@@ -822,6 +994,59 @@ const app = {
             console.error('Error loading foro page:', error);
             return `<p>Error al cargar el foro.</p>`;
         }
+    },
+    async getForoTemaHTML() {
+        if (!this.state.currentForumTopic) {
+            return `
+                <div class="page active">
+                    <div class="text-center py-12">
+                        <p class="text-slate-500">Selecciona un tema del foro para verlo.</p>
+                        <button onclick="app.navigateTo('foro')" class="mt-4 text-primary hover:underline">Volver al foro</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        const topic = this.state.currentForumTopic;
+        const posts = Array.isArray(topic.posts) ? topic.posts : [];
+
+        return `
+            <div class="page active">
+                <button onclick="app.navigateTo('foro')" class="flex items-center text-sm text-primary mb-4 hover:underline">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Volver al listado
+                </button>
+                <div class="glass-effect-light p-6 rounded-2xl mb-6">
+                    <p class="text-xs uppercase tracking-widest text-slate-500">${topic.subjectName || 'General'}</p>
+                    <h1 class="text-3xl font-bold mt-2 mb-4">${topic.title}</h1>
+                    <p class="text-sm text-slate-500">${posts.length} respuestas • Última actividad: ${posts.length ? new Date(posts[posts.length - 1].createdAt || Date.now()).toLocaleString('es-MX') : 'Sin actividad'}</p>
+                </div>
+                <div class="space-y-4 mb-8">
+                    ${posts.length
+                ? posts.map(post => `
+                            <article class="glass-effect-light p-4 rounded-2xl">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div>
+                                        <p class="font-semibold">${post.author || 'Usuario'}</p>
+                                        <p class="text-xs text-slate-400">${new Date(post.createdAt || Date.now()).toLocaleString('es-MX')}</p>
+                                    </div>
+                                </div>
+                                <p class="text-slate-600 dark:text-slate-300 whitespace-pre-line">${post.content}</p>
+                            </article>
+                        `).join('')
+                : '<p class="text-slate-500">Aún no hay respuestas.</p>'}
+                </div>
+                <div class="glass-effect-light p-6 rounded-2xl">
+                    <h2 class="text-xl font-bold mb-4">Responder al tema</h2>
+                    <form id="forum-reply-form" data-topic-id="${topic.id}">
+                        <textarea id="forum-reply-message" rows="4" class="w-full p-3 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none mb-4" placeholder="Comparte tu respuesta o sugerencia..." required></textarea>
+                        <button type="submit" class="w-full py-3 bg-primary hover:bg-primary-focus text-white font-bold rounded-lg transition-transform transform hover:scale-105">Enviar respuesta</button>
+                    </form>
+                </div>
+            </div>
+        `;
     },
     async getFormulariosHTML() {
         try {
@@ -1179,7 +1404,7 @@ const app = {
         }
     },
     async getGestionUsuariosHTML() {
-        if (this.state.currentUser.role !== 'admin') {
+        if (this.state.currentUser.role !== 'administrador') {
             return `<p class="text-center py-8">No tienes permisos para acceder a esta sección.</p>`;
         }
 
@@ -1232,7 +1457,7 @@ const app = {
         }
     },
     async getGestionMateriasHTML() {
-        if (this.state.currentUser.role !== 'admin') {
+        if (this.state.currentUser.role !== 'administrador') {
             return `<p class="text-center py-8">No tienes permisos para acceder a esta sección.</p>`;
         }
 
@@ -1278,12 +1503,10 @@ const app = {
         const chips = document.querySelectorAll('[data-search-chip]');
 
         const filterCards = (term) => {
-            const normalized = term.toLowerCase();
             cards.forEach(card => {
-                const title = card.dataset.title || '';
-                const level = card.dataset.level || '';
-                const school = card.dataset.school || '';
-                const matches = !normalized || title.includes(normalized) || level.includes(normalized) || school.includes(normalized);
+                const matches = this.textStartsWithTerm(card.dataset.title, term)
+                    || this.textStartsWithTerm(card.dataset.level, term)
+                    || this.textStartsWithTerm(card.dataset.school, term);
                 card.style.display = matches ? 'block' : 'none';
             });
         };
@@ -1303,6 +1526,41 @@ const app = {
             });
         });
     },
+    async prepareExamContext(context = {}) {
+        const exams = await this.fetchExams();
+        let examId = context?.examId;
+
+        if (!examId && context?.subjectId) {
+            const bySubject = exams.find(exam => exam.subjectId === context.subjectId);
+            if (bySubject) examId = bySubject.id;
+        }
+
+        if (!examId && this.state.currentSubject) {
+            const byCurrentSubject = exams.find(exam => exam.subjectId === this.state.currentSubject.id);
+            if (byCurrentSubject) examId = byCurrentSubject.id;
+        }
+
+        if (!examId && exams.length) {
+            examId = exams[0].id;
+        }
+
+        if (!examId) {
+            throw new Error('No hay exámenes configurados para esta materia.');
+        }
+
+        try {
+            const startedExam = await apiService.startExam(examId);
+            this.state.currentExam = startedExam;
+        } catch (error) {
+            console.warn('Falla al iniciar examen, usando datos locales:', error);
+            const fallback = exams.find(exam => exam.id === examId);
+            if (fallback) {
+                this.state.currentExam = fallback;
+            } else {
+                throw error;
+            }
+        }
+    },
     initExamen() {
         // Inicializar temporizador y estado del examen
         this.examState = {
@@ -1316,6 +1574,7 @@ const app = {
         document.body.classList.add('modo-examen');
         this.startTimer();
         this.setupExamKeyboard();
+        this.bindExamFields();
     },
 
     setupExamKeyboard() {
@@ -1389,6 +1648,22 @@ const app = {
         document.addEventListener('click', this._examOutsideHandler);
     },
 
+    bindExamFields() {
+        const mathFields = document.querySelectorAll('math-field[id^="math-field-"]');
+        mathFields.forEach(field => {
+            field.addEventListener('input', () => {
+                const questionId = field.id.replace('math-field-', '');
+                const preview = document.getElementById(`preview-${questionId}`);
+                if (preview) {
+                    preview.innerHTML = field.value || '';
+                }
+                if (this.examState) {
+                    this.examState.answers[questionId] = field.value || '';
+                }
+            });
+        });
+    },
+
     toggleExamKeyboard(forceVisible) {
         if (typeof mathVirtualKeyboard === 'undefined' || !this.examState) return;
         const wrapper = this.examState.keyboardWrapper;
@@ -1422,6 +1697,35 @@ const app = {
         this.state.activeQuestionId = questionId;
     },
 
+    collectExamAnswers() {
+        if (!this.state.currentExam) return {};
+        const answers = { ...(this.examState?.answers || {}) };
+        (this.state.currentExam.questions || []).forEach(question => {
+            let value = answers[question.id] || '';
+            if (!value) {
+                const mathField = document.getElementById(`math-field-${question.id}`);
+                if (mathField) value = mathField.value || '';
+            }
+            answers[question.id] = value;
+        });
+        if (this.examState) {
+            this.examState.answers = answers;
+        }
+        return answers;
+    },
+
+    getQuestionById(questionId) {
+        return (this.state.currentExam?.questions || []).find(q => q.id === questionId);
+    },
+
+    sanitizeAnswer(value) {
+        return (value || '')
+            .toString()
+            .replace(/\\left|\\right/gi, '')
+            .replace(/\s+/g, '')
+            .toLowerCase();
+    },
+
     startTimer() {
         const timerEl = document.getElementById('exam-timer');
         if (!timerEl) return;
@@ -1439,20 +1743,37 @@ const app = {
     },
 
     checkAnswer(questionId) {
-        // Implementar lógica de verificación de respuesta
-        Global.showNotification('Revisión', 'Funcionalidad en desarrollo');
+        const question = this.getQuestionById(questionId);
+        if (!question) return;
+        const answers = this.collectExamAnswers();
+        const userAnswer = answers[questionId] || '';
+        const feedbackEl = document.getElementById(`feedback-${questionId}`);
+        if (!feedbackEl) return;
+
+        const isCorrect = this.sanitizeAnswer(userAnswer) === this.sanitizeAnswer(question.answer);
+        feedbackEl.classList.remove('hidden');
+        feedbackEl.classList.toggle('text-green-500', isCorrect);
+        feedbackEl.classList.toggle('text-red-500', !isCorrect);
+        feedbackEl.innerHTML = isCorrect
+            ? '<p class="font-semibold text-green-500">¡Correcto! Buen trabajo.</p>'
+            : `
+                <p class="font-semibold text-red-500">Respuesta incorrecta.</p>
+                <p class="text-sm text-slate-500 mt-2">Respuesta esperada: <span class="font-mono">${question.answer}</span></p>
+                ${question.explanation ? `<p class="text-sm text-slate-500 mt-1">${question.explanation}</p>` : ''}
+            `;
     },
 
     async finishExam() {
-        if (!this.examState) return;
+        if (!this.examState || !this.state.currentExam) return;
         if (this.examState.timerId) {
             clearInterval(this.examState.timerId);
         }
         this.toggleExamKeyboard(false);
 
         try {
+            const answers = this.collectExamAnswers();
             // Enviar respuestas al backend
-            const result = await apiService.submitExam(this.state.currentExam.id, this.examState.answers);
+            const result = await apiService.submitExam(this.state.currentExam.id, answers);
             const score = result?.calificacion ?? 0;
             const correct = result?.correctas ?? 0;
             const total = result?.total ?? (this.state.currentExam?.questions?.length || 0);
@@ -1583,12 +1904,76 @@ const app = {
         }
     },
     initSimulador() {
-        // Inicialización del simulador
+        const resultsContainer = document.getElementById('simulador-results');
+        if (resultsContainer) {
+            resultsContainer.classList.add('hidden');
+            resultsContainer.innerHTML = '';
+        }
     },
 
-    generateExam() {
-        // Generar examen dinámico
-        Global.showNotification('Simulador', 'Funcionalidad en desarrollo');
+    async generateExam() {
+        if (!this.state.currentSubject) {
+            Global.showNotification('Simulador', 'Abre una materia para generar preguntas relacionadas.');
+            return;
+        }
+
+        const countInput = document.getElementById('question-count');
+        const difficultyInput = document.getElementById('difficulty');
+        const resultsContainer = document.getElementById('simulador-results');
+
+        if (!resultsContainer) return;
+
+        const desiredCount = Math.max(1, parseInt(countInput?.value, 10) || 5);
+        const difficulty = difficultyInput?.value || 'all';
+
+        try {
+            const exams = await this.fetchExams();
+            let pool = exams.filter(exam => exam.subjectId === this.state.currentSubject.id);
+            if (!pool.length) pool = exams;
+
+            let questions = pool.flatMap((exam) =>
+                (exam.questions || []).map((question, idx) => ({
+                    ...question,
+                    origin: exam.title,
+                    difficulty: question.difficulty || ['Fácil', 'Intermedio', 'Avanzado'][idx % 3]
+                }))
+            );
+
+            if (difficulty !== 'all') {
+                questions = questions.filter(q => q.difficulty === difficulty);
+            }
+
+            if (!questions.length) {
+                Global.showNotification('Simulador', 'No encontramos preguntas para esa configuración.');
+                return;
+            }
+
+            const selection = questions
+                .sort(() => 0.5 - Math.random())
+                .slice(0, desiredCount);
+
+            resultsContainer.innerHTML = `
+                <div class="glass-effect-light p-6 rounded-2xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold">Tu simulacro está listo</h2>
+                        <button onclick="app.navigateTo('examen', { subjectId: '${this.state.currentSubject.id}' })" class="py-2 px-4 bg-primary text-white rounded-lg">Abrir examen</button>
+                    </div>
+                    <ol class="list-decimal list-inside space-y-4">
+                        ${selection.map(item => `
+                            <li>
+                                <p class="font-semibold">${item.text}</p>
+                                <p class="text-xs text-slate-400 mt-1">Dificultad: ${item.difficulty} • Fuente: ${item.origin}</p>
+                            </li>
+                        `).join('')}
+                    </ol>
+                </div>
+            `;
+            resultsContainer.classList.remove('hidden');
+            resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (error) {
+            console.error('Error generating exam:', error);
+            Global.showNotification('Simulador', 'No se pudo generar el simulacro.');
+        }
     },
     async initForoListeners() {
         const form = document.getElementById('new-forum-form');
@@ -1619,11 +2004,43 @@ const app = {
                         });
                         Global.showNotification('Tema creado', 'Tu pregunta ha sido publicada en el foro.');
                         form.reset();
+                        await this.fetchForums(true);
+                        await this.render();
                     } catch (error) {
                         Global.showNotification('Error', 'No se pudo crear el tema.');
                     }
                 }
             });
+        }
+    },
+    initForoTemaListeners() {
+        const form = document.getElementById('forum-reply-form');
+        if (!form) return;
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const topicId = form.getAttribute('data-topic-id');
+            const message = document.getElementById('forum-reply-message')?.value.trim();
+            if (!topicId || !message) {
+                Global.showNotification('Foro', 'Escribe un mensaje para responder.');
+                return;
+            }
+            await this.submitForumReply(topicId, message, form);
+        });
+    },
+    async submitForumReply(topicId, message, formElement) {
+        try {
+            formElement?.querySelector('button[type="submit"]')?.classList.add('opacity-50');
+            await apiService.replyForumTopic(topicId, message);
+            Global.showNotification('Foro', 'Respuesta publicada.');
+            document.getElementById('forum-reply-message').value = '';
+            this.state.currentForumTopic = await apiService.getForumTopic(topicId);
+            await this.fetchForums(true);
+            await this.render();
+        } catch (error) {
+            console.error('Error enviando respuesta:', error);
+            Global.showNotification('Foro', 'No se pudo publicar la respuesta.');
+        } finally {
+            formElement?.querySelector('button[type="submit"]')?.classList.remove('opacity-50');
         }
     },
     async initRecursosListeners() {
@@ -1645,28 +2062,24 @@ const app = {
 
         if (searchInput && filterSubject && filterType) {
             const filterResources = () => {
-                const searchTerm = searchInput.value.toLowerCase();
+                const searchTerm = searchInput.value;
                 const subjectFilter = filterSubject.value;
                 const typeFilter = filterType.value;
 
                 document.querySelectorAll('.recurso-card').forEach(card => {
                     const title = card.dataset.title;
-                    const subject = card.dataset.subject;
+                    const subject = card.dataset.subject || '';
                     const type = card.dataset.type;
 
-                    const matchesSearch = title.includes(searchTerm);
-                    const matchesSubject = subjectFilter === 'all' || (subject && subject.toLowerCase().includes(subjectFilter.toLowerCase()));
+                    const matchesSearch = this.textStartsWithTerm(title, searchTerm);
+                    const matchesSubject = subjectFilter === 'all' || this.normalizeText(subject).includes(this.normalizeText(subjectFilter));
                     const matchesType = typeFilter === 'all' || type === typeFilter;
 
-                    if (matchesSearch && matchesSubject && matchesType) {
-                        card.style.display = 'flex';
-                    } else {
-                        card.style.display = 'none';
-                    }
+                    card.style.display = matchesSearch && matchesSubject && matchesType ? 'flex' : 'none';
                 });
             };
 
-            searchInput.addEventListener('keyup', filterResources);
+            searchInput.addEventListener('input', filterResources);
             filterSubject.addEventListener('change', filterResources);
             filterType.addEventListener('change', filterResources);
 
@@ -1683,6 +2096,7 @@ const app = {
                     setActiveChip(chip);
                 });
             });
+            filterResources();
         }
     },
 
@@ -1749,6 +2163,21 @@ const app = {
     },
 
     // --- HELPER FUNCTIONS ---
+    normalizeText(text) {
+        return (text || '')
+            .toString()
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+    },
+
+    textStartsWithTerm(text, term) {
+        const normalizedTerm = this.normalizeText(term || '');
+        if (!normalizedTerm) return true;
+        const normalizedText = this.normalizeText(text || '');
+        return normalizedText.split(/\s+/).some(word => word.startsWith(normalizedTerm));
+    },
+
     openExternalSearch(service, query) {
         let url;
         switch (service) {
@@ -1762,8 +2191,11 @@ const app = {
                 url = `https://www.wolframalpha.com/input?i=${encodeURIComponent(query)}`;
                 break;
             case 'chatgpt':
-                Global.showNotification('Prompt para ChatGPT', `Copia y pega este prompt en ChatGPT:\n\n"${query}"`);
-                return;
+                url = `https://www.perplexity.ai/search?q=${encodeURIComponent(query)}`;
+                break;
+            case 'perplexity':
+                url = `https://www.perplexity.ai/search?q=${encodeURIComponent(query)}`;
+                break;
             default:
                 return;
         }

@@ -355,6 +355,29 @@ const HARDCODED_DATA = {
                     wolframQuery: 'limit sin(3x)/x as x->0'
                 }
             ]
+        },
+        {
+            id: 'exam-algebra',
+            subjectId: 'alg-2',
+            subjectName: 'Álgebra Lineal Avanzada',
+            title: 'Simulacro Matrices y Determinantes',
+            duration: 2700,
+            questions: [
+                {
+                    id: 'alg-q1',
+                    text: 'Calcula el determinante de la matriz \\begin{vmatrix}2 & 3\\\\1 & 4\\end{vmatrix}',
+                    answer: '5',
+                    explanation: 'det(A)=ad-bc = (2)(4)-(3)(1).',
+                    wolframQuery: 'determinant [[2,3],[1,4]]'
+                },
+                {
+                    id: 'alg-q2',
+                    text: '¿Cuál es el vector propio asociado a \\lambda=3 de la matriz A = \\begin{pmatrix}4 & 1\\\\0 & 3\\end{pmatrix}?',
+                    answer: '\\begin{pmatrix}0\\\\1\\end{pmatrix}',
+                    explanation: 'Resuelve (A-3I)v=0.',
+                    wolframQuery: 'eigenvectors [[4,1],[0,3]]'
+                }
+            ]
         }
     ],
     formularies: [
@@ -399,33 +422,43 @@ const HARDCODED_DATA = {
             id: 'forum-1',
             title: '¿Cómo factorizar un polinomio cúbico rápido?',
             subjectName: 'Álgebra Lineal',
-            postCount: 12,
-            lastActivity: '2024-05-23T12:30:00Z'
+            posts: [
+                { id: 'post-1', author: 'Carlos T.', content: 'Estoy atascado en la parte donde debo eliminar una raíz repetida.', createdAt: '2024-05-23T11:15:00Z' },
+                { id: 'post-2', author: 'Ana García (Mentora)', content: 'Utiliza división sintética dos veces, luego factoriza el resultado cuadrático.', createdAt: '2024-05-23T12:20:00Z' }
+            ]
         },
         {
             id: 'forum-2',
             title: 'Tips para dominar integrales por partes',
             subjectName: 'Cálculo Diferencial',
-            postCount: 18,
-            lastActivity: '2024-05-22T19:10:00Z'
+            posts: [
+                { id: 'post-3', author: 'Daniela Y.', content: '¿Algún truco para recordar qué elegir como u y dv?', createdAt: '2024-05-22T18:10:00Z' },
+                { id: 'post-4', author: 'Ian Salazar', content: 'Aplica LIATE y practica con integrales de logaritmos. Arma una tabla rápida.', createdAt: '2024-05-22T19:05:00Z' }
+            ]
         },
         {
             id: 'forum-3',
             title: '¿Cómo iniciar con ecuaciones diferenciales?',
             subjectName: 'Ecuaciones Diferenciales',
-            postCount: 9,
-            lastActivity: '2024-05-21T08:45:00Z'
+            posts: [
+                { id: 'post-5', author: 'Sofía', content: '¿Recomiendan empezar por separables o por factor integrante?', createdAt: '2024-05-21T07:45:00Z' },
+                { id: 'post-6', author: 'Monitor IA', content: 'Empieza con separables y exactas, después pasa a coeficientes constantes.', createdAt: '2024-05-21T08:30:00Z' }
+            ]
         }
     ],
     achievements: [
         { id: 'ach-1', title: 'Primer Sprint', description: 'Completaste tu primera semana estudiando diario.', icon: '🚀', date: '2024-05-10' },
         { id: 'ach-2', title: 'Explorador', description: 'Agregaste 3 materias a tu panel.', icon: '🧭', date: '2024-05-14' },
         { id: 'ach-3', title: 'SOS Master', description: 'Agendaste 2 tutorías en un mes.', icon: '🧑‍🏫', date: '2024-05-18' }
-    ],
-    demoProfile: {
+    ]
+};
+
+const DEMO_PROFILES = {
+    estudiante: {
         id: 'demo-1',
-        username: 'daniela.demo',
+        username: 'estudiante.demo',
         email: 'demo@estudiapro.com',
+        password: 'demo123',
         first_name: 'Daniela',
         last_name: 'Yáñez',
         name: 'Daniela Yáñez',
@@ -434,13 +467,70 @@ const HARDCODED_DATA = {
         nivel: 3,
         puntos_gamificacion: 820,
         streak: 6,
-        subjects: ['calc-1', 'alg-2', 'prob-1']
+        subjects: HARDCODED_DATA.userSubjects,
+        notifications: HARDCODED_DATA.notifications,
+        purchasedResources: [...HARDCODED_DATA.purchasedResourceIds],
+        stats: {
+            level: 3,
+            points: 820,
+            streak: 6
+        }
+    },
+    creador: {
+        id: 'demo-creator',
+        username: 'creador.demo',
+        email: 'creador@estudiapro.com',
+        password: 'demo123',
+        first_name: 'Ana',
+        last_name: 'García',
+        name: 'Ana García',
+        rol: 'CREADOR',
+        foto_perfil_url: '',
+        nivel: 5,
+        puntos_gamificacion: 1500,
+        streak: 12,
+        notifications: [
+            { id: 'notif-c1', title: 'Nueva venta', message: 'Joshua compró tu Guía de Derivadas.', type: 'success', read: false, date: '2024-05-24T11:30:00Z' },
+            { id: 'notif-c2', title: 'Solicitud de tutoría', message: 'Luisa solicitó una tutoría de Álgebra para mañana.', type: 'alert', read: false, date: '2024-05-24T09:15:00Z' }
+        ],
+        dashboard: {
+            published: 2,
+            rating: 4.7,
+            studentsHelped: 94,
+            tutoring: [
+                { id: 'tut-1', student: 'Diego L.', subject: 'Cálculo Diferencial', date: '25 mayo - 18:00', duration: '60 min' },
+                { id: 'tut-2', student: 'María J.', subject: 'Álgebra Lineal', date: '27 mayo - 10:00', duration: '45 min' }
+            ]
+        }
+    },
+    administrador: {
+        id: 'demo-admin',
+        username: 'admin.demo',
+        email: 'admin@estudiapro.com',
+        password: 'demo123',
+        first_name: 'Administrador',
+        last_name: 'General',
+        name: 'Administrador General',
+        rol: 'ADMINISTRADOR',
+        foto_perfil_url: '',
+        nivel: 6,
+        puntos_gamificacion: 2000,
+        notifications: [
+            { id: 'notif-a1', title: 'Nuevo registro', message: 'Se creó la cuenta de creador Ana García.', type: 'info', read: true, date: '2024-05-22T10:40:00Z' }
+        ],
+        adminMetrics: {
+            users: 3,
+            subjects: HARDCODED_DATA.subjectsCatalog.length,
+            resources: HARDCODED_DATA.resources.length
+        }
     }
 };
 
-window.HARDCODED_DATA = HARDCODED_DATA;
+HARDCODED_DATA.demoUsers = DEMO_PROFILES;
+HARDCODED_DATA.demoUsersList = Object.values(DEMO_PROFILES);
+HARDCODED_DATA.demoProfile = DEMO_PROFILES.estudiante;
 
-const DEMO_USER = HARDCODED_DATA.demoProfile;
+window.HARDCODED_DATA = HARDCODED_DATA;
 
 // --- HELPERS ---
 const formatUserForFrontend = (rawUser) => {
@@ -469,6 +559,8 @@ const formatUserForFrontend = (rawUser) => {
 };
 
 const DemoAPI = {
+    currentUser: HARDCODED_DATA.demoProfile,
+
     async simulateLatency() {
         return new Promise(resolve => setTimeout(resolve, DEMO_LATENCY));
     },
@@ -477,15 +569,36 @@ const DemoAPI = {
         return `${prefix}-${Date.now()}`;
     },
 
+    getCurrentUser() {
+        if (!this.currentUser) {
+            this.currentUser = HARDCODED_DATA.demoProfile;
+        }
+        return this.currentUser;
+    },
+
+    getUserPurchases() {
+        const user = this.getCurrentUser();
+        if (!Array.isArray(user.purchasedResources)) {
+            user.purchasedResources = [...HARDCODED_DATA.purchasedResourceIds];
+        }
+        return user.purchasedResources;
+    },
+
     async handle(endpoint, method, data) {
         await this.simulateLatency();
+        const loggedUser = this.getCurrentUser();
+        const demoUsers = HARDCODED_DATA.demoUsersList;
 
         // AUTH
         if (endpoint === API_CONFIG.ENDPOINTS.AUTH.LOGIN && method === 'POST') {
             const identifier = (data?.email || data?.username || '').toLowerCase();
-            if ((identifier === DEMO_USER.email.toLowerCase() || identifier === DEMO_USER.username.toLowerCase()) && data?.password === 'demo123') {
+            const profile = demoUsers.find(user =>
+                [user.email?.toLowerCase(), user.username?.toLowerCase()].includes(identifier)
+            );
+            if (profile && (profile.password || 'demo123') === data?.password) {
+                this.currentUser = profile;
                 localStorage.setItem('authToken', 'demo-token');
-                return { success: true, token: 'demo-token', user: formatUserForFrontend(DEMO_USER) };
+                return { success: true, token: 'demo-token', user: formatUserForFrontend(profile) };
             }
             return { success: false, message: 'Credenciales inválidas (demo@estudiapro.com / demo123)' };
         }
@@ -496,6 +609,7 @@ const DemoAPI = {
 
         if (endpoint === API_CONFIG.ENDPOINTS.AUTH.LOGOUT) {
             localStorage.removeItem('authToken');
+            this.currentUser = HARDCODED_DATA.demoUsers.estudiante;
             return { success: true };
         }
 
@@ -505,7 +619,7 @@ const DemoAPI = {
             if (token !== 'demo-token') {
                 throw new Error('Sesión expirada en modo demo');
             }
-            return formatUserForFrontend(DEMO_USER);
+            return formatUserForFrontend(loggedUser);
         }
 
         // SUBJECTS
@@ -514,19 +628,23 @@ const DemoAPI = {
         }
 
         if (endpoint === API_CONFIG.ENDPOINTS.SUBJECTS.GET_USER_SUBJECTS) {
-            return deepClone(HARDCODED_DATA.userSubjects);
+            if (loggedUser.rol !== 'ESTUDIANTE') return [];
+            return deepClone(loggedUser.subjects || []);
         }
 
         if (endpoint === API_CONFIG.ENDPOINTS.SUBJECTS.ADD_SUBJECT && method === 'POST') {
+            if (loggedUser.rol !== 'ESTUDIANTE') return { success: false };
             const subject = HARDCODED_DATA.subjectsCatalog.find(s => s.id === data?.subjectId);
-            if (subject && !HARDCODED_DATA.userSubjects.find(s => s.id === subject.id)) {
-                HARDCODED_DATA.userSubjects.push({ ...deepClone(subject), examDate: null });
+            if (subject && !(loggedUser.subjects || []).find(s => s.id === subject.id)) {
+                loggedUser.subjects = loggedUser.subjects || [];
+                loggedUser.subjects.push({ ...deepClone(subject), examDate: null });
             }
             return { success: true };
         }
 
         if (endpoint === API_CONFIG.ENDPOINTS.SUBJECTS.UPDATE_EXAM_DATE && method === 'PUT') {
-            const subject = HARDCODED_DATA.userSubjects.find(s => s.id === data?.subjectId);
+            if (loggedUser.rol !== 'ESTUDIANTE') return { success: false };
+            const subject = (loggedUser.subjects || []).find(s => s.id === data?.subjectId);
             if (subject) subject.examDate = data.examDate;
             return { success: true };
         }
@@ -537,13 +655,19 @@ const DemoAPI = {
         }
 
         if (endpoint === API_CONFIG.ENDPOINTS.RESOURCES.GET_PURCHASED) {
-            const purchased = HARDCODED_DATA.resources.filter(r => HARDCODED_DATA.purchasedResourceIds.includes(r.id));
+            if (loggedUser.rol !== 'ESTUDIANTE') return [];
+            const purchasedIds = this.getUserPurchases();
+            const purchased = HARDCODED_DATA.resources.filter(r => purchasedIds.includes(r.id));
             return deepClone(purchased);
         }
 
         if (endpoint === API_CONFIG.ENDPOINTS.RESOURCES.PURCHASE && method === 'POST') {
-            if (data?.resourceId && !HARDCODED_DATA.purchasedResourceIds.includes(data.resourceId)) {
-                HARDCODED_DATA.purchasedResourceIds.push(data.resourceId);
+            if (loggedUser.rol !== 'ESTUDIANTE') return { success: false };
+            if (data?.resourceId) {
+                const purchases = this.getUserPurchases();
+                if (!purchases.includes(data.resourceId)) {
+                    purchases.push(data.resourceId);
+                }
             }
             return { success: true };
         }
@@ -597,47 +721,81 @@ const DemoAPI = {
 
         // FORUMS
         if (endpoint === API_CONFIG.ENDPOINTS.FORUMS.GET_ALL) {
-            return deepClone(HARDCODED_DATA.forums);
+            return deepClone(HARDCODED_DATA.forums.map(topic => ({
+                id: topic.id,
+                title: topic.title,
+                subjectName: topic.subjectName,
+                postCount: (topic.posts || []).length,
+                lastActivity: topic.posts?.[topic.posts.length - 1]?.createdAt
+            })));
         }
 
         if (endpoint === API_CONFIG.ENDPOINTS.FORUMS.CREATE_TOPIC && method === 'POST') {
+            const subject = HARDCODED_DATA.subjectsCatalog.find(s => s.id === data?.subjectId);
             const newTopic = {
                 id: this.nextId('forum'),
                 title: data?.title || 'Tema sin título',
-                subjectName: (HARDCODED_DATA.subjectsCatalog.find(s => s.id === data?.subjectId)?.title) || 'General',
-                postCount: 0,
-                lastActivity: new Date().toISOString()
+                subjectName: subject?.title || 'General',
+                posts: [
+                    {
+                        id: this.nextId('post'),
+                        author: loggedUser.name,
+                        content: data?.content || '',
+                        createdAt: new Date().toISOString()
+                    }
+                ]
             };
             HARDCODED_DATA.forums.unshift(newTopic);
             return { success: true, topic: deepClone(newTopic) };
         }
 
         if (endpoint.startsWith(API_CONFIG.ENDPOINTS.FORUMS.GET_TOPIC)) {
+            if (endpoint.endsWith('/reply') && method === 'POST') {
+                const parts = endpoint.split('/').filter(Boolean);
+                const topicId = parts[parts.length - 2];
+                const topic = HARDCODED_DATA.forums.find(f => f.id === topicId);
+                if (!topic) throw new Error('Tema no encontrado');
+                const newPost = {
+                    id: this.nextId('post'),
+                    author: loggedUser.name,
+                    content: data?.message || data?.content || '',
+                    createdAt: new Date().toISOString()
+                };
+                topic.posts = topic.posts || [];
+                topic.posts.push(newPost);
+                return { success: true, post: deepClone(newPost) };
+            }
             const topicId = endpoint.split('/').pop();
             const topic = HARDCODED_DATA.forums.find(f => f.id === topicId);
-            return {
-                id: topicId,
-                title: topic?.title || 'Tema',
-                posts: [
-                    { id: 'post-1', author: 'Monitor IA', content: 'Comparte tus pasos y te ayudamos a detectar dónde hubo un error.', createdAt: new Date().toISOString() }
-                ]
-            };
+            if (!topic) throw new Error('Tema no encontrado');
+            return deepClone({
+                id: topic.id,
+                title: topic.title,
+                subjectName: topic.subjectName,
+                posts: topic.posts || []
+            });
         }
 
         // NOTIFICATIONS
         if (endpoint === API_CONFIG.ENDPOINTS.NOTIFICATIONS.GET_USER_NOTIFICATIONS) {
-            return deepClone(HARDCODED_DATA.notifications);
+            return deepClone(loggedUser.notifications || HARDCODED_DATA.notifications);
         }
 
         if (endpoint === API_CONFIG.ENDPOINTS.NOTIFICATIONS.MARK_READ && method === 'POST') {
-            const notification = HARDCODED_DATA.notifications.find(n => n.id === data?.notificationId);
+            const notifications = loggedUser.notifications || (loggedUser.notifications = deepClone(HARDCODED_DATA.notifications));
+            const notification = notifications.find(n => n.id === data?.notificationId);
             if (notification) notification.read = true;
             return { success: true };
         }
 
         // ADMIN placeholders
         if (endpoint === API_CONFIG.ENDPOINTS.ADMIN.USERS) {
-            return [];
+            return HARDCODED_DATA.demoUsersList.map(user => ({
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.rol
+            }));
         }
 
         if (endpoint === API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS) {
@@ -698,6 +856,10 @@ const apiService = {
             ? { email: identifier, password }
             : { username: identifier, password };
 
+        if (!isDemoMode() && identifier.includes('@')) {
+            payload.email = identifier;
+        }
+
         try {
             const raw = await this.request(API_CONFIG.ENDPOINTS.AUTH.LOGIN, 'POST', payload, false);
             if (raw?.success && raw?.token) {
@@ -735,7 +897,10 @@ const apiService = {
     // Usuarios
     async getProfile() {
         const profile = await this.request(API_CONFIG.ENDPOINTS.USERS.GET_PROFILE);
-        return isDemoMode() ? profile : formatUserForFrontend(profile);
+        if (profile?.raw || isDemoMode()) {
+            return profile;
+        }
+        return formatUserForFrontend(profile);
     },
 
     async updateProfile(profileData) {
@@ -817,6 +982,10 @@ const apiService = {
 
     async getForumTopic(topicId) {
         return this.request(`${API_CONFIG.ENDPOINTS.FORUMS.GET_TOPIC}/${topicId}`);
+    },
+
+    async replyForumTopic(topicId, message) {
+        return this.request(`${API_CONFIG.ENDPOINTS.FORUMS.GET_TOPIC}/${topicId}/reply`, 'POST', { message });
     },
 
     // Logros
