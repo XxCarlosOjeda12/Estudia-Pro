@@ -30,7 +30,7 @@
                     <div class="glass-effect-light p-8 rounded-2xl shadow-2xl">
                         <div id="login-form-container">
                             <!-- Tabs as Links -->
-                            <div class="flex border-b border-slate-200 dark:border-slate-700 mb-6">
+                            <div class="flex border-b border-slate-200 dark:border-slate-700 mb-4">
                                 <a href="login.html"
                                     class="tab-button flex-1 py-2 font-medium text-center text-primary active border-b-2 border-primary">Iniciar
                                     Sesión</a>
@@ -38,14 +38,25 @@
                                     class="tab-button flex-1 py-2 font-medium text-center text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300">Registrarse</a>
                             </div>
 
+                            <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-3">
+                                <span>Modo Demo listo para pruebas</span>
+                                <button type="button" id="demo-mode-toggle"
+                                    class="px-3 py-1 rounded-full border border-primary/40 text-primary text-[11px] font-semibold uppercase tracking-widest">
+                                    Activado
+                                </button>
+                            </div>
+                            <div class="text-[11px] mb-6 bg-slate-100 dark:bg-slate-800/60 border border-light-border dark:border-dark-border rounded-lg px-3 py-2 text-slate-500 dark:text-slate-400">
+                                También puedes usar tus credenciales reales. Para la demo utiliza <span class="font-semibold">demo@estudiapro.com / demo123</span>.
+                            </div>
+
                             <form id="login-form" class="active-form">
                                 <div class="mb-4">
                                     <label for="email"
                                         class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Usuario
-                                        (email)</label>
-                                    <input type="email" id="email"
+                                        o correo electrónico</label>
+                                    <input type="text" id="email"
                                         class="w-full px-4 py-2 bg-white/50 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
-                                        placeholder="tu.email@ejemplo.com" required>
+                                        placeholder="tu.usuario o correo" autocomplete="username" required>
                                 </div>
                                 <div class="mb-6">
                                     <label for="password"
@@ -53,7 +64,7 @@
                                     <div class="relative">
                                         <input type="password" id="password"
                                             class="w-full px-4 py-2 bg-white/50 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
-                                            placeholder="••••••••" required>
+                                            placeholder="••••••••" autocomplete="current-password" required>
                                         <button type="button"
                                             class="toggle-password absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"

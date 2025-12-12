@@ -2,19 +2,20 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form');
-    const emailInput = document.getElementById('email');
+    const identifierInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
+    const demoModeToggle = document.getElementById('demo-mode-toggle');
 
     // Handle Login Submit
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const email = emailInput.value;
+            const identifier = identifierInput.value.trim();
             const password = passwordInput.value;
             const rememberMe = document.getElementById('remember-me')?.checked;
 
-            if (!email || !password) {
+            if (!identifier || !password) {
                 showError('Por favor completa todos los campos');
                 return;
             }
@@ -26,26 +27,28 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.innerHTML = '<span class="animate-spin inline-block h-4 w-4 border-2 border-white rounded-full border-t-transparent mr-2"></span> Cargando...';
 
             try {
-                // Call API Service (from global.js)
-                const response = await apiService.login(email, password);
+                const response = await apiService.login(identifier, password);
 
-                if (response.success) {
-                    // Save token
-                    localStorage.setItem('authToken', response.token);
-                    if (rememberMe) {
-                        localStorage.setItem('savedEmail', email);
-                    } else {
-                        localStorage.removeItem('savedEmail');
-                    }
-
-                    // Redirect to dashboard
-                    window.location.href = 'dashboard.html';
-                } else {
-                    showError(response.message || 'Error al iniciar sesión');
+                if (!response?.success) {
+                    showError(response?.message || 'Las credenciales no son válidas.');
+                    return;
                 }
+
+                localStorage.setItem('authToken', response.token);
+                if (response.user) {
+                    localStorage.setItem('currentUser', JSON.stringify(response.user));
+                }
+
+                if (rememberMe) {
+                    localStorage.setItem('savedIdentifier', identifier);
+                } else {
+                    localStorage.removeItem('savedIdentifier');
+                }
+
+                window.location.href = 'dashboard.html';
             } catch (error) {
                 console.error('Login error:', error);
-                showError('Ocurrió un error inesperado. Intenta de nuevo.');
+                showError('No pudimos contactar al servidor. Intenta nuevamente.');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalBtnText;
@@ -59,10 +62,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Auto-fill saved email
-    const savedEmail = localStorage.getItem('savedEmail');
-    if (savedEmail && emailInput) {
-        emailInput.value = savedEmail;
-        document.getElementById('remember-me').checked = true;
+    const savedIdentifier = localStorage.getItem('savedIdentifier');
+    if (savedIdentifier && identifierInput) {
+        identifierInput.value = savedIdentifier;
+        const checkbox = document.getElementById('remember-me');
+        if (checkbox) checkbox.checked = true;
+    }
+
+    if (demoModeToggle && window.EstudiaProDemo) {
+        const renderDemoState = () => {
+            const enabled = window.EstudiaProDemo.isEnabled();
+            demoModeToggle.textContent = enabled ? 'Activado' : 'Desactivado';
+            demoModeToggle.classList.toggle('bg-primary/10', enabled);
+            demoModeToggle.classList.toggle('text-primary', enabled);
+            demoModeToggle.classList.toggle('bg-slate-200', !enabled);
+            demoModeToggle.classList.toggle('text-slate-500', !enabled);
+        };
+
+        renderDemoState();
+        demoModeToggle.addEventListener('click', () => {
+            const enabled = window.EstudiaProDemo.toggle();
+            renderDemoState();
+            Global.showNotification('Modo Demo', enabled ? 'Ahora verás datos de prueba incrustados.' : 'Modo real activado, usa tu backend en http://127.0.0.1:8000/api');
+        });
     }
 });
 // Register Page Logic
@@ -74,13 +96,15 @@ document.addEventListener('DOMContentLoaded', () => {
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const name = document.getElementById('reg-name').value;
-            const email = document.getElementById('reg-email').value;
+            const name = document.getElementById('reg-name').value.trim();
+            const username = document.getElementById('reg-username').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
             const password = document.getElementById('reg-password').value;
             const confirmPassword = document.getElementById('reg-confirm-password').value;
+            const level = document.getElementById('reg-level')?.value || 'INGENIERIA';
             const role = document.querySelector('input[name="role"]:checked')?.value || 'estudiante';
 
-            if (!name || !email || !password || !confirmPassword) {
+            if (!name || !username || !email || !password || !confirmPassword) {
                 Global.showNotification('Campos Incompletos', 'Por favor completa todos los campos');
                 return;
             }
@@ -100,13 +124,27 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="animate-spin inline-block h-4 w-4 border-2 border-white rounded-full border-t-transparent mr-2"></span> Creando cuenta...';
 
+            const [firstName, ...rest] = name.split(' ');
+            const payload = {
+                username,
+                email,
+                password,
+                password_confirm: confirmPassword,
+                first_name: firstName,
+                last_name: rest.join(' ') || firstName,
+                rol: role.toUpperCase()
+            };
+
+            if (payload.rol === 'ESTUDIANTE') {
+                payload.nivel_escolar = level || 'INGENIERIA';
+            }
+
+            if (payload.rol === 'CREADOR') {
+                payload.especialidad = 'Matemáticas Aplicadas';
+            }
+
             try {
-                const response = await apiService.register({
-                    name,
-                    email,
-                    password,
-                    role
-                });
+                const response = await apiService.register(payload);
 
                 if (response.success) {
                     Global.showNotification('¡Cuenta Creada!', 'Registro exitoso. Redirigiendo...');

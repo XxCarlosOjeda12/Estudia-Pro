@@ -24,3 +24,40 @@
     border-color: #475569;
     color: white;
 }
+
+.tema-oscuro .sidebar-panel {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(71, 85, 105, 0.4);
+}
+
+.tema-oscuro .glass-effect-light,
+.tema-oscuro .recurso-card,
+.tema-oscuro .forum-post {
+    background: rgba(30, 41, 59, 0.75);
+    border: 1px solid rgba(71, 85, 105, 0.45);
+}
+
+.tema-oscuro .nav-link-activo {
+    background: rgba(139, 92, 246, 0.15);
+    color: #c4b5fd;
+}
+
+.tema-oscuro .search-chips button {
+    background: rgba(148, 163, 184, 0.14);
+    color: rgba(226, 232, 240, 0.9);
+}
+
+.tema-oscuro .search-chips button.activo {
+    background: #8b5cf6;
+    color: white;
+}
+
+.tema-oscuro .notification-card {
+    background: rgba(15, 23, 42, 0.8);
+    border-left: 4px solid rgba(139, 92, 246, 0.8);
+}
+
+.tema-oscuro .exam-toolbar button {
+    background: rgba(148, 163, 184, 0.16);
+    color: #e2e8f0;
+}

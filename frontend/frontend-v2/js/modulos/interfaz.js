@@ -11,7 +11,8 @@ const app = {
         cache: {
             subjects: [],
             resources: []
-        }
+        },
+        notifications: []
     },
 
     dom: {},
@@ -104,19 +105,30 @@ const app = {
         if (this.dom.userRole) this.dom.userRole.textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
 
         // Update Avatar
-        const initials = user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-        const avatarHTML = `<div class="w-full h-full flex items-center justify-center bg-primary text-white font-bold text-xl">${initials}</div>`;
+        const initials = user.name.split(' ').map(n => n[0] || '').join('').substring(0, 2).toUpperCase() || 'EP';
+        const avatarURL = user.photo || `https://placehold.co/40x40/8b5cf6/ffffff?text=${initials}`;
 
-        if (this.dom.userAvatar) this.dom.userAvatar.innerHTML = avatarHTML;
+        if (this.dom.userAvatar) {
+            if (this.dom.userAvatar.tagName === 'IMG') {
+                this.dom.userAvatar.src = avatarURL;
+            } else {
+                this.dom.userAvatar.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-primary text-white font-bold text-xl">${initials}</div>`;
+            }
+        }
 
-        const mobileAvatar = document.querySelector('#mobile-menu #user-avatar');
-        if (mobileAvatar) mobileAvatar.innerHTML = avatarHTML;
+        const mobileAvatar = document.getElementById('mobile-user-avatar');
+        if (mobileAvatar) {
+            mobileAvatar.src = avatarURL;
+        }
 
-        const mobileName = document.querySelector('#mobile-menu #user-name');
+        const mobileName = document.getElementById('mobile-user-name');
         if (mobileName) mobileName.textContent = user.name;
     },
 
     async navigateTo(page, context = null) {
+        if (this.state.currentPage === 'examen' && page !== 'examen') {
+            this.destroyExamContext();
+        }
         this.state.currentPage = page;
 
         if (context) {
@@ -158,6 +170,7 @@ const app = {
 
         // 3. Render Main Content
         await this.renderPage();
+        this.updateNotificationBadge();
 
         // 4. Initialize MathLive (if needed globally)
         if (typeof MathLive !== 'undefined') {
@@ -172,8 +185,7 @@ const app = {
             { id: 'recursos', name: 'Recursos Comunidad', icon: 'users' },
             { id: 'foro', name: 'Foro de Ayuda', icon: 'message-circle' },
             { id: 'formularios', name: 'Formularios', icon: 'file-text' },
-            { id: 'progreso', name: 'Mi Progreso', icon: 'trending-up' },
-            { id: 'logros', name: 'Logros', icon: 'award' }
+            { id: 'progreso', name: 'Mi Progreso', icon: 'trending-up' }
         ];
 
         // Role based nav adjustments
@@ -307,9 +319,6 @@ const app = {
                 case 'gestion-materias':
                     pageContent = await this.getGestionMateriasHTML();
                     break;
-                case 'logros':
-                    pageContent = await this.getLogrosHTML();
-                    break;
                 default:
                     pageContent = `<h2 class="text-2xl font-bold">Página no encontrada</h2>`;
             }
@@ -379,6 +388,32 @@ const app = {
         return await apiService.getAllForums();
     },
 
+    async loadNotifications(force = false) {
+        if (!force && this.state.notifications.length) {
+            return this.state.notifications;
+        }
+        try {
+            const notifications = await apiService.getUserNotifications();
+            this.state.notifications = Array.isArray(notifications) ? notifications : [];
+            this.updateNotificationBadge();
+            return this.state.notifications;
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+            throw error;
+        }
+    },
+
+    async markNotification(notificationId) {
+        try {
+            await apiService.markNotificationAsRead(notificationId);
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        } finally {
+            this.state.notifications = this.state.notifications.map(item => item.id === notificationId ? { ...item, read: true } : item);
+            this.updateNotificationBadge();
+        }
+    },
+
     // --- PAGE TEMPLATES --- 
     // (Pasting the page templates from previous script.js analysis, simplified where possible)
 
@@ -396,16 +431,12 @@ const app = {
     async getStudentPanelHTML() {
         try {
             const userSubjects = await this.fetchUserSubjects();
+            await this.loadNotifications().catch(() => {});
             // Mock data for other widgets
             const upcomingActivities = [
                 { title: 'Cálculo - Parcial 1', date: 'Mañana, 10:00 AM', type: 'Examen' },
                 { title: 'Álgebra Lineal - Quiz 2', date: 'Viernes, 2:00 PM', type: 'Quiz' }
             ];
-            const recentAchievements = [
-                { title: 'Primer Login', description: 'Has iniciado sesión por primera vez', icon: '🚀' },
-                { title: 'Explorador', description: 'Has añadido tu primera materia', icon: '🔍' }
-            ];
-
             const subjectsHTML = userSubjects && userSubjects.length > 0
                 ? userSubjects.map(subject => `
                     <div class="glass-effect-light p-6 rounded-2xl flex flex-col justify-between hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer" onclick="app.navigateTo('materia', {subjectId: '${subject.id}'})">
@@ -437,11 +468,13 @@ const app = {
                             <h1 class="text-3xl font-bold">Bienvenido, ${this.state.currentUser.name}</h1>
                             <p class="text-slate-500 dark:text-slate-400">Aquí tienes un resumen de tu actividad.</p>
                         </div>
-                        <button class="p-2 rounded-full bg-slate-200 dark:bg-slate-700 relative">
+                        <button type="button" onclick="app.showNotificationsCenter()" class="notification-button p-2 rounded-full bg-slate-200 dark:bg-slate-700 relative">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                             </svg>
-                            <span class="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-dark-bg bg-red-400"></span>
+                            <span class="absolute -top-1 -right-1 h-5 min-w-[1.25rem] px-1 rounded-full text-[10px] font-bold text-white bg-red-500 flex items-center justify-center ${this.state.notifications.some(n => !n.read) ? '' : 'hidden'}" data-notification-badge>
+                                ${this.state.notifications.filter(n => !n.read).length}
+                            </span>
                         </button>
                     </div>
 
@@ -484,18 +517,6 @@ const app = {
                         </div>
                     </section>
 
-                    <section class="mb-8">
-                        <h2 class="text-xl font-bold mb-4">Logros Recientes</h2>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                            ${recentAchievements.map(achievement => `
-                                <div class="glass-effect-light p-4 rounded-xl flex flex-col items-center text-center">
-                                    <div class="text-4xl mb-2">${achievement.icon}</div>
-                                    <h4 class="font-bold text-sm mb-1">${achievement.title}</h4>
-                                    <p class="text-xs text-slate-500">${achievement.description}</p>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </section>
                 </div>
             `;
         } catch (e) {
@@ -514,15 +535,38 @@ const app = {
 
     async getExplorarHTML() {
         const subjects = await this.fetchSubjects();
+        const spotlight = (window.HARDCODED_DATA?.activities?.spotlightSearches) || [
+            'Derivadas trigonométricas',
+            'Matrices 3x3',
+            'Límites notables'
+        ];
         return `
             <div class="page active">
                 <h1 class="text-3xl font-bold mb-6">Explorar Materias</h1>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass-effect-light p-6 rounded-2xl mb-6">
+                    <div class="relative">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input type="text" id="search-materias" placeholder="Explora materias, temas o escuelas..." class="w-full p-3 pl-12 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none">
+                    </div>
+                    <div class="search-chips flex flex-wrap gap-2 mt-3">
+                        ${spotlight.map(term => `<button type="button" data-search-chip="${term}" class="px-3 py-1 text-xs rounded-full border border-slate-200 dark:border-slate-600">${term}</button>`).join('')}
+                    </div>
+                </div>
+                <div id="explorar-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     ${subjects.map(s => `
-                        <div class="glass-effect-light p-6 rounded-2xl">
-                            <h3 class="text-xl font-bold">${s.title}</h3>
-                            <p>${s.description || ''}</p>
-                            <button onclick="app.addSubject('${s.id}')" class="mt-4 py-2 px-4 bg-primary text-white rounded-lg">Añadir</button>
+                        <div class="materia-card glass-effect-light p-6 rounded-2xl" data-title="${(s.title || '').toLowerCase()}" data-level="${(s.level || '').toLowerCase()}" data-school="${(s.school || '').toLowerCase()}">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-xs font-semibold bg-primary/15 text-primary py-1 px-2 rounded-full">${s.level || 'General'}</span>
+                                <span class="text-xs text-slate-500 dark:text-slate-400">${s.school || 'ESCOM'}</span>
+                            </div>
+                            <h3 class="text-xl font-bold mb-2">${s.title}</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">${s.description || ''}</p>
+                            <ul class="text-xs text-slate-500 dark:text-slate-400 space-y-1 mb-4">
+                                ${(s.temario || []).slice(0, 3).map(item => `<li>• ${item.title}</li>`).join('')}
+                            </ul>
+                            <button onclick="app.addSubject('${s.id}')" class="mt-auto w-full py-2 px-4 bg-primary text-white rounded-lg">Añadir</button>
                         </div>
                     `).join('')}
                 </div>
@@ -660,6 +704,7 @@ const app = {
             const resources = await this.fetchResources();
             const purchasedResources = await apiService.getPurchasedResources();
             const purchasedIds = purchasedResources.map(r => r.id);
+            const spotlight = (window.HARDCODED_DATA?.activities?.spotlightSearches) || ['Integrales', 'Matrices', 'Probabilidad'];
 
             return `
                 <div class="page active">
@@ -672,6 +717,9 @@ const app = {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                             <input type="text" id="search-recursos" placeholder="Buscar recursos..." class="w-full p-3 pl-12 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none">
+                            <div class="search-chips flex flex-wrap gap-2 mt-2">
+                                ${spotlight.map(term => `<button type="button" data-resource-chip="${term}" class="px-3 py-1 text-xs rounded-full border border-slate-200 dark:border-slate-600">${term}</button>`).join('')}
+                            </div>
                         </div>
                         <select id="filter-subject" class="p-3 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none">
                             <option value="all">Todas las materias</option>
@@ -811,41 +859,6 @@ const app = {
         }
     },
 
-    async getLogrosHTML() {
-        try {
-            const achievements = await apiService.getAllAchievements();
-
-            return `
-                <div class="page active">
-                    <div class="flex items-center justify-between mb-8">
-                        <div>
-                            <h1 class="text-3xl font-bold mb-2">Mis Logros</h1>
-                            <p class="text-slate-500 dark:text-slate-400">Celebra tu progreso académico.</p>
-                        </div>
-                        <div class="px-4 py-2 bg-yellow-400/20 text-yellow-500 rounded-full font-bold border border-yellow-400/30">
-                            Nivel 3: Aprendiz Experto
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        ${achievements.map(achievement => `
-                            <div class="glass-effect-light p-6 rounded-2xl flex flex-col items-center text-center hover:scale-105 transition-transform duration-300">
-                                <div class="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-5xl mb-4 shadow-inner">
-                                    ${achievement.icon}
-                                </div>
-                                <h3 class="font-bold text-lg mb-2">${achievement.title}</h3>
-                                <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">${achievement.description}</p>
-                                <span class="text-xs font-mono text-slate-400">${achievement.date}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        } catch (error) {
-            console.error('Error loading logros page:', error);
-            return '<p>Error al cargar los logros.</p>';
-        }
-    },
     async getProgresoHTML() {
         try {
             const userSubjects = await this.fetchUserSubjects();
@@ -943,6 +956,14 @@ const app = {
                 </div>
                 <h1 class="text-3xl font-bold">${exam.title}</h1>
                 <p class="text-slate-500 dark:text-slate-400 mb-8">Resuelve los ejercicios en el tiempo establecido.</p>
+                <div class="exam-toolbar mb-6">
+                    <button type="button" class="teclado-toggle" data-action="toggle-keyboard">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3h6a2 2 0 012 2v2H7V5a2 2 0 012-2zm-2 7h10M5 14h14M7 17h10m2-12h1a2 2 0 012 2v10a2 2 0 01-2 2h-1M4 5h1a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V7a2 2 0 012-2z" />
+                        </svg>
+                        <span data-keyboard-label>Teclado matemático</span>
+                    </button>
+                </div>
 
                 <div id="exam-questions-container">
                     ${exam.questions ? exam.questions.map((q, index) => `
@@ -951,7 +972,7 @@ const app = {
                             <div class="text-lg mb-4">${q.text}</div>
                             <div class="flex flex-col">
                                 <label for="answer-${q.id}" class="text-sm text-slate-500 dark:text-slate-400 mb-2">Escribe tu respuesta:</label>
-                                <math-field id="math-field-${q.id}" class="math-field" placeholder="Escribe tu respuesta aquí..." onfocus="app.setActiveMathField('math-field-${q.id}', '${q.id}')"></math-field>
+                                <math-field id="math-field-${q.id}" class="math-field" placeholder="Escribe tu respuesta aquí..." virtual-keyboard-mode="manual" onfocus="app.setActiveMathField('math-field-${q.id}', '${q.id}')"></math-field>
                             </div>
                             <div class="mt-4 flex justify-between items-center">
                                 <div id="preview-${q.id}" class="p-3 bg-slate-200 dark:bg-slate-900 rounded-xl min-h-[50px] flex items-center"></div>
@@ -964,6 +985,16 @@ const app = {
                 
                 <div class="mt-8 text-center">
                     <button onclick="app.finishExam()" class="py-3 px-8 bg-secondary/80 hover:bg-secondary text-white font-bold rounded-lg transition-transform transform hover:scale-105">Terminar y Calificar Examen</button>
+                </div>
+                <div id="math-keyboard-wrapper" class="teclado-panel hidden mt-6">
+                    <header>
+                        <div>
+                            <p class="font-semibold">Teclado Matemático</p>
+                            <p class="leyenda">Atajos para escribir integrales, sumatorias y más.</p>
+                        </div>
+                        <button type="button" class="teclado-panel-close">✕</button>
+                    </header>
+                    <div class="mathlive-container" data-keyboard-slot></div>
                 </div>
             </div>
         `;
@@ -1239,43 +1270,39 @@ const app = {
             return `<p>Error al cargar las materias.</p>`;
         }
     },
-    async getLogrosHTML() {
-        try {
-            const achievements = await apiService.getUserAchievements();
-
-            return `
-                <div class="page active">
-                    <h1 class="text-3xl font-bold mb-2">Mis Logros</h1>
-                    <p class="text-slate-500 dark:text-slate-400 mb-8">Desbloquea medallas completando objetivos.</p>
-                    
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        ${achievements.map(achievement => `
-                            <div class="glass-effect-light p-6 rounded-2xl text-center achievement-unlocked">
-                                <div class="text-4xl mb-3">${achievement.icon || '🏆'}</div>
-                                <h3 class="text-lg font-semibold mb-1">${achievement.name}</h3>
-                                <p class="text-sm text-slate-500 dark:text-slate-400 mb-2">${achievement.description}</p>
-                                <p class="text-xs text-slate-400">Obtenido: ${achievement.date}</p>
-                            </div>
-                        `).join('')}
-                        
-                        ${[...Array(6 - achievements.length)].map((_, i) => `
-                            <div class="glass-effect-light p-6 rounded-2xl text-center opacity-60">
-                                <div class="text-4xl mb-3">🔒</div>
-                                <h3 class="text-lg font-semibold mb-1">Logro Bloqueado</h3>
-                                <p class="text-sm text-slate-500 dark:text-slate-400">Sigue usando la plataforma para desbloquear este logro.</p>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        } catch (error) {
-            console.error('Error loading logros page:', error);
-            return `<p>Error al cargar los logros.</p>`;
-        }
-    },
 
     // Init Listeners stubs
-    initExplorarListeners() { },
+    initExplorarListeners() {
+        const searchInput = document.getElementById('search-materias');
+        const cards = Array.from(document.querySelectorAll('.materia-card'));
+        const chips = document.querySelectorAll('[data-search-chip]');
+
+        const filterCards = (term) => {
+            const normalized = term.toLowerCase();
+            cards.forEach(card => {
+                const title = card.dataset.title || '';
+                const level = card.dataset.level || '';
+                const school = card.dataset.school || '';
+                const matches = !normalized || title.includes(normalized) || level.includes(normalized) || school.includes(normalized);
+                card.style.display = matches ? 'block' : 'none';
+            });
+        };
+
+        if (searchInput) {
+            searchInput.addEventListener('input', (event) => filterCards(event.target.value));
+        }
+
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                chips.forEach(c => c.classList.remove('activo'));
+                chip.classList.add('activo');
+                if (searchInput) {
+                    searchInput.value = chip.getAttribute('data-search-chip');
+                    filterCards(searchInput.value);
+                }
+            });
+        });
+    },
     initExamen() {
         // Inicializar temporizador y estado del examen
         this.examState = {
@@ -1283,13 +1310,110 @@ const app = {
             timeLeft: this.state.currentExam?.duration || 3600,
             answers: {},
             activeInput: null,
+            keyboardVisible: false,
         };
 
+        document.body.classList.add('modo-examen');
         this.startTimer();
+        this.setupExamKeyboard();
+    },
 
-        // Inicializar MathLive si está disponible
-        if (typeof mathVirtualKeyboard !== 'undefined') {
+    setupExamKeyboard() {
+        if (typeof mathVirtualKeyboard === 'undefined') return;
+        const wrapper = document.getElementById('math-keyboard-wrapper');
+        const slot = wrapper?.querySelector('[data-keyboard-slot]');
+        if (!wrapper || !slot) return;
+
+        if (mathVirtualKeyboard.element && mathVirtualKeyboard.element.parentNode !== slot) {
+            slot.innerHTML = '';
+            slot.appendChild(mathVirtualKeyboard.element);
+        }
+
+        mathVirtualKeyboard.layouts = [
+            'numeric',
+            'symbols',
+            'greek',
+            {
+                label: 'Calc',
+                tooltip: 'Cálculo',
+                rows: [
+                    ['\\frac{d}{d#?}\\,#@', '\\int', '\\iint', '\\iiint', '\\partial'],
+                    ['\\sum', '\\prod', '\\lim_{#?\\to #?}', '\\nabla', '\\Delta'],
+                    ['\\sqrt{#0}', '#@^{#?}', '\\ln', '\\exp', '\\infty']
+                ]
+            },
+            {
+                label: 'Trig',
+                tooltip: 'Trigonometría',
+                rows: [
+                    ['\\sin', '\\cos', '\\tan', '\\cot'],
+                    ['\\arcsin', '\\arccos', '\\arctan', '\\csc'],
+                    ['\\sinh', '\\cosh', '\\tanh', '\\sech']
+                ]
+            },
+            {
+                label: 'Mat',
+                tooltip: 'Matrices',
+                rows: [
+                    ['\\begin{pmatrix}#?\\end{pmatrix}', '\\begin{bmatrix}#?\\end{bmatrix}'],
+                    ['\\begin{vmatrix}#?\\end{vmatrix}', '\\begin{Vmatrix}#?\\end{Vmatrix}'],
+                    [',', '&', '\\\\']
+                ]
+            }
+        ];
+
+        mathVirtualKeyboard.hide();
+        wrapper.classList.add('hidden');
+
+        const toggleBtn = document.querySelector('[data-action="toggle-keyboard"]');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => this.toggleExamKeyboard());
+        }
+        const closeBtn = wrapper.querySelector('.teclado-panel-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.toggleExamKeyboard(false));
+        }
+
+        this.examState.keyboardWrapper = wrapper;
+        this.examState.keyboardToggle = toggleBtn;
+
+        if (!this._examOutsideHandler) {
+            this._examOutsideHandler = (event) => {
+                if (!this.examState?.keyboardWrapper || this.examState.keyboardWrapper.classList.contains('hidden')) return;
+                if (this.examState.keyboardWrapper.contains(event.target)) return;
+                if (this.examState.keyboardToggle && this.examState.keyboardToggle.contains(event.target)) return;
+                this.toggleExamKeyboard(false);
+            };
+        }
+
+        document.addEventListener('click', this._examOutsideHandler);
+    },
+
+    toggleExamKeyboard(forceVisible) {
+        if (typeof mathVirtualKeyboard === 'undefined' || !this.examState) return;
+        const wrapper = this.examState.keyboardWrapper;
+        if (!wrapper) return;
+
+        const show = typeof forceVisible === 'boolean'
+            ? forceVisible
+            : !this.examState.keyboardVisible;
+
+        if (show) {
             mathVirtualKeyboard.show();
+            wrapper.classList.remove('hidden');
+            this.examState.keyboardVisible = true;
+        } else {
+            mathVirtualKeyboard.hide();
+            wrapper.classList.add('hidden');
+            this.examState.keyboardVisible = false;
+        }
+
+        if (this.examState.keyboardToggle) {
+            const label = this.examState.keyboardToggle.querySelector('[data-keyboard-label]');
+            if (label) {
+                label.textContent = show ? 'Ocultar teclado' : 'Teclado matemático';
+            }
+            this.examState.keyboardToggle.setAttribute('aria-pressed', show ? 'true' : 'false');
         }
     },
 
@@ -1320,14 +1444,19 @@ const app = {
     },
 
     async finishExam() {
+        if (!this.examState) return;
         if (this.examState.timerId) {
             clearInterval(this.examState.timerId);
         }
+        this.toggleExamKeyboard(false);
 
         try {
             // Enviar respuestas al backend
-            await apiService.submitExam(this.state.currentExam.id, this.examState.answers);
-            this.showExamResultsModal(85, 3, 4); // Valores de ejemplo
+            const result = await apiService.submitExam(this.state.currentExam.id, this.examState.answers);
+            const score = result?.calificacion ?? 0;
+            const correct = result?.correctas ?? 0;
+            const total = result?.total ?? (this.state.currentExam?.questions?.length || 0);
+            this.showExamResultsModal(score, correct, total);
         } catch (error) {
             Global.showNotification('Error', 'No se pudo enviar el examen.');
         }
@@ -1358,6 +1487,21 @@ const app = {
 
     reviewExam() {
         this.closeModal('exam-results-modal');
+    },
+
+    destroyExamContext() {
+        if (this.examState?.timerId) {
+            clearInterval(this.examState.timerId);
+        }
+        if (this.examState) {
+            this.toggleExamKeyboard(false);
+        }
+        if (this._examOutsideHandler) {
+            document.removeEventListener('click', this._examOutsideHandler);
+            this._examOutsideHandler = null;
+        }
+        document.body.classList.remove('modo-examen');
+        this.examState = null;
     },
     renderProgreso() {
         // Implementación básica de gráficos
@@ -1497,6 +1641,8 @@ const app = {
             } catch (e) { console.error('Error populating resource filters:', e); }
         }
 
+        const chips = document.querySelectorAll('[data-resource-chip]');
+
         if (searchInput && filterSubject && filterType) {
             const filterResources = () => {
                 const searchTerm = searchInput.value.toLowerCase();
@@ -1523,6 +1669,82 @@ const app = {
             searchInput.addEventListener('keyup', filterResources);
             filterSubject.addEventListener('change', filterResources);
             filterType.addEventListener('change', filterResources);
+
+            const setActiveChip = (target) => {
+                chips.forEach(chip => chip.classList.toggle('activo', chip === target));
+            };
+
+            chips.forEach(chip => {
+                chip.addEventListener('click', () => {
+                    if (searchInput) {
+                        searchInput.value = chip.getAttribute('data-resource-chip');
+                        filterResources();
+                    }
+                    setActiveChip(chip);
+                });
+            });
+        }
+    },
+
+    updateNotificationBadge() {
+        const badge = document.querySelector('[data-notification-badge]');
+        if (!badge) return;
+        const unread = this.state.notifications.filter(n => !n.read).length;
+        if (unread > 0) {
+            badge.textContent = unread;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    },
+
+    async showNotificationsCenter() {
+        try {
+            const notifications = await this.loadNotifications();
+            const list = notifications.length
+                ? notifications.map(notification => `
+                    <div class="notification-card glass-effect-light p-4 rounded-2xl border-l-4 ${notification.type === 'alert' ? 'border-red-400' : notification.type === 'success' ? 'border-green-400' : 'border-primary'} mb-3" data-notification-item="${notification.id}">
+                        <div class="flex justify-between items-start gap-3">
+                            <div>
+                                <p class="font-semibold">${notification.title}</p>
+                                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">${notification.message}</p>
+                                <p class="text-xs text-slate-400 mt-2">${new Date(notification.date || Date.now()).toLocaleString('es-MX')}</p>
+                            </div>
+                            ${notification.read ? '' : `<button class="text-xs text-primary font-semibold" data-mark-read="${notification.id}">Marcar leída</button>`}
+                        </div>
+                    </div>
+                `).join('')
+                : '<p class="text-center text-slate-500">No tienes notificaciones nuevas.</p>';
+
+            this.dom.modalsContainer.innerHTML = `
+                <div id="notifications-modal" class="fixed inset-0 bg-black/50 z-40 flex items-end sm:items-center justify-center p-4">
+                    <div class="bg-light-card dark:bg-dark-card w-full max-w-lg rounded-2xl p-6 max-h-[80vh] overflow-y-auto shadow-2xl">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-2xl font-bold">Centro de notificaciones</h3>
+                                <p class="text-sm text-slate-500 dark:text-slate-400">Mantente al tanto de tus recordatorios.</p>
+                            </div>
+                            <button class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700" onclick="app.closeModal('notifications-modal')">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        ${list}
+                    </div>
+                </div>`;
+
+            this.dom.modalsContainer.querySelectorAll('[data-mark-read]').forEach(btn => {
+                btn.addEventListener('click', async (event) => {
+                    const id = event.currentTarget.getAttribute('data-mark-read');
+                    await this.markNotification(id);
+                    event.currentTarget.remove();
+                    const card = this.dom.modalsContainer.querySelector(`[data-notification-item="${id}"]`);
+                    if (card) card.classList.add('opacity-60');
+                });
+            });
+        } catch (error) {
+            Global.showNotification('Notificaciones', 'No se pudieron cargar las notificaciones.');
         }
     },
 
