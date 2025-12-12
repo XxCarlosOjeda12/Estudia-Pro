@@ -44,6 +44,8 @@ El frontend está diseñado para consumir la API del backend, pero también cuen
 
 Dentro del archivo `demo-frontend-luis/script.js` se puede cambiar entre modo demostración y modo real:
 
+---
+
 ## Cambios recientes
 
 ### Modo de demostración y uso del sistema real
