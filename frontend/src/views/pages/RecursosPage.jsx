@@ -31,7 +31,7 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
         <h1 className="text-3xl font-bold mb-2">Recursos de la Comunidad</h1>
         <p className="text-slate-500 dark:text-slate-400">Apuntes, guías y exámenes compartidos por otros estudiantes.</p>
       </div>
-      <div className="flex flex-col md:flex-row gap-4">
+      <div className="flex flex-col md:flex-row gap-4 items-start">
         <div className="flex-1 space-y-2">
           <div className="relative">
             <input
