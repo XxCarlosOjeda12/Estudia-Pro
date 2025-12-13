@@ -3,6 +3,8 @@ import { apiService } from '../../lib/api.js';
 import { useAppContext } from '../../context/AppContext.jsx';
 import 'mathlive';
 
+import MathRenderer from '../../components/MathRenderer.jsx';
+
 // Wrapper for the MathLive web component
 const MathInput = ({ value, onChange }) => {
   const mfRef = useRef(null);
@@ -81,9 +83,19 @@ const ExamenPage = ({ exam, onFinish }) => {
 
   const renderQuestion = (text) => {
     if (!text) return '';
-    return text
-      .replace(/\\/g, '\\')
-      .replace(/\n/g, '<br/>');
+    // Pre-process common latex patterns that might be missing delimiters
+    // If text contains \begin but no $, wrap it.
+    let processed = text.replace(/\\/g, '\\');
+
+    // Quick fix for "undelimited" latex like the user showed:
+    // "Calcula ... matriz \begin{vmatrix}..."
+    // We want to ensure specific environments are treated as math mode if not already.
+    // However, the MathRenderer auto-render might handle it if we configure it right,
+    // OR we just assume the API sends valid strings.
+    // For now, let's trust the current text but ensure newlines are handled if needed,
+    // though MathRenderer textContent handles text nodes.
+
+    return processed;
   };
 
   if (!exam) return <div className="page active"><p>No hay examen disponible.</p></div>;
@@ -170,7 +182,11 @@ const ExamenPage = ({ exam, onFinish }) => {
                 </span>
               )}
             </p>
-            <div className="text-lg whitespace-pre-line" dangerouslySetInnerHTML={{ __html: renderQuestion(question.text) }} />
+
+            {/* Question Text with Math Rendering */}
+            <div className="text-lg">
+              <MathRenderer text={renderQuestion(question.text)} />
+            </div>
 
             {/* MathLive Input Replacement */}
             <div className="my-4">

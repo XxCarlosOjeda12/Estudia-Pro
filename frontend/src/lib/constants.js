@@ -291,21 +291,21 @@ export const HARDCODED_DATA = {
       questions: [
         {
           id: 'q-1',
-          text: 'Calcula la derivada de f(x) = 3x^4 - 5x^2 + 2',
+          text: 'Calcula la derivada de $f(x) = 3x^4 - 5x^2 + 2$',
           answer: '12x^3-10x',
           explanation: 'Aplica la regla del poder a cada término.',
           wolframQuery: 'derivative 3x^4-5x^2+2'
         },
         {
           id: 'q-2',
-          text: 'Evalúa la integral \\int_0^1 2x \\; dx',
+          text: 'Evalúa la integral $\\int_0^1 2x \\; dx$',
           answer: '1',
           explanation: 'La antiderivada de 2x es x^2. Evalúa entre 0 y 1.',
           wolframQuery: 'integrate 2x from 0 to 1'
         },
         {
           id: 'q-3',
-          text: 'Resuelve el límite \\lim_{x \\to 0} \\frac{\\sin(3x)}{x}',
+          text: 'Resuelve el límite $\\lim_{x \\to 0} \\frac{\\sin(3x)}{x}$',
           answer: '3',
           explanation: 'Usa el límite notable sin(x)/x = 1.',
           wolframQuery: 'limit sin(3x)/x as x->0'
@@ -321,14 +321,14 @@ export const HARDCODED_DATA = {
       questions: [
         {
           id: 'alg-q1',
-          text: 'Calcula el determinante de la matriz \\begin{vmatrix}2 & 3\\\\1 & 4\\end{vmatrix}',
+          text: 'Calcula el determinante de la matriz $$\\begin{vmatrix}2 & 3\\\\1 & 4\\end{vmatrix}$$',
           answer: '5',
           explanation: 'det(A)=ad-bc = (2)(4)-(3)(1).',
           wolframQuery: 'determinant [[2,3],[1,4]]'
         },
         {
           id: 'alg-q2',
-          text: '¿Cuál es el vector propio asociado a \\lambda=3 de la matriz A = \\begin{pmatrix}4 & 1\\\\0 & 3\\end{pmatrix}?',
+          text: '¿Cuál es el vector propio asociado a $\\lambda=3$ de la matriz $A = \\begin{pmatrix}4 & 1\\\\0 & 3\\end{pmatrix}$?',
           answer: '\\begin{pmatrix}0\\\\1\\end{pmatrix}',
           explanation: 'Resuelve (A-3I)v=0.',
           wolframQuery: 'eigenvectors [[4,1],[0,3]]'
