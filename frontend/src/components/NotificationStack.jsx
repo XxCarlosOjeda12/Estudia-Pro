@@ -11,26 +11,34 @@ const NotificationStack = () => {
 
   if (!toasts.length) return null;
 
+  const icons = {
+    info: 'ℹ️',
+    success: '🎉',
+    alert: '⚠️'
+  };
+
   return (
-    <div className="fixed top-4 right-4 z-50 flex w-80 flex-col gap-3 pointer-events-none">
+    <div className="fixed top-20 right-4 z-[100] flex w-80 flex-col gap-3 pointer-events-none">
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`glass-effect-light border-l-4 ${typeStyles[toast.type] || typeStyles.info} p-4 shadow-lg pointer-events-auto`}
+          className="pointer-events-auto bg-[#1e293b] border border-slate-700/50 text-white rounded-xl shadow-2xl p-4 flex items-start gap-4 animate-in slide-in-from-right duration-300"
         >
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="font-semibold text-sm text-slate-900 dark:text-slate-100">{toast.title}</p>
-              <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 whitespace-pre-line leading-relaxed">{toast.message}</p>
+          <div className="text-2xl shrink-0 select-none">
+            {icons[toast.type] || '✨'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between">
+              <p className="font-bold text-sm leading-tight">{toast.title}</p>
+              <button
+                type="button"
+                onClick={() => dismissToast(toast.id)}
+                className="text-slate-500 hover:text-white transition-colors -mt-1 -mr-1 p-1"
+              >
+                ✕
+              </button>
             </div>
-            <button
-              type="button"
-              aria-label="Cerrar notificación"
-              className="text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 transition-colors"
-              onClick={() => dismissToast(toast.id)}
-            >
-              ✕
-            </button>
+            <p className="text-xs text-slate-400 mt-1 leading-relaxed">{toast.message}</p>
           </div>
         </div>
       ))}

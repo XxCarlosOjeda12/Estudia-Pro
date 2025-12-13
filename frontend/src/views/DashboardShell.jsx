@@ -98,31 +98,43 @@ const DashboardShell = () => {
     bootstrap().catch((error) => console.error(error));
   }, [user, refreshNotifications]);
 
+  // Icons defined as simple SVG components for minimalist look
+  const Icons = {
+    Dashboard: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>,
+    Search: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>,
+    Users: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>,
+    Chat: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" /></svg>,
+    Document: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>,
+    Chart: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg>,
+    Tutor: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>,
+    Settings: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.212 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+  };
+
   const navItems = useMemo(() => {
     if (user?.role === 'administrador') {
       return [
-        { id: 'panel', name: 'Panel General', icon: '🏠' },
-        { id: 'gestion-usuarios', name: 'Usuarios', icon: '👥' },
-        { id: 'gestion-materias', name: 'Gestión Materias', icon: '📘' }
+        { id: 'panel', name: 'Panel General', icon: Icons.Dashboard },
+        { id: 'gestion-usuarios', name: 'Usuarios', icon: Icons.Users },
+        { id: 'gestion-materias', name: 'Gestión Materias', icon: Icons.Settings }
       ];
     }
     if (user?.role === 'creador') {
       return [
-        { id: 'panel', name: 'Mi Panel', icon: '🏠' },
-        { id: 'mis-recursos', name: 'Mis Recursos', icon: '📚' },
-        { id: 'tutorias', name: 'Mis Tutorías', icon: '🧑‍🏫' },
-        { id: 'foro', name: 'Foro de Ayuda', icon: '💬' }
+        { id: 'panel', name: 'Mi Panel', icon: Icons.Dashboard },
+        { id: 'mis-recursos', name: 'Mis Recursos', icon: Icons.Document },
+        { id: 'tutorias', name: 'Mis Tutorías', icon: Icons.Tutor },
+        { id: 'foro', name: 'Foro de Ayuda', icon: Icons.Chat }
       ];
     }
     // Estudiante por defecto
     return [
-      { id: 'panel', name: 'Mi Panel', icon: '🏠' },
-      { id: 'explorar', name: 'Explorar Materias', icon: '🔍' },
-      { id: 'recursos', name: 'Recursos Comunidad', icon: '📁' },
-      { id: 'foro', name: 'Foro de Ayuda', icon: '💬' },
-      { id: 'formularios', name: 'Formularios', icon: '📄' },
-      { id: 'progreso', name: 'Mi Progreso', icon: '📈' },
-      { id: 'tutorias', name: 'Tutorías SOS', icon: '🧑‍🏫' }
+      { id: 'panel', name: 'Mi Panel', icon: Icons.Dashboard },
+      { id: 'explorar', name: 'Explorar Materias', icon: Icons.Search },
+      { id: 'recursos', name: 'Recursos Comunidad', icon: Icons.Users },
+      { id: 'foro', name: 'Foro de Ayuda', icon: Icons.Chat },
+      { id: 'formularios', name: 'Formularios', icon: Icons.Document },
+      { id: 'progreso', name: 'Mi Progreso', icon: Icons.Chart },
+      { id: 'tutorias', name: 'Tutorías SOS', icon: Icons.Tutor }
     ];
   }, [user]);
 
@@ -313,15 +325,25 @@ const DashboardShell = () => {
               <div className="pt-4">
                 <p className="text-xs uppercase text-slate-400 mb-2">Mis materias</p>
                 <div className="space-y-1">
-                  {userSubjects.map((subject) => (
-                    <button
-                      key={subject.id}
-                      className="w-full text-left text-sm text-slate-600 dark:text-slate-200 hover:text-primary px-2 py-1 rounded transition-colors"
-                      onClick={() => navigateTo('materia', { subjectId: subject.id })}
-                    >
-                      {subject.title}
-                    </button>
-                  ))}
+                  {userSubjects.map((subject, index) => {
+                    const COLORS = ['bg-yellow-500', 'bg-purple-500', 'bg-red-500', 'bg-cyan-500', 'bg-emerald-500'];
+                    const colorClass = COLORS[index % COLORS.length];
+                    const isActive = currentPage === 'materia' && currentSubject?.id === subject.id;
+
+                    return (
+                      <button
+                        key={subject.id}
+                        className={`w-full text-left flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${isActive
+                          ? 'bg-primary/20 text-primary font-semibold shadow-sm'
+                          : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'
+                          }`}
+                        onClick={() => navigateTo('materia', { subjectId: subject.id })}
+                      >
+                        <span className={`w-2.5 h-2.5 rounded-full ${colorClass}`} />
+                        <span className="truncate">{subject.title}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -370,32 +392,34 @@ const DashboardShell = () => {
             {/* Mobile: Inline Right */}
             <div className="flex items-center gap-4 ml-auto md:pointer-events-auto md:pr-6">
               <button
-                className="relative p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                className="relative p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300"
                 onClick={() => setShowNotifications(true)}
               >
-                <span className="text-xl">🔔</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                </svg>
                 {notifications?.some(n => !n.read) && (
-                  <span className="absolute top-0 right-0 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-light-bg dark:border-dark-bg">
-                    {notifications.filter(n => !n.read).length}
-                  </span>
+                  <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 pointer-events-none" />
                 )}
               </button>
               <button className="text-sm text-red-500 md:hidden" onClick={logout}>Salir</button>
             </div>
           </header>
+
           {mobileMenu && (
             <div className="md:hidden bg-dark-bg/95 text-white fixed inset-0 z-40 p-6">
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-2xl font-bold">Menú</h2>
-                <button onClick={() => setMobileMenu(false)}>✕</button>
+                <button onClick={() => setMobileMenu(false)} className="p-2 ml-auto">✕</button>
               </div>
               <nav className="space-y-3">
                 {navItems.map((nav) => (
                   <button
                     key={nav.id}
-                    className="block w-full text-left py-2 text-lg"
+                    className="flex items-center gap-3 w-full text-left py-2 text-lg"
                     onClick={() => navigateTo(nav.id)}
                   >
+                    <div className="text-white">{nav.icon}</div>
                     {nav.name}
                   </button>
                 ))}
@@ -409,17 +433,20 @@ const DashboardShell = () => {
       {/* Notification Modal */}
       {showNotifications && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
-          <div className="bg-slate-900 border border-white/10 text-slate-100 rounded-2xl w-full max-w-lg p-6 relative shadow-2xl">
+          <div className="bg-slate-900 border border-white/10 text-slate-100 rounded-2xl w-full max-w-lg p-6 relative shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold flex items-center gap-2">
-                🔔 Notificaciones
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                </svg>
+                Notificaciones
                 {notifications?.some(n => !n.read) && (
-                  <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                  <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full ml-auto">
                     {notifications.filter(n => !n.read).length} nuevas
                   </span>
                 )}
               </h3>
-              <button className="text-slate-400 hover:text-white" onClick={() => setShowNotifications(false)}>✕</button>
+              <button className="p-1 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors" onClick={() => setShowNotifications(false)}>✕</button>
             </div>
 
             <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
