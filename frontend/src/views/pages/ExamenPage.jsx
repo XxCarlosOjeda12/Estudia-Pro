@@ -14,18 +14,33 @@ const MathInput = ({ value, onChange }) => {
     }
   }, [value]);
 
+  const onChangeRef = useRef(onChange);
+
+  // Keep ref updated with the latest onChange handler
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
   // Handle changes from the web component
   useEffect(() => {
     const mf = mfRef.current;
     if (!mf) return;
 
     const handleInput = (evt) => {
-      onChange(evt.target.value);
+      if (onChangeRef.current) {
+        onChangeRef.current(evt.target.value);
+      }
     };
 
     mf.addEventListener('input', handleInput);
-    return () => mf.removeEventListener('input', handleInput);
-  }, [onChange]);
+    return () => {
+      mf.removeEventListener('input', handleInput);
+      // Hide the virtual keyboard ONLY when the component truly unmounts
+      if (window.mathVirtualKeyboard) {
+        window.mathVirtualKeyboard.hide();
+      }
+    };
+  }, []); // Empty dependency array ensures this runs only on mount/unmount
 
   return (
     <math-field
