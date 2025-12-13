@@ -11,6 +11,8 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
   const [preview, setPreview] = useState(null);
   const purchasedIds = new Set(purchasedResources.map((res) => res.id));
 
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+
   const filtered = useMemo(() => {
     const term = normalize(search);
     return resources.filter((resource) => {
@@ -25,12 +27,19 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
     pushToast({ title: 'Descarga', message: `Descargando ${resource.title} (demo).`, type: 'info' });
   };
 
+  const handlePurchase = (resourceId) => {
+    // Instead of immediately calling onPurchase, we show the subscription offer
+    setShowSubscriptionModal(true);
+  };
+
   return (
     <div className="page active space-y-6">
       <div>
         <h1 className="text-3xl font-bold mb-2">Recursos de la Comunidad</h1>
         <p className="text-slate-500 dark:text-slate-400">Apuntes, guías y exámenes compartidos por otros estudiantes.</p>
       </div>
+
+      {/* Filters & Search */}
       <div className="flex flex-col md:flex-row gap-4 items-start">
         <div className="flex-1 space-y-2">
           <div className="relative">
@@ -74,6 +83,8 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
           <option value="formula">Formularios</option>
         </select>
       </div>
+
+      {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filtered.map((resource) => {
           const isPurchased = purchasedIds.has(resource.id) || resource.free;
@@ -82,7 +93,6 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
               <span className="text-xs font-semibold bg-primary/20 text-primary py-1 px-2 rounded-full self-start">{resource.subjectName}</span>
               <h3 className="text-xl font-bold mt-3">{resource.title}</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400">Por: {resource.author}</p>
-              <p className="text-2xl font-bold my-4">{resource.free ? 'Gratuito' : `$${resource.price} MXN`}</p>
               <div className="mt-auto flex gap-2">
                 <button
                   className="flex-1 text-center py-2 px-4 bg-primary/20 hover:bg-primary/30 text-primary font-semibold rounded-lg"
@@ -98,8 +108,8 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
                     Descargar
                   </button>
                 ) : (
-                  <button className="flex-1 text-center py-2 px-4 bg-secondary/80 hover:bg-secondary text-white font-semibold rounded-lg" onClick={() => onPurchase(resource.id)}>
-                    Comprar
+                  <button className="flex-1 text-center py-2 px-4 bg-secondary/80 hover:bg-secondary text-white font-semibold rounded-lg" onClick={() => handlePurchase(resource.id)}>
+                    Adquirir
                   </button>
                 )}
               </div>
@@ -107,6 +117,54 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
           );
         })}
       </div>
+
+      {/* Subscription Modal */}
+      {showSubscriptionModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-slate-900 border border-white/10 text-slate-100 rounded-2xl w-full max-w-md p-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+
+            <button
+              className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+              onClick={() => setShowSubscriptionModal(false)}
+            >
+              ✕
+            </button>
+
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-2xl flex items-center justify-center text-3xl mx-auto shadow-lg shadow-primary/20">
+                💎
+              </div>
+
+              <div>
+                <h3 className="text-2xl font-bold">Desbloquea Todo</h3>
+                <p className="text-primary font-medium">Plan Premium Estudia-Pro</p>
+              </div>
+
+              <p className="text-slate-400 leading-relaxed">
+                Obtén acceso ilimitado a este recurso y a miles de guías, exámenes y formularios por una suscripción única.
+              </p>
+
+              <div className="bg-slate-800/50 rounded-xl p-4 border border-white/5">
+                <p className="text-3xl font-bold text-white">$120 <span className="text-sm font-normal text-slate-400">/ mes</span></p>
+                <p className="text-xs text-slate-500 mt-1">Cancela cuando quieras</p>
+              </div>
+
+              <button
+                className="w-full py-3 bg-gradient-to-r from-primary to-secondary text-white font-bold rounded-xl hover:opacity-90 transition-all shadow-lg shadow-primary/25 mt-2"
+                onClick={() => {
+                  pushToast({ title: 'Redirigiendo', message: 'Iniciando proceso de suscripción...', type: 'success' });
+                  setShowSubscriptionModal(false);
+                }}
+              >
+                Suscribirme Ahora
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preview Modal */}
       {preview && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 text-slate-100 rounded-2xl w-full max-w-2xl p-6 relative">
@@ -119,7 +177,7 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
             </div>
             <div className="flex gap-3">
               <button className="flex-1 py-2 bg-primary text-white rounded-lg" onClick={() => setPreview(null)}>Cerrar</button>
-              <button className="flex-1 py-2 bg-secondary text-white rounded-lg" onClick={() => onPurchase(preview.id)}>Comprar</button>
+              <button className="flex-1 py-2 bg-secondary text-white rounded-lg" onClick={() => handlePurchase(preview.id)}>Adquirir</button>
             </div>
           </div>
         </div>
