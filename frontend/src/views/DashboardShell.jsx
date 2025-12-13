@@ -310,7 +310,7 @@ const DashboardShell = () => {
                   {userSubjects.map((subject) => (
                     <button
                       key={subject.id}
-                      className="w-full text-left text-sm text-slate-200 hover:text-primary px-2 py-1 rounded"
+                      className="w-full text-left text-sm text-slate-600 dark:text-slate-200 hover:text-primary px-2 py-1 rounded transition-colors"
                       onClick={() => navigateTo('materia', { subjectId: subject.id })}
                     >
                       {subject.title}
@@ -321,7 +321,7 @@ const DashboardShell = () => {
             )}
           </nav>
           <div className="mt-auto space-y-4">
-            <div className="flex items-center justify-between text-sm text-slate-400">
+            <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-400">
               <span>Modo oscuro</span>
               <button
                 type="button"

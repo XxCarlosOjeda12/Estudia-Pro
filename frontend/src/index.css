@@ -24,22 +24,25 @@
 }
 
 @layer components {
+
+  /* Glass Effect - Light Mode (Default) */
   .glass-effect-light {
-    background-color: rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  .dark .glass-effect-light {
-    background-color: rgba(15, 23, 42, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  body.light .glass-effect-light {
     background-color: rgba(255, 255, 255, 0.9);
     border: 1px solid rgba(15, 23, 42, 0.08);
+    /* faint border */
     color: #0f172a;
+    /* Slate 900 text */
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  /* Glass Effect - Dark Mode Override */
+  .dark .glass-effect-light {
+    background-color: rgba(15, 23, 42, 0.7);
+    /* dark slate */
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #f1f5f9;
+    /* Slate 100 text */
   }
 
   .page {
@@ -70,6 +73,7 @@
       opacity: 0;
       transform: translateY(10px);
     }
+
     100% {
       opacity: 1;
       transform: translateY(0);
@@ -81,6 +85,7 @@
       opacity: 0;
       transform: scale(0.95);
     }
+
     100% {
       opacity: 1;
       transform: scale(1);

@@ -4,6 +4,7 @@ export default {
     './index.html',
     './src/**/*.{js,jsx,ts,tsx}'
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -14,7 +15,9 @@ export default {
         'dark-bg': '#0f172a',
         'dark-card': '#1e293b',
         'light-bg': '#f1f5f9',
-        'light-card': '#ffffff'
+        'light-card': '#ffffff',
+        'light-border': '#e2e8f0', // Slate 200
+        'dark-border': '#334155'  // Slate 700
       }
     }
   },

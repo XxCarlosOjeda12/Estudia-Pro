@@ -16,7 +16,7 @@ const PanelStudent = ({ user, subjects, notifications, navigateTo }) => {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Bienvenido, {user?.name}</h1>
-          <p className="text-slate-500 dark:text-slate-400">Aquí tienes un resumen de tu actividad.</p>
+          <p className="text-slate-600 dark:text-slate-400">Aquí tienes un resumen de tu actividad.</p>
         </div>
         <div className="glass-effect-light p-3 rounded-xl text-sm min-w-[180px]">
           <div className="flex items-center justify-between">
@@ -29,16 +29,16 @@ const PanelStudent = ({ user, subjects, notifications, navigateTo }) => {
           </div>
           <div className="mt-2 space-y-2 max-h-36 overflow-y-auto">
             {notifications?.length ? notifications.map((notif) => (
-              <div key={notif.id} className="flex items-start justify-between gap-2 rounded-lg bg-slate-900/20 p-2">
+              <div key={notif.id} className="flex items-start justify-between gap-2 rounded-lg bg-slate-100 dark:bg-slate-900/20 p-2 border border-slate-200 dark:border-white/5">
                 <div>
-                  <p className="text-xs font-semibold">{notif.title}</p>
-                  <p className="text-[11px] text-slate-400">{notif.message}</p>
+                  <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">{notif.title}</p>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400">{notif.message}</p>
                 </div>
                 {!notif.read && (
-                  <button className="text-[11px] text-primary" onClick={() => markRead(notif.id)}>Marcar</button>
+                  <button className="text-[11px] text-primary hover:underline" onClick={() => markRead(notif.id)}>Marcar</button>
                 )}
               </div>
-            )) : <p className="text-[11px] text-slate-500">Sin notificaciones.</p>}
+            )) : <p className="text-[11px] text-slate-500 dark:text-slate-400">Sin notificaciones.</p>}
           </div>
         </div>
       </div>

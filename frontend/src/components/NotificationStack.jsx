@@ -20,13 +20,13 @@ const NotificationStack = () => {
         >
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="font-semibold text-sm">{toast.title}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 whitespace-pre-line">{toast.message}</p>
+              <p className="font-semibold text-sm text-slate-900 dark:text-slate-100">{toast.title}</p>
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 whitespace-pre-line leading-relaxed">{toast.message}</p>
             </div>
             <button
               type="button"
               aria-label="Cerrar notificación"
-              className="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-100"
+              className="text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 transition-colors"
               onClick={() => dismissToast(toast.id)}
             >
               ✕
