@@ -109,3 +109,13 @@ Desde ahí mismo se puede pasar directamente al modo examen para continuar con l
 
 Por último, los botones de **“Diagnóstico con IA”** ahora funcionan de manera real, conectándose a **Perplexity**.  
 Además, se prepararon utilidades internas que permitirán reutilizar esta lógica en futuras funciones relacionadas con búsquedas y análisis.
+
+---
+
+### Estilos, modo demo y mejoras por rol
+
+La aplicación ahora utiliza **Tailwind como única fuente de estilos**, eliminando hojas de estilo separadas y logrando un diseño más consistente y fácil de mantener.  
+Los efectos visuales, animaciones, el teclado matemático, el foro y las notificaciones están completamente estilizados con utilidades nativas de Tailwind.
+
+El modo demostración fue mejorado para reflejar mejor el comportamiento real según el rol del usuario.  
+Ahora incluye datos diferenciados por tipo de usuario y permite realizar acciones de administración y creación de contenido
