@@ -176,3 +176,254 @@ Los cambios más importantes fueron:
 
 Con estos cambios, el proyecto deja de ser una maqueta estática y pasa a ser una **aplicación React bien estructurada**, lista para crecer, integrarse con el backend real y mantener una separación clara entre interfaz, lógica y estado.
 
+---
+
+## Mejoras recientes
+
+Esta sección resume ajustes que ya quedaron aplicados para acercar la experiencia a la versión final y corregir varios puntos que se estaban rompiendo durante la migración a React.
+
+La idea es que la plataforma se sienta completa en uso real (examen, progreso, recursos, foro)
+
+---
+
+## Cómo ejecutar y probar el frontend (importante para evitar confusiones)
+
+Para trabajar **siempre** sobre la versión real (React + Vite):
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Después abre únicamente:
+
+* `http://localhost:5173`
+
+> Nota: Si abres directamente archivos HTML del prototipo (`frontend-v2/` o `demo-frontend-luis/`) puedes ver comportamientos raros en roles, navegación, sesión o UI. Esas carpetas sirven como referencia/histórico, pero no representan el flujo real de la SPA en React.
+
+---
+
+## Render de LaTeX y escritura matemática
+
+Se corrigió el render de **LaTeX** para que las expresiones se vean como se espera dentro de la plataforma (preguntas, simulacros y vistas relacionadas), evitando el típico problema de texto “escapado” o fórmulas mostradas como string.
+
+Además, el **teclado matemático** volvió a ser parte natural del flujo de examen (no un extra que estorba):
+
+* Se puede **mostrar/ocultar** cuando el usuario lo necesita.
+* Se **oculta automáticamente** si el usuario cambia de pestaña o sale de la vista de examen, para evitar que se quede “pegado” entre pantallas.
+
+Puntos típicos donde vive esta lógica:
+
+* Vista de examen: `frontend/src/views/pages/ExamenPage.jsx`
+* Render de fórmulas (KaTeX / renderer): `frontend/src/components/MathRenderer.jsx`
+* Integración del teclado (según implementación): `frontend/src/components/*` o handlers dentro de `ExamenPage.jsx`
+
+---
+
+## Exámenes: temporizador, pausa y reanudación
+
+El modo examen ya contempla un caso real: el usuario no siempre termina de un jalón.
+
+Ahora, si el cronómetro ya está corriendo y el usuario intenta salir a otra sección:
+
+* Se muestra una confirmación.
+* Puede **pausar** el examen y salir sin perder el intento.
+* Al volver, el examen se **reanuda exactamente donde se quedó** (tiempo consumido + respuestas capturadas + estado general).
+
+Esto evita el comportamiento típico de “salí tantito y se reinició todo”.
+
+Archivo principal:
+
+* `frontend/src/views/pages/ExamenPage.jsx`
+
+---
+
+## Exámenes: revisión por ejercicio + apoyo externo
+
+Además de calificar al final, se habilitó la **revisión por pregunta** para que el flujo sea más guiado:
+
+* Cada ejercicio puede revisarse individualmente.
+* Se marca como correcto/incorrecto y se notifica con toast.
+* Si está mal, se habilita el acceso a **Wolfram Alpha** con la consulta preparada, para que el usuario vea referencia directa sin armar el query a mano.
+
+Archivo principal:
+
+* `frontend/src/views/pages/ExamenPage.jsx`
+
+---
+
+## Progreso: gráficas más útiles y más “realistas”
+
+La sección **Mi progreso** se ajustó para que sí comunique avance real del estudiante, no solo listas o números sueltos.
+
+En concreto:
+
+* Gráficas más claras (más “de progreso” y menos “de tabla”).
+* Indicadores que reflejan mejor:
+
+  * Evolución en simulacros.
+  * Tendencia general del rendimiento.
+  * Progreso por materia.
+* La intención es que el estudiante pueda ver rápido:
+
+  * si va mejorando,
+  * en qué materias sube,
+  * y en cuáles se estanca.
+
+Archivo principal:
+
+* `frontend/src/views/pages/ProgresoPage.jsx`
+
+---
+
+## Recursos de la comunidad: experiencia más limpia
+
+Se ajustó la sección para corregir temas visuales y de UX que se sentían pesados:
+
+* Mejor proporción entre **barra de búsqueda** y **filtros**.
+* Filtros menos invasivos (evitar que “se traguen” la pantalla).
+* Botones con comportamiento más consistente:
+
+  * Vista previa
+  * Acciones tipo “añadir a biblioteca” / “descargar” / “comprar” (dependiendo del modo demo)
+
+Archivo principal:
+
+* `frontend/src/views/pages/RecursosPage.jsx`
+
+---
+
+## Formularios: descarga sin romper sesión (bug crítico resuelto)
+
+Se corrigió el bug donde abrir/descargar un formulario hacía un flujo raro:
+
+* enviaba al login,
+* y luego regresaba al panel,
+* rompiendo el estado en medio.
+
+Ahora:
+
+* La descarga/acción se ejecuta sin perder sesión.
+* El usuario se queda en su vista actual.
+* Se notifica la acción correctamente (toast) en lugar de “teletransportar” pantallas.
+
+Archivos típicos:
+
+* `frontend/src/views/pages/FormulariosPage.jsx`
+* Manejo de sesión/toasts: `frontend/src/context/AppContext.jsx`
+
+---
+
+## Diagnóstico con IA: redirección a Perplexity “sin fricción”
+
+Se mejoró el flujo de “Explicación” / “Diagnóstico con IA” para que sea directo:
+
+* Se abre Perplexity con la petición ya preparada.
+* El usuario no tiene que copiar/pegar ni escribir prompts.
+* La experiencia se reduce a: clic → respuesta.
+
+Dónde suele vivir:
+
+* Vista de materia o acciones rápidas: `frontend/src/views/pages/MateriaPage.jsx`
+* Helpers de construcción de URL/query: `frontend/src/lib/*` o helper local
+
+---
+
+## Responsividad (móvil y pantallas grandes)
+
+Se aplicaron ajustes para que la UI se adapte mejor al tamaño de pantalla:
+
+* En celular: menús colapsables, componentes apilados, padding correcto.
+* En desktop: columnas y anchos máximos para que nada se vea “estirado” de más.
+* Se evitaron casos donde filtros/tablas/tarjetas se salen del contenedor o se rompen.
+
+Puntos donde suele ajustarse:
+
+* Layout principal: `frontend/src/views/DashboardShell.jsx`
+* Estilos globales: `frontend/src/index.css` + clases Tailwind en vistas
+
+---
+
+## Búsquedas con coincidencias en tiempo real
+
+Los buscadores ahora se sienten más útiles porque filtran mientras el usuario escribe:
+
+* A medida que se teclea, se muestran coincidencias.
+* Se contempla normalización de acentos (por ejemplo, `al` puede coincidir con `Álgebra`).
+* Se aplica tanto en materias como en recursos (dependiendo de la vista).
+
+Archivos típicos:
+
+* Materias/exploración: `frontend/src/views/pages/ExplorePage.jsx`
+* Recursos: `frontend/src/views/pages/RecursosPage.jsx`
+
+Ejemplo rápido: escribir `al` puede mostrar `Álgebra lineal`, `Álgebra básica`, etc., si existen en los datos.
+
+---
+
+## Modo oscuro/claro: intercambio estable
+
+Se estabilizó el toggle entre:
+
+* modo oscuro
+* modo claro
+
+Objetivo:
+
+* Permitir alternar el tema sin romper contraste, fondos ni tarjetas.
+
+Dónde suele configurarse:
+
+* Base visual: `frontend/src/index.css`
+* Config de Tailwind: `tailwind.config.js`
+* Toggle/persistencia (si aplica): `frontend/src/views/DashboardShell.jsx` o `AppContext.jsx`
+
+---
+
+## Foro: temas + respuestas en tiempo real
+
+El foro ya funciona en el flujo normal:
+
+* Se ven temas de discusión.
+* Se puede responder dentro de un tema.
+* Se puede crear un tema nuevo.
+* Los cambios se reflejan al instante (modo demo / estado local).
+
+Archivos típicos:
+
+* `frontend/src/views/pages/ForoPage.jsx`
+* `frontend/src/views/pages/ForoTemaPage.jsx`
+
+---
+
+## Resumen de lo que ya quedó
+
+* LaTeX renderiza correctamente.
+* Teclado matemático funcional y se oculta al cambiar de pestaña/vista.
+* Examen: pausar al salir y reanudar donde se quedó.
+* Examen: revisión por ejercicio y redirección a Wolfram Alpha si está mal.
+* Progreso con gráficas más atractivas y representativas.
+* Recursos de la comunidad con diseño ajustado.
+* Formularios ya no mandan al login al descargar.
+* Diagnóstico/explicación con IA abre Perplexity con query lista.
+* Responsividad mejorada.
+* Modo oscuro/claro estable.
+* Foro funcional (crear temas, responder, reflejo inmediato).
+* Búsquedas con coincidencias conforme se teclea.
+
+---
+
+## Ubicaciones
+
+* Menú, roles, layout y responsividad: `frontend/src/views/DashboardShell.jsx`
+* Tema (oscuro/claro), tipografía, base visual: `frontend/src/index.css` y `tailwind.config.js`
+* Exámenes (teclado, LaTeX, timer, revisión): `frontend/src/views/pages/ExamenPage.jsx`
+* Render de LaTeX: `frontend/src/components/MathRenderer.jsx`
+* Progreso (gráficas): `frontend/src/views/pages/ProgresoPage.jsx`
+* Recursos comunidad (filtros, preview, UX): `frontend/src/views/pages/RecursosPage.jsx`
+* Formularios (descarga y flujo): `frontend/src/views/pages/FormulariosPage.jsx`
+* Foro (temas/respuestas): `frontend/src/views/pages/ForoPage.jsx` y `ForoTemaPage.jsx`
+* Sesión / notificaciones / modo demo: `frontend/src/context/AppContext.jsx` + `frontend/src/lib/api.js`
+
+
