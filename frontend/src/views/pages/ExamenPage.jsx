@@ -1,13 +1,55 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { apiService } from '../../lib/api.js';
 import { useAppContext } from '../../context/AppContext.jsx';
+import 'mathlive';
+
+// Wrapper for the MathLive web component
+const MathInput = ({ value, onChange }) => {
+  const mfRef = useRef(null);
+
+  // Sync value from props to the web component
+  useEffect(() => {
+    if (mfRef.current && mfRef.current.value !== value) {
+      mfRef.current.setValue(value);
+    }
+  }, [value]);
+
+  // Handle changes from the web component
+  useEffect(() => {
+    const mf = mfRef.current;
+    if (!mf) return;
+
+    const handleInput = (evt) => {
+      onChange(evt.target.value);
+    };
+
+    mf.addEventListener('input', handleInput);
+    return () => mf.removeEventListener('input', handleInput);
+  }, [onChange]);
+
+  return (
+    <math-field
+      ref={mfRef}
+      style={{
+        display: 'block',
+        width: '100%',
+        padding: '8px',
+        fontSize: '1.2rem',
+        borderRadius: '0.75rem',
+        border: '1px solid #cbd5e1',
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        color: '#1e293b'
+      }}
+    >
+      {value}
+    </math-field>
+  );
+};
 
 const ExamenPage = ({ exam, onFinish }) => {
   const { pushToast } = useAppContext();
   const [timeLeft, setTimeLeft] = useState(exam?.duration || 0);
   const [answers, setAnswers] = useState({});
-  const [showKeyboard, setShowKeyboard] = useState(false);
-  const [activeQuestion, setActiveQuestion] = useState(null);
   const [paused, setPaused] = useState(false);
   const [checked, setChecked] = useState({});
 
@@ -22,20 +64,10 @@ const ExamenPage = ({ exam, onFinish }) => {
     return () => clearInterval(timer);
   }, [exam, paused]);
 
-  useEffect(() => () => {
-    setShowKeyboard(false);
-    setActiveQuestion(null);
-  }, []);
-
-  const keyboardKeys = useMemo(() => [
-    '∑', '√', 'π', '∞', '±', '≈', '≠', '≤', '≥', '∫', '÷', '×',
-    'sin', 'cos', 'tan', 'log', 'ln', '^', '(', ')', '[', ']', '{', '}'
-  ], []);
-
   const renderQuestion = (text) => {
     if (!text) return '';
     return text
-      .replace(/\\\\/g, '\\')
+      .replace(/\\/g, '\\')
       .replace(/\n/g, '<br/>');
   };
 
@@ -55,18 +87,14 @@ const ExamenPage = ({ exam, onFinish }) => {
     }
   };
 
-  const insertKey = (value, questionId) => {
-    if (!questionId) return;
-    setAnswers((prev) => {
-      const current = prev[questionId] || '';
-      return { ...prev, [questionId]: `${current}${value} ` };
-    });
-  };
-
   const checkQuestion = (question) => {
+    // Normalization for comparison (basic)
     const given = (answers[question.id] || '').replace(/\s+/g, '').toLowerCase();
     const expected = (question.answer || '').replace(/\s+/g, '').toLowerCase();
+
+    // In a real app with MathLive, you might want to compare semantic Latex, but string compare is a start
     const ok = given && expected && given === expected;
+
     setChecked((prev) => ({ ...prev, [question.id]: ok ? 'correct' : 'wrong' }));
     pushToast({
       title: 'Revisión',
@@ -128,24 +156,20 @@ const ExamenPage = ({ exam, onFinish }) => {
               )}
             </p>
             <div className="text-lg whitespace-pre-line" dangerouslySetInnerHTML={{ __html: renderQuestion(question.text) }} />
-            <textarea
-              className="w-full border border-slate-200 dark:border-slate-600 rounded-xl bg-white/80 dark:bg-slate-900/60 p-3 text-lg"
-              placeholder="Escribe tu respuesta aquí..."
-              value={answers[question.id] || ''}
-              onChange={(event) => setAnswers((prev) => ({ ...prev, [question.id]: event.target.value }))}
-            />
+
+            {/* MathLive Input Replacement */}
+            <div className="my-4">
+              <MathInput
+                value={answers[question.id] || ''}
+                onChange={(val) => setAnswers((prev) => ({ ...prev, [question.id]: val }))}
+              />
+              <p className="text-xs text-slate-400 mt-2">
+                Usa el teclado virtual para escribir fórmulas matemáticas (integrales, raíces, fracciones).
+              </p>
+            </div>
+
             <div className="flex justify-end">
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  className="text-xs text-primary hover:underline"
-                  onClick={() => {
-                    setActiveQuestion(question.id);
-                    setShowKeyboard((prev) => (activeQuestion === question.id ? !prev : true));
-                  }}
-                >
-                  {showKeyboard && activeQuestion === question.id ? 'Ocultar teclado' : 'Mostrar teclado'}
-                </button>
                 <button
                   type="button"
                   className="text-xs text-slate-400 hover:text-primary"
@@ -170,26 +194,8 @@ const ExamenPage = ({ exam, onFinish }) => {
           Terminar y Calificar Examen
         </button>
       </div>
-      {showKeyboard && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 glass-effect-light rounded-2xl p-4 shadow-2xl border border-white/10 w-[90vw] max-w-3xl">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold text-slate-200">Teclado matemático</p>
-            <button className="text-slate-400 hover:text-slate-100" onClick={() => setShowKeyboard(false)}>✕</button>
-          </div>
-          <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
-            {keyboardKeys.map((key) => (
-              <button
-                key={key}
-                type="button"
-                className="py-2 px-3 rounded-lg bg-slate-900/60 border border-white/5 text-sm hover:border-primary hover:text-primary"
-                onClick={() => insertKey(key, activeQuestion || exam.questions?.[0]?.id)}
-              >
-                {key}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+
+      {/* Manual keyboard removed - MathLive handles its own virtual keyboard */}
     </div>
   );
 };
