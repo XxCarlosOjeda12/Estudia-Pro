@@ -153,3 +153,26 @@ Los efectos visuales, animaciones, el teclado matemático, el foro y las notific
 
 El modo demostración fue mejorado para reflejar mejor el comportamiento real según el rol del usuario.  
 Ahora incluye datos diferenciados por tipo de usuario y permite realizar acciones de administración y creación de contenido
+
+---
+
+### Uso real de React y paso a una arquitectura por componentes
+
+En esta etapa el frontend dejó de manejarse como páginas estáticas con JavaScript suelto y pasó a trabajar **realmente con React**.
+
+Todo lo que antes estaba separado en archivos HTML, CSS y JS dentro de `frontend-v2` ahora se implementa mediante **componentes React (JSX)**, lo que permite reutilizar código y controlar mejor el comportamiento de la aplicación.
+
+Los cambios más importantes fueron:
+
+- Las pantallas principales ahora son componentes de React y ya no vistas estáticas:
+  - Login y registro
+  - Dashboard general
+  - Panel de estudiante, creador y administrador
+  - Materias, exámenes, foro, progreso y recursos
+- La navegación ya no depende de recargar páginas ni de redirecciones manuales, sino del **estado de la aplicación** y del **rol del usuario**.
+- El manejo de sesión, rol, modo demostración y notificaciones se centralizó en `AppContext`, evitando repetir lógica en cada pantalla.
+- Se eliminó la manipulación directa del DOM y los scripts independientes; ahora la interfaz responde automáticamente a los cambios de estado.
+- Al cambiar de sección, los componentes se montan y desmontan correctamente, evitando que queden datos o estados “arrastrados” entre vistas.
+
+Con estos cambios, el proyecto deja de ser una maqueta estática y pasa a ser una **aplicación React bien estructurada**, lista para crecer, integrarse con el backend real y mantener una separación clara entre interfaz, lógica y estado.
+
