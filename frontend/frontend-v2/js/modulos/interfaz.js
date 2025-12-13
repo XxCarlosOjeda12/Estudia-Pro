@@ -639,6 +639,7 @@ const app = {
         const adminData = this.state.currentUser?.raw?.adminMetrics || {};
         const subjects = await this.fetchSubjects();
         const users = await apiService.getAllUsers();
+        const allResources = await this.fetchResources();
 
         return `
             <div class="page active">
@@ -648,15 +649,15 @@ const app = {
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                     <div class="glass-effect-light p-5 rounded-2xl text-center">
                         <p class="text-xs uppercase text-slate-500 tracking-widest">Usuarios Registrados</p>
-                        <p class="text-4xl font-bold text-primary mt-2">${adminData.users ?? users.length}</p>
+                        <p class="text-4xl font-bold text-primary mt-2">${users.length}</p>
                     </div>
                     <div class="glass-effect-light p-5 rounded-2xl text-center">
                         <p class="text-xs uppercase text-slate-500 tracking-widest">Materias en Catálogo</p>
-                        <p class="text-4xl font-bold text-primary mt-2">${adminData.subjects ?? subjects.length}</p>
+                        <p class="text-4xl font-bold text-primary mt-2">${subjects.length}</p>
                     </div>
                     <div class="glass-effect-light p-5 rounded-2xl text-center">
                         <p class="text-xs uppercase text-slate-500 tracking-widest">Recursos Publicados</p>
-                        <p class="text-4xl font-bold text-primary mt-2">${adminData.resources ?? (await this.fetchResources()).length}</p>
+                        <p class="text-4xl font-bold text-primary mt-2">${allResources.length}</p>
                     </div>
                 </div>
 
@@ -959,7 +960,7 @@ const app = {
                         <h2 class="text-xl font-bold mb-4">Temas de Discusión</h2>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             ${forums.map(forum => `
-                                <div class="forum-post p-4 rounded-xl cursor-pointer hover:bg-primary/5" onclick="app.navigateTo('foro-tema', {forumId: '${forum.id}'})">
+                                <div class="p-4 rounded-xl border-l-4 border-primary/70 bg-white/80 dark:bg-slate-800/70 cursor-pointer hover:bg-primary/5 transition-colors" onclick="app.navigateTo('foro-tema', {forumId: '${forum.id}'})">
                                     <h3 class="font-semibold">${forum.title}</h3>
                                     <p class="text-sm text-slate-500 dark:text-slate-400">${forum.subjectName || 'General'} • ${forum.postCount || 0} respuestas</p>
                                 </div>
@@ -1181,8 +1182,8 @@ const app = {
                 </div>
                 <h1 class="text-3xl font-bold">${exam.title}</h1>
                 <p class="text-slate-500 dark:text-slate-400 mb-8">Resuelve los ejercicios en el tiempo establecido.</p>
-                <div class="exam-toolbar mb-6">
-                    <button type="button" class="teclado-toggle" data-action="toggle-keyboard">
+                <div class="flex flex-wrap justify-end gap-3 mb-6">
+                    <button type="button" data-action="toggle-keyboard" class="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:-translate-y-0.5 hover:shadow-lg">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3h6a2 2 0 012 2v2H7V5a2 2 0 012-2zm-2 7h10M5 14h14M7 17h10m2-12h1a2 2 0 012 2v10a2 2 0 01-2 2h-1M4 5h1a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V7a2 2 0 012-2z" />
                         </svg>
@@ -1192,12 +1193,12 @@ const app = {
 
                 <div id="exam-questions-container">
                     ${exam.questions ? exam.questions.map((q, index) => `
-                        <div class="glass-effect-light p-6 rounded-2xl mb-6 question-card" id="q-card-${q.id}">
+                        <div class="glass-effect-light p-6 rounded-2xl mb-6 border border-slate-200/60 dark:border-slate-700/60 shadow-[0_25px_45px_-25px_rgba(15,23,42,0.6)] relative" id="q-card-${q.id}">
                             <p class="font-semibold mb-4">Pregunta ${index + 1}/${exam.questions.length}</p>
                             <div class="text-lg mb-4">${q.text}</div>
                             <div class="flex flex-col">
                                 <label for="answer-${q.id}" class="text-sm text-slate-500 dark:text-slate-400 mb-2">Escribe tu respuesta:</label>
-                                <math-field id="math-field-${q.id}" class="math-field" placeholder="Escribe tu respuesta aquí..." virtual-keyboard-mode="manual" onfocus="app.setActiveMathField('math-field-${q.id}', '${q.id}')"></math-field>
+                                <math-field id="math-field-${q.id}" class="w-full border border-slate-200 dark:border-slate-600 rounded-xl bg-white/80 dark:bg-slate-900/60 p-3 text-lg" placeholder="Escribe tu respuesta aquí..." virtual-keyboard-mode="manual" onfocus="app.setActiveMathField('math-field-${q.id}', '${q.id}')"></math-field>
                             </div>
                             <div class="mt-4 flex justify-between items-center">
                                 <div id="preview-${q.id}" class="p-3 bg-slate-200 dark:bg-slate-900 rounded-xl min-h-[50px] flex items-center"></div>
@@ -1211,15 +1212,15 @@ const app = {
                 <div class="mt-8 text-center">
                     <button onclick="app.finishExam()" class="py-3 px-8 bg-secondary/80 hover:bg-secondary text-white font-bold rounded-lg transition-transform transform hover:scale-105">Terminar y Calificar Examen</button>
                 </div>
-                <div id="math-keyboard-wrapper" class="teclado-panel hidden mt-6">
-                    <header>
+                <div id="math-keyboard-wrapper" class="teclado-panel hidden mt-6 fixed left-1/2 bottom-6 z-50 w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2 rounded-2xl border border-slate-500/40 bg-slate-900/95 shadow-[0_30px_65px_-40px_rgba(15,23,42,1)] overflow-hidden px-4 py-4 md:px-6">
+                    <header class="flex items-center justify-between text-slate-100 mb-4 gap-4">
                         <div>
                             <p class="font-semibold">Teclado Matemático</p>
-                            <p class="leyenda">Atajos para escribir integrales, sumatorias y más.</p>
+                            <p class="leyenda text-sm text-slate-300">Atajos para escribir integrales, sumatorias y más.</p>
                         </div>
-                        <button type="button" class="teclado-panel-close">✕</button>
+                        <button type="button" class="teclado-panel-close inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20">✕</button>
                     </header>
-                    <div class="mathlive-container" data-keyboard-slot></div>
+                    <div class="mathlive-container rounded-xl border border-slate-500/30 bg-slate-900/60 p-3" data-keyboard-slot></div>
                 </div>
             </div>
         `;
@@ -2276,7 +2277,7 @@ const app = {
                         <button onclick="app.closeModal('preview-modal')" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
                     </div>
                     <div class="p-6">
-                        <div class="pdf-viewer" id="pdf-preview">
+                        <div class="w-full h-[500px] border border-slate-200 dark:border-slate-700 rounded-xl overflow-auto bg-slate-50 dark:bg-slate-900" id="pdf-preview">
                             <div class="text-center py-12">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-slate-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -2377,6 +2378,8 @@ const app = {
     },
 
     showNewResourceModal() {
+        const subjects = (this.state.cache.subjects && this.state.cache.subjects.length ? this.state.cache.subjects : window.HARDCODED_DATA?.subjectsCatalog) || [];
+        const options = subjects.map(subject => `<option value="${subject.id}">${subject.title}</option>`).join('') || '<option value="general">General</option>';
         const modalHTML = `
         <div id="new-resource-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
             <div class="bg-light-card dark:bg-dark-card w-full max-w-md rounded-2xl p-8 transform transition-all scale-95 opacity-0 animate-modal-in">
@@ -2387,18 +2390,17 @@ const app = {
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">Título</label>
-                        <input type="text" class="w-full p-3 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none" placeholder="Ej: Guía de Examen Final">
+                        <input type="text" id="new-resource-title" class="w-full p-3 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none" placeholder="Ej: Guía de Examen Final">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">Materia</label>
-                        <select class="w-full p-3 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none">
-                            <option>Álgebra</option>
-                            <option>Cálculo</option>
+                        <select id="new-resource-subject" class="w-full p-3 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none">
+                            ${options}
                         </select>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">Tipo</label>
-                        <select class="w-full p-3 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none">
+                        <select id="new-resource-type" class="w-full p-3 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none">
                             <option value="pdf">Guía/Resumen</option>
                             <option value="exam">Examen</option>
                             <option value="formula">Formulario</option>
@@ -2406,7 +2408,7 @@ const app = {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">Precio (MXN)</label>
-                        <input type="number" class="w-full p-3 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none" placeholder="0 para gratuito">
+                        <input type="number" id="new-resource-price" class="w-full p-3 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none" placeholder="0 para gratuito">
                     </div>
                     <button onclick="app.createNewResource()" class="w-full py-3 bg-primary hover:bg-primary-focus text-white font-bold rounded-lg transition-transform transform hover:scale-105">Publicar Recurso</button>
                 </div>
@@ -2470,7 +2472,42 @@ const app = {
 
     async createNewResource() {
         try {
-            // Implementar lógica real con entradas del modal
+            const titleInput = document.getElementById('new-resource-title');
+            const subjectInput = document.getElementById('new-resource-subject');
+            const typeInput = document.getElementById('new-resource-type');
+            const priceInput = document.getElementById('new-resource-price');
+
+            const title = titleInput?.value.trim();
+            const subjectId = subjectInput?.value || '';
+            const type = typeInput?.value || 'pdf';
+            const price = Number(priceInput?.value || 0);
+
+            if (!title || !subjectId) {
+                Global.showNotification('Recursos', 'Completa el título y la materia para publicar un recurso.');
+                return;
+            }
+
+            if (isDemoMode()) {
+                const subjects = await this.fetchSubjects();
+                const subject = subjects.find(item => item.id === subjectId);
+                const newResource = {
+                    id: `res-${Date.now()}`,
+                    title,
+                    author: this.state.currentUser.name,
+                    subjectId,
+                    subjectName: subject?.title || 'General',
+                    type,
+                    price,
+                    rating: 5,
+                    downloads: 0,
+                    sales: 0,
+                    free: price <= 0
+                };
+                window.HARDCODED_DATA.resources.unshift(newResource);
+            } else {
+                Global.showNotification('Recursos', 'Conecta tu API real para publicar recursos fuera del modo demo.');
+            }
+
             this.closeModal('new-resource-modal');
             this.showSuccessModal('Recurso creado', 'Tu recurso ha sido publicado exitosamente.');
             await this.fetchResources(true);
@@ -2513,7 +2550,11 @@ const app = {
     async deleteResource(resourceId) {
         if (confirm('¿Estás seguro de que quieres eliminar este recurso?')) {
             try {
-                // Mock delete logic
+                if (isDemoMode()) {
+                    window.HARDCODED_DATA.resources = window.HARDCODED_DATA.resources.filter(resource => resource.id !== resourceId);
+                } else {
+                    Global.showNotification('Recursos', 'Conecta tu API real para eliminar recursos fuera del modo demo.');
+                }
                 this.showSuccessModal('Recurso eliminado', 'El recurso ha sido eliminado correctamente.');
                 await this.fetchResources(true);
                 this.render();

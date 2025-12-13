@@ -16,7 +16,56 @@ tailwind.config = {
                 'light-border': '#e2e8f0',
             }
         }
-    }
+    },
+    plugins: [
+        function ({ addBase, addComponents }) {
+            addBase({
+                'html': {
+                    fontFamily: "'Inter', sans-serif",
+                    scrollBehavior: 'smooth'
+                },
+                '@keyframes page-fade': {
+                    '0%': { opacity: '0', transform: 'translateY(10px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' }
+                },
+                '@keyframes modal-in': {
+                    '0%': { opacity: '0', transform: 'scale(0.95)' },
+                    '100%': { opacity: '1', transform: 'scale(1)' }
+                }
+            });
+
+            addComponents({
+                '.glass-effect-light': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(15, 23, 42, 0.1)'
+                },
+                '.dark .glass-effect-light': {
+                    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)'
+                },
+                '.page': {
+                    display: 'none',
+                    animation: 'page-fade 0.5s ease',
+                    animationFillMode: 'both',
+                    '&.active': {
+                        display: 'block'
+                    }
+                },
+                '.animate-modal-in': {
+                    animation: 'modal-in 0.25s ease forwards'
+                },
+                '.modo-examen': {
+                    WebkitUserSelect: 'none',
+                    MozUserSelect: 'none',
+                    msUserSelect: 'none',
+                    userSelect: 'none',
+                    WebkitTouchCallout: 'none'
+                }
+            });
+        }
+    ]
 };
 
 // --- GLOBAL CONFIGURATION & HELPERS ---
@@ -322,6 +371,32 @@ const HARDCODED_DATA = {
             rating: 4.5,
             downloads: 97,
             free: false
+        },
+        {
+            id: 'res-005',
+            title: 'Kit visual para derivadas complicadas',
+            author: 'Ana García',
+            subjectId: 'calc-1',
+            subjectName: 'Cálculo Diferencial',
+            type: 'pdf',
+            price: 149,
+            rating: 4.9,
+            downloads: 210,
+            free: false,
+            sales: 42
+        },
+        {
+            id: 'res-006',
+            title: 'Banco premium de integrales por partes',
+            author: 'Ana García',
+            subjectId: 'calc-1',
+            subjectName: 'Cálculo Diferencial',
+            type: 'exam',
+            price: 189,
+            rating: 4.8,
+            downloads: 156,
+            free: false,
+            sales: 35
         }
     ],
     purchasedResourceIds: ['res-001', 'res-003'],
@@ -417,6 +492,12 @@ const HARDCODED_DATA = {
             tariff60: 340
         }
     ],
+    adminUsers: [
+        { id: 'usr-001', name: 'Daniela Yáñez', email: 'daniela@estudiapro.com', role: 'ESTUDIANTE', verified: true },
+        { id: 'usr-002', name: 'Ana García', email: 'ana@estudiapro.com', role: 'CREADOR', verified: true },
+        { id: 'usr-003', name: 'Luis Hernández', email: 'luis@estudiapro.com', role: 'ESTUDIANTE', verified: false },
+        { id: 'usr-004', name: 'María Torres', email: 'maria@estudiapro.com', role: 'ADMINISTRADOR', verified: true }
+    ],
     forums: [
         {
             id: 'forum-1',
@@ -494,7 +575,7 @@ const DEMO_PROFILES = {
             { id: 'notif-c2', title: 'Solicitud de tutoría', message: 'Luisa solicitó una tutoría de Álgebra para mañana.', type: 'alert', read: false, date: '2024-05-24T09:15:00Z' }
         ],
         dashboard: {
-            published: 2,
+            published: HARDCODED_DATA.resources.filter(resource => resource.author === 'Ana García').length,
             rating: 4.7,
             studentsHelped: 94,
             tutoring: [
@@ -519,7 +600,7 @@ const DEMO_PROFILES = {
             { id: 'notif-a1', title: 'Nuevo registro', message: 'Se creó la cuenta de creador Ana García.', type: 'info', read: true, date: '2024-05-22T10:40:00Z' }
         ],
         adminMetrics: {
-            users: 3,
+            users: HARDCODED_DATA.adminUsers.length,
             subjects: HARDCODED_DATA.subjectsCatalog.length,
             resources: HARDCODED_DATA.resources.length
         }
@@ -788,18 +869,60 @@ const DemoAPI = {
             return { success: true };
         }
 
-        // ADMIN placeholders
+        // ADMIN
         if (endpoint === API_CONFIG.ENDPOINTS.ADMIN.USERS) {
-            return HARDCODED_DATA.demoUsersList.map(user => ({
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                role: user.rol
-            }));
+            return deepClone(HARDCODED_DATA.adminUsers || []);
         }
 
-        if (endpoint === API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS) {
-            return [];
+        if (endpoint.startsWith(`${API_CONFIG.ENDPOINTS.ADMIN.USERS}/`) && method === 'PUT') {
+            const userId = endpoint.split('/').pop();
+            const action = data?.action;
+            HARDCODED_DATA.adminUsers = HARDCODED_DATA.adminUsers || [];
+            if (action === 'delete') {
+                HARDCODED_DATA.adminUsers = HARDCODED_DATA.adminUsers.filter(user => user.id !== userId);
+            } else {
+                const user = HARDCODED_DATA.adminUsers.find(user => user.id === userId);
+                if (user) {
+                    Object.assign(user, data);
+                }
+            }
+            return { success: true };
+        }
+
+        if (endpoint === API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS && method === 'POST') {
+            const newSubject = {
+                id: this.nextId('subject'),
+                title: data?.title || 'Materia sin título',
+                description: data?.description || 'Descripción pendiente',
+                professor: data?.professor || 'Profesor asignado',
+                school: data?.school || 'General',
+                progress: 0,
+                level: data?.level || 'General',
+                temario: []
+            };
+            HARDCODED_DATA.subjectsCatalog.push(newSubject);
+            return { success: true, subject: deepClone(newSubject) };
+        }
+
+        if (endpoint.startsWith(`${API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS}/`)) {
+            const subjectId = endpoint.split('/').pop();
+            const subjectIndex = HARDCODED_DATA.subjectsCatalog.findIndex(subject => subject.id === subjectId);
+            if (subjectIndex === -1) {
+                return { success: false, message: 'Materia no encontrada' };
+            }
+
+            if (method === 'PUT') {
+                HARDCODED_DATA.subjectsCatalog[subjectIndex] = {
+                    ...HARDCODED_DATA.subjectsCatalog[subjectIndex],
+                    ...data
+                };
+                return { success: true, subject: deepClone(HARDCODED_DATA.subjectsCatalog[subjectIndex]) };
+            }
+
+            if (method === 'DELETE') {
+                HARDCODED_DATA.subjectsCatalog.splice(subjectIndex, 1);
+                return { success: true };
+            }
         }
 
         return {};
