@@ -35,6 +35,12 @@ const DashboardShell = () => {
   const [adminUsers, setAdminUsers] = useState([]);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const handleMarkRead = async (id) => {
+    await apiService.markNotificationAsRead(id);
+    await refreshNotifications();
+  };
 
   useEffect(() => {
     const root = document.documentElement;
@@ -350,13 +356,32 @@ const DashboardShell = () => {
           </div>
         </aside>
 
-        <div className="flex-1 flex flex-col">
-          <header className="md:hidden flex items-center justify-between p-4">
-            <button className="p-2 rounded-lg bg-primary text-white" onClick={() => setMobileMenu((prev) => !prev)}>
-              ☰
-            </button>
-            <h1 className="text-lg font-bold">Estudia-Pro</h1>
-            <button className="text-sm text-red-500" onClick={logout}>Salir</button>
+        <div className="flex-1 flex flex-col relative">
+          <header className="flex items-center justify-between p-4 sticky top-0 z-50 md:absolute md:top-0 md:bg-transparent md:border-none md:w-full md:pointer-events-none">
+            {/* Mobile Header elements */}
+            <div className="flex items-center gap-4 md:hidden">
+              <button className="p-2 rounded-lg bg-primary text-white" onClick={() => setMobileMenu((prev) => !prev)}>
+                ☰
+              </button>
+              <h1 className="text-lg font-bold">Estudia-Pro</h1>
+            </div>
+
+            {/* Desktop: Floating Top Right Notification Area */}
+            {/* Mobile: Inline Right */}
+            <div className="flex items-center gap-4 ml-auto md:pointer-events-auto md:pr-6">
+              <button
+                className="relative p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                onClick={() => setShowNotifications(true)}
+              >
+                <span className="text-xl">🔔</span>
+                {notifications?.some(n => !n.read) && (
+                  <span className="absolute top-0 right-0 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-light-bg dark:border-dark-bg">
+                    {notifications.filter(n => !n.read).length}
+                  </span>
+                )}
+              </button>
+              <button className="text-sm text-red-500 md:hidden" onClick={logout}>Salir</button>
+            </div>
           </header>
           {mobileMenu && (
             <div className="md:hidden bg-dark-bg/95 text-white fixed inset-0 z-40 p-6">
@@ -380,6 +405,66 @@ const DashboardShell = () => {
           <main className="flex-1 overflow-y-auto p-6">{renderPage()}</main>
         </div>
       </div>
+
+      {/* Notification Modal */}
+      {showNotifications && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+          <div className="bg-slate-900 border border-white/10 text-slate-100 rounded-2xl w-full max-w-lg p-6 relative shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                🔔 Notificaciones
+                {notifications?.some(n => !n.read) && (
+                  <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    {notifications.filter(n => !n.read).length} nuevas
+                  </span>
+                )}
+              </h3>
+              <button className="text-slate-400 hover:text-white" onClick={() => setShowNotifications(false)}>✕</button>
+            </div>
+
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
+              {notifications?.length > 0 ? (
+                notifications.map((notif) => (
+                  <div
+                    key={notif.id}
+                    className={`p-4 rounded-xl border transition-all ${notif.read ? 'bg-slate-800/50 border-white/5 opacity-70' : 'bg-slate-800 border-primary/30 shadow-lg shadow-primary/5'}`}
+                  >
+                    <div className="flex justify-between items-start gap-4">
+                      <div>
+                        <h4 className={`font-semibold text-sm ${!notif.read ? 'text-white' : 'text-slate-400'}`}>{notif.title}</h4>
+                        <p className="text-xs text-slate-400 mt-1 leading-relaxed">{notif.message}</p>
+                        <span className="text-[10px] text-slate-500 mt-2 block">{new Date(notif.date).toLocaleDateString()}</span>
+                      </div>
+                      {!notif.read && (
+                        <button
+                          onClick={() => handleMarkRead(notif.id)}
+                          className="text-xs text-primary hover:text-primary-light whitespace-nowrap px-2 py-1 rounded hover:bg-white/5 transition"
+                        >
+                          Marcar leída
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12 text-slate-500">
+                  <span className="text-4xl block mb-2">🔕</span>
+                  <p>No tienes notificaciones nuevas</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-white/10 flex justify-end">
+              <button
+                className="text-sm text-slate-400 hover:text-white"
+                onClick={() => setShowNotifications(false)}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -13,34 +13,9 @@ const PanelStudent = ({ user, subjects, notifications, navigateTo }) => {
 
   return (
     <div className="page active space-y-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Bienvenido, {user?.name}</h1>
-          <p className="text-slate-600 dark:text-slate-400">Aquí tienes un resumen de tu actividad.</p>
-        </div>
-        <div className="glass-effect-light p-3 rounded-xl text-sm min-w-[180px]">
-          <div className="flex items-center justify-between">
-            <span className="flex items-center gap-2 font-semibold text-primary">🔔 Notificaciones</span>
-            {notifications?.some((n) => !n.read) && (
-              <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                {notifications.filter((n) => !n.read).length}
-              </span>
-            )}
-          </div>
-          <div className="mt-2 space-y-2 max-h-36 overflow-y-auto">
-            {notifications?.length ? notifications.map((notif) => (
-              <div key={notif.id} className="flex items-start justify-between gap-2 rounded-lg bg-slate-100 dark:bg-slate-900/20 p-2 border border-slate-200 dark:border-white/5">
-                <div>
-                  <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">{notif.title}</p>
-                  <p className="text-[11px] text-slate-600 dark:text-slate-400">{notif.message}</p>
-                </div>
-                {!notif.read && (
-                  <button className="text-[11px] text-primary hover:underline" onClick={() => markRead(notif.id)}>Marcar</button>
-                )}
-              </div>
-            )) : <p className="text-[11px] text-slate-500 dark:text-slate-400">Sin notificaciones.</p>}
-          </div>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold">Bienvenido, {user?.name}</h1>
+        <p className="text-slate-600 dark:text-slate-400">Aquí tienes un resumen de tu actividad.</p>
       </div>
 
       <section>
