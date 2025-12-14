@@ -1,14 +1,54 @@
-import { HARDCODED_DATA } from '../../lib/constants.js';
-import { apiService } from '../../lib/api.js';
-import { useAppContext } from '../../context/AppContext.jsx';
+import { useMemo, useState } from 'react';
 
-const PanelStudent = ({ user, subjects, notifications, navigateTo }) => {
-  const { refreshNotifications } = useAppContext();
-  const activities = HARDCODED_DATA.activities.upcoming;
+const typeLabel = (type) => {
+  const map = {
+    EXAMEN: 'Examen',
+    QUIZ: 'Quiz',
+    TAREA: 'Tarea',
+    ESTUDIO: 'Estudio',
+    TUTORIA: 'Tutoría',
+    OTRO: 'Otro'
+  };
+  return map[type] || type || 'Otro';
+};
 
-  const markRead = async (id) => {
-    await apiService.markNotificationAsRead(id);
-    await refreshNotifications();
+const formatUpcomingDate = (isoDate) => {
+  if (!isoDate) return '';
+  const parsed = new Date(`${isoDate}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return isoDate;
+  return parsed.toLocaleDateString('es-MX', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+};
+
+const PanelStudent = ({ user, subjects, upcomingActivities, onCreateUpcomingActivity, onDeleteUpcomingActivity, navigateTo }) => {
+  const [showAddActivity, setShowAddActivity] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newType, setNewType] = useState('ESTUDIO');
+  const [newDate, setNewDate] = useState('');
+  const [newTime, setNewTime] = useState('');
+
+  const sortedActivities = useMemo(() => {
+    const list = Array.isArray(upcomingActivities) ? upcomingActivities : [];
+    return [...list].sort((a, b) => {
+      const aKey = `${a.date || ''}T${a.time || '99:99'}`;
+      const bKey = `${b.date || ''}T${b.time || '99:99'}`;
+      return aKey.localeCompare(bKey);
+    });
+  }, [upcomingActivities]);
+
+  const submitNewActivity = async (event) => {
+    event.preventDefault();
+    if (!newDate) return;
+    await onCreateUpcomingActivity({
+      title: newTitle.trim() || 'Actividad',
+      type: newType,
+      date: newDate,
+      time: newTime || null
+    });
+    setNewTitle('');
+    setNewType('ESTUDIO');
+    setNewDate('');
+    setNewTime('');
+    setShowAddActivity(false);
   };
 
   return (
@@ -36,7 +76,11 @@ const PanelStudent = ({ user, subjects, notifications, navigateTo }) => {
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold bg-primary/20 text-primary py-1 px-2 rounded-full">{subject.school || 'ESCOM'}</span>
-                  <span className="text-xs text-slate-500">{subject.examDate ? `Examen: ${new Date(subject.examDate).toLocaleDateString('es-MX')}` : ''}</span>
+                  <span className="text-xs text-slate-500">
+                    {subject.examDate
+                      ? `Examen: ${new Date(subject.examDate).toLocaleDateString('es-MX')}${subject.examTime ? ` ${subject.examTime}` : ''}`
+                      : ''}
+                  </span>
                 </div>
                 <h3 className="text-xl font-bold mt-3">{subject.title}</h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400">{subject.professor}</p>
@@ -59,17 +103,109 @@ const PanelStudent = ({ user, subjects, notifications, navigateTo }) => {
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="glass-effect-light p-6 rounded-2xl">
-          <h3 className="text-xl font-bold mb-4">Próximas Actividades</h3>
-          <div className="space-y-4">
-            {activities.map((activity) => (
-              <div key={activity.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                <div>
-                  <p className="font-semibold">{activity.title}</p>
-                  <p className="text-xs text-slate-500">{activity.type}</p>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold">Próximas Actividades</h3>
+            <button
+              type="button"
+              className="text-sm text-primary hover:underline"
+              onClick={() => setShowAddActivity((prev) => !prev)}
+            >
+              {showAddActivity ? 'Cancelar' : 'Añadir'}
+            </button>
+          </div>
+
+          {showAddActivity && (
+            <form onSubmit={submitNewActivity} className="mb-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-500">Título</label>
+                  <input
+                    type="text"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    placeholder="Ej. Repasar derivadas"
+                    className="w-full bg-white/80 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-sm"
+                  />
                 </div>
-                <span className="text-sm font-medium text-slate-500">{activity.date}</span>
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-500">Tipo</label>
+                  <select
+                    value={newType}
+                    onChange={(e) => setNewType(e.target.value)}
+                    className="w-full bg-white/80 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-sm"
+                  >
+                    {['EXAMEN', 'QUIZ', 'TAREA', 'ESTUDIO', 'TUTORIA', 'OTRO'].map((type) => (
+                      <option key={type} value={type}>
+                        {typeLabel(type)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-500">Día</label>
+                  <input
+                    required
+                    type="date"
+                    value={newDate}
+                    onChange={(e) => setNewDate(e.target.value)}
+                    className="w-full bg-white/80 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-500">Horario (opcional)</label>
+                  <input
+                    type="time"
+                    value={newTime}
+                    onChange={(e) => setNewTime(e.target.value)}
+                    className="w-full bg-white/80 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-sm"
+                  />
+                </div>
               </div>
-            ))}
+              <div className="flex justify-end">
+                <button type="submit" className="px-4 py-2 bg-primary text-white rounded-lg text-sm">
+                  Guardar
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div className="space-y-4">
+            {sortedActivities.length ? (
+              sortedActivities.map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-center justify-between gap-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50"
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold truncate">{activity.title}</p>
+                    <p className="text-xs text-slate-500">
+                      {typeLabel(activity.type)}
+                      {activity.origin === 'FECHA_EXAMEN' ? ' • sincronizado' : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-sm font-medium text-slate-500">
+                      {formatUpcomingDate(activity.date)}
+                      {activity.time ? ` • ${activity.time}` : ''}
+                    </span>
+                    {activity.origin === 'MANUAL' ? (
+                      <button
+                        type="button"
+                        className="text-xs text-slate-500 hover:text-red-500"
+                        onClick={() => onDeleteUpcomingActivity(activity.id)}
+                        title="Eliminar"
+                      >
+                        Eliminar
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-slate-500 text-sm">
+                No tienes actividades próximas. Agrega una o define una fecha de examen en una materia.
+              </p>
+            )}
           </div>
         </div>
         <div className="glass-effect-light p-6 rounded-2xl">

@@ -34,13 +34,22 @@ const MateriaPage = ({ subject, userRole, exams, onStartExam, onNavigate, onUpda
         </div>
         {userRole === 'estudiante' && (
           <div className="space-y-1">
-            <label className="text-sm text-slate-500 dark:text-slate-400">Fecha de examen:</label>
-            <input
-              type="date"
-              className="bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-lg p-2 text-sm"
-              value={subject.examDate || ''}
-              onChange={(event) => onUpdateExamDate(subject.id, event.target.value)}
-            />
+            <label className="text-sm text-slate-500 dark:text-slate-400">Fecha y hora de examen (hora opcional):</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                className="bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-lg p-2 text-sm"
+                value={subject.examDate || ''}
+                onChange={(event) => onUpdateExamDate(subject.id, event.target.value, subject.examTime || null)}
+              />
+              <input
+                type="time"
+                disabled={!subject.examDate}
+                className="bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-lg p-2 text-sm disabled:opacity-50"
+                value={subject.examTime || ''}
+                onChange={(event) => onUpdateExamDate(subject.id, subject.examDate || '', event.target.value || null)}
+              />
+            </div>
           </div>
         )}
       </div>

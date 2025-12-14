@@ -63,6 +63,7 @@ export const formatUserForFrontend = (rawUser) => {
 
 const DemoAPI = {
   currentUser: DEMO_PROFILES.estudiante,
+  upcomingActivities: deepClone(HARDCODED_DATA.activities.upcoming || []),
   async simulateLatency() {
     return new Promise((resolve) => setTimeout(resolve, DEMO_LATENCY));
   },
@@ -204,7 +205,57 @@ const DemoAPI = {
     if (endpoint === API_CONFIG.ENDPOINTS.SUBJECTS.UPDATE_EXAM_DATE && method === 'PUT') {
       if (loggedUser.rol !== 'ESTUDIANTE') return { success: false };
       const subject = (loggedUser.subjects || []).find((s) => s.id === data?.subjectId);
-      if (subject) subject.examDate = data.examDate;
+      if (subject) {
+        subject.examDate = data.examDate || null;
+        subject.examTime = data.examTime || null;
+      }
+
+      const subjectTitle = subject?.title || 'Materia';
+      const existsIndex = (this.upcomingActivities || []).findIndex(
+        (a) => a.origen === 'FECHA_EXAMEN' && a.curso_id === data?.subjectId
+      );
+      if (!data?.examDate) {
+        if (existsIndex >= 0) this.upcomingActivities.splice(existsIndex, 1);
+        return { success: true, examDate: null, examTime: null };
+      }
+      const activity = {
+        id: this.nextId('act'),
+        titulo: subjectTitle,
+        tipo: 'EXAMEN',
+        fecha: data.examDate,
+        hora: data.examTime || null,
+        origen: 'FECHA_EXAMEN',
+        curso_id: data?.subjectId,
+        curso_titulo: subjectTitle
+      };
+      if (existsIndex >= 0) this.upcomingActivities[existsIndex] = { ...this.upcomingActivities[existsIndex], ...activity };
+      else this.upcomingActivities.unshift(activity);
+      return { success: true, examDate: data.examDate, examTime: data.examTime || null };
+    }
+
+    if (endpoint === API_CONFIG.ENDPOINTS.ACTIVITIES.UPCOMING && method === 'GET') {
+      return deepClone(this.upcomingActivities || []);
+    }
+
+    if (endpoint === API_CONFIG.ENDPOINTS.ACTIVITIES.UPCOMING && method === 'POST') {
+      const newActivity = {
+        id: this.nextId('act'),
+        titulo: data?.titulo || 'Actividad',
+        tipo: data?.tipo || 'OTRO',
+        fecha: data?.fecha,
+        hora: data?.hora || null,
+        origen: 'MANUAL',
+        curso_id: null,
+        curso_titulo: null
+      };
+      this.upcomingActivities = this.upcomingActivities || [];
+      this.upcomingActivities.unshift(newActivity);
+      return deepClone(newActivity);
+    }
+
+    if (endpoint.startsWith(API_CONFIG.ENDPOINTS.ACTIVITIES.UPCOMING) && method === 'DELETE') {
+      const id = endpoint.split('/').filter(Boolean).pop();
+      this.upcomingActivities = (this.upcomingActivities || []).filter((activity) => activity.id !== id);
       return { success: true };
     }
 
@@ -541,7 +592,13 @@ const request = async (endpoint, method = 'GET', data = null, requiresAuth = tru
 
     throw new Error(errorMessage || `Error ${response.status}`);
   }
-  return response.json();
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {};
+  }
 };
 
 export const apiService = {
@@ -585,7 +642,27 @@ export const apiService = {
     return request(API_CONFIG.ENDPOINTS.SUBJECTS.GET_ALL);
   },
   getUserSubjects() {
-    return request(API_CONFIG.ENDPOINTS.SUBJECTS.GET_USER_SUBJECTS);
+    return request(API_CONFIG.ENDPOINTS.SUBJECTS.GET_USER_SUBJECTS).then((raw) => {
+      if (!Array.isArray(raw)) return [];
+      if (raw.length > 0 && raw[0] && typeof raw[0] === 'object' && raw[0].curso) {
+        return raw.map((row) => {
+          const course = row.curso || {};
+          const creator = course.creador || {};
+          return {
+            id: course.id,
+            title: course.titulo || course.title || 'Materia',
+            description: course.descripcion || course.description || '',
+            professor: creator.nombre_completo || course.professor || 'Profesor',
+            school: course.school || 'ESCOM',
+            progress: Number(row.progreso_porcentaje) || 0,
+            examDate: row.examDate || null,
+            examTime: row.examTime || null,
+            temario: []
+          };
+        });
+      }
+      return raw;
+    });
   },
   searchCourses(query) {
     // GET /api/buscar-cursos/?q=...
@@ -608,7 +685,35 @@ export const apiService = {
     return request(API_CONFIG.ENDPOINTS.USERS.GET_PROGRESS);
   },
   updateExamDate(subjectId, examDate) {
-    return request(API_CONFIG.ENDPOINTS.SUBJECTS.UPDATE_EXAM_DATE, 'PUT', { subjectId, examDate });
+    const payload = { subjectId, examDate };
+    if (arguments.length >= 3) payload.examTime = arguments[2];
+    return request(API_CONFIG.ENDPOINTS.SUBJECTS.UPDATE_EXAM_DATE, 'PUT', payload);
+  },
+  getUpcomingActivities() {
+    return request(API_CONFIG.ENDPOINTS.ACTIVITIES.UPCOMING).then((raw) => {
+      if (!Array.isArray(raw)) return [];
+      return raw.map((activity) => ({
+        id: activity.id,
+        title: activity.titulo || activity.title || 'Actividad',
+        type: activity.tipo || activity.type || 'OTRO',
+        date: activity.fecha || activity.date,
+        time: activity.hora || activity.time || null,
+        origin: activity.origen || activity.origin || 'MANUAL',
+        courseId: activity.curso_id || activity.courseId || null,
+        courseTitle: activity.curso_titulo || activity.courseTitle || null
+      }));
+    });
+  },
+  createUpcomingActivity({ title, type, date, time }) {
+    return request(API_CONFIG.ENDPOINTS.ACTIVITIES.UPCOMING, 'POST', {
+      titulo: title,
+      tipo: type,
+      fecha: date,
+      hora: time || null
+    });
+  },
+  deleteUpcomingActivity(activityId) {
+    return request(`${API_CONFIG.ENDPOINTS.ACTIVITIES.UPCOMING}${activityId}/`, 'DELETE');
   },
   getAllResources() {
     return request(API_CONFIG.ENDPOINTS.RESOURCES.GET_ALL);

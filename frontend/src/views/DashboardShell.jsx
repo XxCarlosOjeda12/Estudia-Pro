@@ -30,6 +30,7 @@ const DashboardShell = () => {
   const [formularies, setFormularies] = useState([]);
   const [tutors, setTutors] = useState([]);
   const [exams, setExams] = useState([]);
+  const [upcomingActivities, setUpcomingActivities] = useState([]);
   const [currentSubject, setCurrentSubject] = useState(null);
   const [currentExam, setCurrentExam] = useState(null);
   const [adminUsers, setAdminUsers] = useState([]);
@@ -119,15 +120,18 @@ const DashboardShell = () => {
       setFormularies(formulariesData);
       setTutors(tutorsData);
       if (user?.role === 'estudiante') {
-        const [studentSubjects, purchased] = await Promise.all([
+        const [studentSubjects, purchased, upcoming] = await Promise.all([
           apiService.getUserSubjects(),
-          apiService.getPurchasedResources()
+          apiService.getPurchasedResources(),
+          apiService.getUpcomingActivities()
         ]);
         setUserSubjects(studentSubjects);
         setPurchasedResources(purchased);
+        setUpcomingActivities(upcoming);
       } else {
         setUserSubjects([]);
         setPurchasedResources([]);
+        setUpcomingActivities([]);
       }
       if (user?.role === 'administrador') {
         const data = await apiService.getAllUsers();
@@ -219,6 +223,52 @@ const DashboardShell = () => {
     }
   };
 
+  const refreshUpcomingActivities = async () => {
+    try {
+      const list = await apiService.getUpcomingActivities();
+      setUpcomingActivities(list);
+    } catch (error) {
+      console.error('Upcoming activities error:', error);
+    }
+  };
+
+  const handleCreateUpcomingActivity = async (payload) => {
+    try {
+      await apiService.createUpcomingActivity(payload);
+      await refreshUpcomingActivities();
+      pushToast({ title: 'Actividades', message: 'Actividad guardada.', type: 'success' });
+    } catch {
+      pushToast({ title: 'Actividades', message: 'No se pudo guardar la actividad.', type: 'alert' });
+    }
+  };
+
+  const handleDeleteUpcomingActivity = async (activityId) => {
+    try {
+      await apiService.deleteUpcomingActivity(activityId);
+      await refreshUpcomingActivities();
+      pushToast({ title: 'Actividades', message: 'Actividad eliminada.', type: 'success' });
+    } catch (error) {
+      pushToast({ title: 'Actividades', message: error?.message || 'No se pudo eliminar.', type: 'alert' });
+    }
+  };
+
+  const handleUpdateExamDate = async (subjectId, examDate, examTime) => {
+    setUserSubjects((prev) => prev.map((s) => (s.id === subjectId ? { ...s, examDate, examTime: examTime ?? s.examTime ?? null } : s)));
+    setCurrentSubject((prev) => (prev?.id === subjectId ? { ...prev, examDate, examTime: examTime ?? prev.examTime ?? null } : prev));
+    try {
+      const response = await apiService.updateExamDate(subjectId, examDate, examTime);
+      const normalizedDate = response?.examDate ?? examDate ?? null;
+      const normalizedTime = response?.examTime ?? null;
+      setUserSubjects((prev) =>
+        prev.map((s) => (s.id === subjectId ? { ...s, examDate: normalizedDate, examTime: normalizedTime } : s))
+      );
+      setCurrentSubject((prev) => (prev?.id === subjectId ? { ...prev, examDate: normalizedDate, examTime: normalizedTime } : prev));
+      await refreshUpcomingActivities();
+    } catch {
+      pushToast({ title: 'Materias', message: 'No se pudo actualizar la fecha de examen.', type: 'alert' });
+    }
+  };
+
   const handlePurchaseResource = async (resourceId) => {
     try {
       await apiService.purchaseResource(resourceId);
@@ -273,7 +323,9 @@ const DashboardShell = () => {
           <PanelStudent
             user={user}
             subjects={userSubjects}
-            notifications={notifications}
+            upcomingActivities={upcomingActivities}
+            onCreateUpcomingActivity={handleCreateUpcomingActivity}
+            onDeleteUpcomingActivity={handleDeleteUpcomingActivity}
             navigateTo={navigateTo}
           />
         );
@@ -287,7 +339,7 @@ const DashboardShell = () => {
             exams={exams}
             onStartExam={(examId) => navigateTo('examen', { examId })}
             onNavigate={navigateTo}
-            onUpdateExamDate={(subjectId, date) => apiService.updateExamDate(subjectId, date)}
+            onUpdateExamDate={handleUpdateExamDate}
           />
         );
       case 'recursos':

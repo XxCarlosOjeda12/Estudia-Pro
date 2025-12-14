@@ -48,6 +48,9 @@ export const API_CONFIG = {
       GET_USER_NOTIFICATIONS: '/notificaciones/',
       MARK_READ: '/notificaciones/leer/'
     },
+    ACTIVITIES: {
+      UPCOMING: '/proximas-actividades/'
+    },
     ADMIN: {
       USERS: '/admin/users/',
       SUBJECTS: '/admin/custom/cursos/',
