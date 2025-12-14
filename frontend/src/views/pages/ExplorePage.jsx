@@ -1,18 +1,35 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { apiService } from '../../lib/api';
 
 const normalize = (value) => (value || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 const ExplorePage = ({ subjects, onAddSubject }) => {
   const [search, setSearch] = useState('');
 
-  const filtered = useMemo(() => {
+  const [results, setResults] = useState(subjects);
+
+  useEffect(() => {
+    setResults(subjects);
+  }, [subjects]);
+
+  useEffect(() => {
     const term = normalize(search);
-    if (!term) return subjects;
-    return subjects.filter((subject) => {
-      const fields = [subject.title, subject.level, subject.school];
-      return fields.some((field) => normalize(field).includes(term));
-    });
-  }, [subjects, search]);
+    if (!term) {
+      setResults(subjects);
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const data = await apiService.searchCourses(term);
+        setResults(data);
+      } catch (error) {
+        console.error('Search error:', error);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [search, subjects]);
 
   return (
     <div className="page active space-y-6">
@@ -42,7 +59,7 @@ const ExplorePage = ({ subjects, onAddSubject }) => {
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filtered.map((subject) => (
+        {results.map((subject) => (
           <div key={subject.id} className="glass-effect-light p-6 rounded-2xl border border-slate-200 dark:border-white/10 text-slate-900 dark:text-slate-100 transition-colors">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold bg-primary/15 text-primary py-1 px-2 rounded-full">{subject.level || 'General'}</span>

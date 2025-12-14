@@ -1,4 +1,4 @@
-import { API_CONFIG, HARDCODED_DATA, DEMO_PROFILES } from './constants';
+import { API_CONFIG, HARDCODED_DATA, DEMO_PROFILES } from './constants.js';
 
 const DEMO_STORAGE_KEY = 'estudia-pro-demo-mode';
 const DEMO_LATENCY = 350;
@@ -66,6 +66,9 @@ const DemoAPI = {
   async simulateLatency() {
     return new Promise((resolve) => setTimeout(resolve, DEMO_LATENCY));
   },
+  normalize(text) {
+    return (text || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  },
   nextId(prefix) {
     return `${prefix}-${Date.now()}`;
   },
@@ -116,6 +119,59 @@ const DemoAPI = {
       return formatUserForFrontend(loggedUser);
     }
 
+    if (endpoint === API_CONFIG.ENDPOINTS.USERS.GET_DASHBOARD) {
+      // Simulate dashboard data
+      return {
+        usuario: formatUserForFrontend(loggedUser),
+        mis_cursos: (loggedUser.subjects || []).slice(0, 3).map(s => ({
+          id: s.id,
+          titulo: s.title,
+          progreso: s.progress,
+          imagen_url: null
+        })),
+        proximos_examenes: HARDCODED_DATA.activities.upcoming.filter(a => a.type === 'Examen').map(e => ({
+          id: e.id,
+          titulo: e.title,
+          fecha: e.date,
+          curso_nombre: e.title.split(' - ')[0]
+        })),
+        pendientes_count: 5,
+        racha_dias: loggedUser.streak || 0,
+        puntos_totales: loggedUser.puntos_gamificacion || 0,
+        nivel_actual: loggedUser.nivel || 1
+      };
+    }
+
+    if (endpoint === API_CONFIG.ENDPOINTS.USERS.GET_PROGRESS) {
+      // Simulate progress data matching backend structure
+      return {
+        progreso_cursos: (loggedUser.subjects || []).map(s => ({
+          curso_id: s.id,
+          curso_titulo: s.title,
+          imagen_portada: null,
+          progreso_porcentaje: s.progress || 0,
+          recursos_completados: Math.round((s.progress / 100) * 20),
+          total_recursos: 20,
+          total_examenes: 2,
+          promedio_examenes: 85.5,
+          completado: s.progress === 100,
+          fecha_inscripcion: '2024-01-15'
+        })),
+        logros_desbloqueados: HARDCODED_DATA.achievements.slice(0, 3),
+        logros_en_progreso: HARDCODED_DATA.achievements.slice(3, 5).map(a => ({ ...a, progreso_actual: 50, porcentaje_progreso: 50 })),
+        estadisticas: {
+          total_puntos: loggedUser.puntos_gamificacion || 0,
+          nivel: loggedUser.nivel || 1,
+          total_cursos: (loggedUser.subjects || []).length,
+          cursos_completados: (loggedUser.subjects || []).filter(s => s.progress === 100).length,
+          actividades_semana: 12,
+          tiempo_total_minutos: 450,
+          tiempo_total_horas: 7.5
+        },
+        actividades_recientes: []
+      };
+    }
+
     if (endpoint === API_CONFIG.ENDPOINTS.SUBJECTS.GET_ALL) {
       return deepClone(HARDCODED_DATA.subjectsCatalog);
     }
@@ -125,9 +181,15 @@ const DemoAPI = {
       return deepClone(loggedUser.subjects || []);
     }
 
-    if (endpoint === API_CONFIG.ENDPOINTS.SUBJECTS.ADD_SUBJECT && method === 'POST') {
+    // Handle enrollment (new dynamic URL: /cursos/{id}/inscribirse/)
+    if (endpoint.includes('/inscribirse/') && method === 'POST') {
       if (loggedUser.rol !== 'ESTUDIANTE') return { success: false };
-      const subject = HARDCODED_DATA.subjectsCatalog.find((s) => s.id === data?.subjectId);
+
+      // Extract ID from /cursos/{id}/inscribirse/
+      const parts = endpoint.split('/');
+      const subjectId = parts[parts.length - 3] || parts[parts.length - 2];
+
+      const subject = HARDCODED_DATA.subjectsCatalog.find((s) => s.id === subjectId);
       if (subject && !(loggedUser.subjects || []).some((s) => s.id === subject.id)) {
         loggedUser.subjects = loggedUser.subjects || [];
         loggedUser.subjects.push({ ...deepClone(subject), examDate: null });
@@ -140,6 +202,34 @@ const DemoAPI = {
       const subject = (loggedUser.subjects || []).find((s) => s.id === data?.subjectId);
       if (subject) subject.examDate = data.examDate;
       return { success: true };
+    }
+
+    // Handle course specific progress: /cursos/{id}/mi_progreso/
+    if (endpoint.includes('/cursos/') && endpoint.endsWith('/mi_progreso/')) {
+      // Extract ID
+      const parts = endpoint.split('/');
+      const subjectId = parts[parts.length - 3] || parts[parts.length - 2];
+      const subject = (loggedUser.subjects || []).find(s => s.id === subjectId);
+
+      if (!subject) return { error: 'No inscrito' };
+
+      return {
+        progreso_asignatura: {
+          id: subject.id,
+          titulo: subject.title,
+          completado_porcentaje: subject.progress || 0,
+          fecha_inicio: '2024-01-20'
+        },
+        modulos: (subject.temario || []).map((tema, i) => ({
+          id: `mod-${i}`,
+          titulo: tema.title,
+          completado: i < ((subject.progress / 100) * (subject.temario || []).length), // Rough estimate
+          recursos: [
+            { id: `res-${i}-1`, titulo: `Video: ${tema.title}`, completado: true },
+            { id: `res-${i}-2`, titulo: `Lectura: ${tema.title}`, completado: false }
+          ]
+        }))
+      };
     }
 
     if (endpoint === API_CONFIG.ENDPOINTS.RESOURCES.GET_ALL) {
@@ -168,26 +258,70 @@ const DemoAPI = {
       return { success: true, url: '#' };
     }
 
+    // Handle marking resource as completed: /recursos/{id}/marcar_completado/
+    if (endpoint.includes('/recursos/') && endpoint.includes('/marcar_completado/') && method === 'POST') {
+      if (loggedUser.rol !== 'ESTUDIANTE') return { success: false };
+
+      const parts = endpoint.split('/');
+      // format: /api/recursos/{id}/marcar_completado/
+      // parts: ['', 'api', 'recursos', '{id}', 'marcar_completado', '']
+      const resourceId = parts[parts.length - 3] || parts[parts.length - 2];
+
+      const resource = HARDCODED_DATA.resources.find(r => r.id === resourceId);
+      if (resource) {
+        const userSubject = (loggedUser.subjects || []).find(s => s.id === resource.subjectId);
+        if (userSubject) {
+          // Increment progress safely
+          const currentProgress = userSubject.progress || 0;
+          if (currentProgress < 100) {
+            userSubject.progress = Math.min(100, currentProgress + 5); // +5% per resource for demo
+          }
+          // Update last access
+          userSubject.fecha_ultimo_acceso = new Date().toISOString();
+        }
+      }
+      return { success: true, message: 'Recurso marcado como completado' };
+    }
+
     if (endpoint === API_CONFIG.ENDPOINTS.FORMULARIES.GET_ALL) {
       return deepClone(HARDCODED_DATA.formularies);
     }
 
-    if (endpoint === API_CONFIG.ENDPOINTS.ACHIEVEMENTS.GET_ALL || endpoint === API_CONFIG.ENDPOINTS.ACHIEVEMENTS.GET_USER_ACHIEVEMENTS) {
+    if (endpoint === API_CONFIG.ENDPOINTS.ACHIEVEMENTS.GET_ALL) {
       return deepClone(HARDCODED_DATA.achievements);
+    }
+
+    if (endpoint === API_CONFIG.ENDPOINTS.ACHIEVEMENTS.GET_USER_ACHIEVEMENTS) {
+      return HARDCODED_DATA.achievements.map((ach, index) => ({
+        logro: deepClone(ach),
+        progreso_actual: index === 0 ? 100 : 0, // Demo: first one unlocked
+        desbloqueado: index === 0,
+        porcentaje_progreso: index === 0 ? 100 : 0
+      }));
     }
 
     if (endpoint === API_CONFIG.ENDPOINTS.EXAMS.GET_ALL) {
       return deepClone(HARDCODED_DATA.exams);
     }
 
-    if (endpoint === API_CONFIG.ENDPOINTS.EXAMS.START_EXAM && method === 'POST') {
-      const exam = HARDCODED_DATA.exams.find((e) => e.id === data?.examId);
+    // Handle start exam (new dynamic URL: /examenes/{id}/iniciar/)
+    if (endpoint.includes('/examenes/') && endpoint.includes('/iniciar/') && method === 'POST') {
+      // Extract ID
+      const parts = endpoint.split('/');
+      const examId = parts[parts.length - 3] || parts[parts.length - 2];
+
+      const exam = HARDCODED_DATA.exams.find((e) => e.id === examId);
       if (!exam) throw new Error('Examen no encontrado (demo)');
       return deepClone(exam);
     }
 
-    if (endpoint === API_CONFIG.ENDPOINTS.EXAMS.SUBMIT_EXAM && method === 'POST') {
-      const exam = HARDCODED_DATA.exams.find((e) => e.id === data?.examId);
+    // Handle submit exam (new dynamic URL: /examenes/{id}/enviar_respuestas/)
+    if (endpoint.includes('/examenes/') && endpoint.includes('/enviar_respuestas/') && method === 'POST') {
+      // Extract ID
+      const parts = endpoint.split('/');
+      const examId = parts[parts.length - 3] || parts[parts.length - 2];
+
+      const exam = HARDCODED_DATA.exams.find((e) => e.id === examId);
       if (!exam) throw new Error('Examen no encontrado (demo)');
       const answers = data?.answers || {};
       const correct = exam.questions.filter(
@@ -218,16 +352,16 @@ const DemoAPI = {
     }
 
     if (endpoint === API_CONFIG.ENDPOINTS.FORUMS.CREATE_TOPIC && method === 'POST') {
-      const subject = HARDCODED_DATA.subjectsCatalog.find((s) => s.id === data?.subjectId);
+      const subject = HARDCODED_DATA.subjectsCatalog.find((s) => s.id === data?.curso);
       const newTopic = {
         id: this.nextId('forum'),
-        title: data?.title || 'Tema sin título',
+        title: data?.titulo || data?.title || 'Tema sin título',
         subjectName: subject?.title || 'General',
         posts: [
           {
             id: this.nextId('post'),
             author: loggedUser.name,
-            content: data?.content || '',
+            content: data?.contenido || data?.content || '',
             createdAt: new Date().toISOString()
           }
         ]
@@ -236,8 +370,31 @@ const DemoAPI = {
       return { success: true, topic: deepClone(newTopic) };
     }
 
+    // Handle vote answer: /foro/respuesta/{id}/votar/
+    if (endpoint.includes('/foro/respuesta/') && endpoint.endsWith('/votar/') && method === 'POST') {
+      const parts = endpoint.split('/');
+      // format: /api/foro/respuesta/{id}/votar/
+      const answerId = parts[parts.length - 3] || parts[parts.length - 2];
+
+      let answerFound = null;
+      for (const forum of HARDCODED_DATA.forums) {
+        const post = forum.posts?.find(p => p.id === answerId);
+        if (post) {
+          answerFound = post;
+          break;
+        }
+      }
+
+      if (answerFound) {
+        answerFound.votes = (answerFound.votes || 0) + 1;
+        return { success: true, votes: answerFound.votes };
+      }
+      return { success: false, message: 'Respuesta no encontrada' };
+    }
+
     if (endpoint.startsWith(API_CONFIG.ENDPOINTS.FORUMS.GET_TOPIC)) {
-      if (endpoint.endsWith('/reply') && method === 'POST') {
+      // Handle reply: /foro/{id}/responder/
+      if (endpoint.endsWith('/responder/') && method === 'POST') {
         const parts = endpoint.split('/').filter(Boolean);
         const topicId = parts[parts.length - 2];
         const topic = HARDCODED_DATA.forums.find((forum) => forum.id === topicId);
@@ -245,7 +402,7 @@ const DemoAPI = {
         const newPost = {
           id: this.nextId('post'),
           author: loggedUser.name,
-          content: data?.message || data?.content || '',
+          content: data?.contenido || data?.message || '',
           createdAt: new Date().toISOString()
         };
         topic.posts = topic.posts || [];
@@ -323,6 +480,29 @@ const DemoAPI = {
         HARDCODED_DATA.subjectsCatalog.splice(index, 1);
         return { success: true };
       }
+    }
+
+    // Handle community resources (prevent crash in DashboardShell)
+    if (endpoint.startsWith(API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.BASE)) {
+      return [];
+    }
+
+    if (endpoint.includes('buscar-cursos')) {
+      // Extract query param 'q'
+      // URL format: /buscar-cursos/?q=term
+      // But DemoAPI.handle receives endpoint as string.
+      // Wait, request() calls DemoAPI.handle(endpoint, ...).
+      // So passed endpoint has query params if I construct it that way.
+      // Let's parse it.
+      const query = endpoint.split('q=')[1]?.split('&')[0] || '';
+      const term = this.normalize(decodeURIComponent(query));
+      if (!term) return deepClone(HARDCODED_DATA.subjectsCatalog);
+
+      return deepClone(HARDCODED_DATA.subjectsCatalog.filter(s =>
+        this.normalize(s.title).includes(term) ||
+        this.normalize(s.level).includes(term) ||
+        this.normalize(s.school).includes(term)
+      ));
     }
 
     return {};
@@ -403,8 +583,25 @@ export const apiService = {
   getUserSubjects() {
     return request(API_CONFIG.ENDPOINTS.SUBJECTS.GET_USER_SUBJECTS);
   },
+  searchCourses(query) {
+    // GET /api/buscar-cursos/?q=...
+    // Note: checks if query is empty or not
+    const endpoint = `/buscar-cursos/?q=${encodeURIComponent(query)}`;
+    return request(endpoint);
+  },
   addSubject(subjectId) {
-    return request(API_CONFIG.ENDPOINTS.SUBJECTS.ADD_SUBJECT, 'POST', { subjectId });
+    // Backend expects: POST /api/cursos/{id}/inscribirse/
+    return request(`${API_CONFIG.ENDPOINTS.SUBJECTS.GET_ALL}${subjectId}/inscribirse/`, 'POST');
+  },
+  getCourseProgress(subjectId) {
+    // GET /api/cursos/{id}/mi_progreso/
+    return request(`${API_CONFIG.ENDPOINTS.SUBJECTS.GET_ALL}${subjectId}/mi_progreso/`);
+  },
+  getDashboard() {
+    return request(API_CONFIG.ENDPOINTS.USERS.GET_DASHBOARD);
+  },
+  getDetailedProgress() {
+    return request(API_CONFIG.ENDPOINTS.USERS.GET_PROGRESS);
   },
   updateExamDate(subjectId, examDate) {
     return request(API_CONFIG.ENDPOINTS.SUBJECTS.UPDATE_EXAM_DATE, 'PUT', { subjectId, examDate });
@@ -421,6 +618,10 @@ export const apiService = {
   downloadResource(resourceId) {
     return request(API_CONFIG.ENDPOINTS.RESOURCES.DOWNLOAD, 'POST', { resourceId });
   },
+  markResourceCompleted(resourceId) {
+    // POST /api/recursos/{id}/marcar_completado/
+    return request(`${API_CONFIG.ENDPOINTS.RESOURCES.GET_ALL}${resourceId}/marcar_completado/`, 'POST');
+  },
   getAllFormularies() {
     return request(API_CONFIG.ENDPOINTS.FORMULARIES.GET_ALL);
   },
@@ -431,10 +632,12 @@ export const apiService = {
     return request(API_CONFIG.ENDPOINTS.EXAMS.GET_ALL);
   },
   startExam(examId) {
-    return request(API_CONFIG.ENDPOINTS.EXAMS.START_EXAM, 'POST', { examId });
+    // Backend expects: POST /api/examenes/{id}/iniciar/
+    return request(`${API_CONFIG.ENDPOINTS.EXAMS.GET_ALL}${examId}/iniciar/`, 'POST');
   },
   submitExam(examId, answers) {
-    return request(API_CONFIG.ENDPOINTS.EXAMS.SUBMIT_EXAM, 'POST', { examId, answers });
+    // Backend expects: POST /api/examenes/{id}/enviar_respuestas/
+    return request(`${API_CONFIG.ENDPOINTS.EXAMS.GET_ALL}${examId}/enviar_respuestas/`, 'POST', { answers });
   },
   getAllTutors() {
     return request(API_CONFIG.ENDPOINTS.TUTORS.GET_ALL);
@@ -446,13 +649,26 @@ export const apiService = {
     return request(API_CONFIG.ENDPOINTS.FORUMS.GET_ALL);
   },
   createForumTopic(topicData) {
-    return request(API_CONFIG.ENDPOINTS.FORUMS.CREATE_TOPIC, 'POST', topicData);
+    // Map keys for backend: { title -> titulo, content -> contenido, subjectId -> curso }
+    const payload = {
+      titulo: topicData.title,
+      contenido: topicData.content,
+      categoria: topicData.category || 'General',
+      curso: topicData.subjectId
+    };
+    return request(API_CONFIG.ENDPOINTS.FORUMS.CREATE_TOPIC, 'POST', payload);
   },
   getForumTopic(topicId) {
-    return request(`${API_CONFIG.ENDPOINTS.FORUMS.GET_TOPIC}/${topicId}`);
+    // GET /foro/{id}/
+    return request(`${API_CONFIG.ENDPOINTS.FORUMS.GET_TOPIC}${topicId}/`);
   },
   replyForumTopic(topicId, message) {
-    return request(`${API_CONFIG.ENDPOINTS.FORUMS.GET_TOPIC}/${topicId}/reply`, 'POST', { message });
+    // POST /foro/{id}/responder/ with { contenido }
+    return request(`${API_CONFIG.ENDPOINTS.FORUMS.GET_TOPIC}${topicId}/responder/`, 'POST', { contenido: message });
+  },
+  voteAnswer(answerId) {
+    // POST /api/foro/respuesta/{id}/votar/
+    return request(`/foro/respuesta/${answerId}/votar/`, 'POST');
   },
   getUserAchievements() {
     return request(API_CONFIG.ENDPOINTS.ACHIEVEMENTS.GET_USER_ACHIEVEMENTS);

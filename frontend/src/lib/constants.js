@@ -9,7 +9,9 @@ export const API_CONFIG = {
     },
     USERS: {
       GET_PROFILE: '/auth/profile/',
-      UPDATE_PROFILE: '/users/profile/'
+      UPDATE_PROFILE: '/users/profile/',
+      GET_DASHBOARD: '/mi-panel/',
+      GET_PROGRESS: '/mi-progreso/'
     },
     SUBJECTS: {
       GET_ALL: '/cursos/',
@@ -19,9 +21,10 @@ export const API_CONFIG = {
     },
     RESOURCES: {
       GET_ALL: '/recursos/',
-      GET_PURCHASED: '/recursos/mis-compras/', // Validating existence later
+      GET_PURCHASED: '/recursos/mis-compras/',
       PURCHASE: '/recursos/comprar/',
-      DOWNLOAD: '/recursos/descargar/'
+      DOWNLOAD: '/recursos/descargar/',
+      MARK_COMPLETED: '/marcar_completado/' // Suffix for /recursos/{id}/...
     },
     EXAMS: {
       GET_ALL: '/examenes/',
@@ -34,8 +37,8 @@ export const API_CONFIG = {
     },
     FORUMS: {
       GET_ALL: '/foro/',
-      CREATE_TOPIC: '/foro/temas/',
-      GET_TOPIC: '/foro/temas/'
+      CREATE_TOPIC: '/foro/', // Backend expects POST /api/foro/
+      GET_TOPIC: '/foro/' // Used as base for /foro/{id}/
     },
     ACHIEVEMENTS: {
       GET_USER_ACHIEVEMENTS: '/mis-logros/',
@@ -384,8 +387,8 @@ export const HARDCODED_DATA = {
       title: '¿Cómo factorizar un polinomio cúbico rápido?',
       subjectName: 'Álgebra Lineal',
       posts: [
-        { id: 'post-1', author: 'Carlos T.', content: 'Estoy atascado en la parte donde debo eliminar una raíz repetida.', createdAt: '2024-05-23T11:15:00Z' },
-        { id: 'post-2', author: 'Ana García (Mentora)', content: 'Utiliza división sintética dos veces, luego factoriza el resultado cuadrático.', createdAt: '2024-05-23T12:20:00Z' }
+        { id: 'post-1', author: 'Carlos T.', content: 'Estoy atascado en la parte donde debo eliminar una raíz repetida.', createdAt: '2024-05-23T11:15:00Z', votes: 2 },
+        { id: 'post-2', author: 'Ana García (Mentora)', content: 'Utiliza división sintética dos veces, luego factoriza el resultado cuadrático.', createdAt: '2024-05-23T12:20:00Z', votes: 12 }
       ]
     },
     {
@@ -393,8 +396,8 @@ export const HARDCODED_DATA = {
       title: 'Tips para dominar integrales por partes',
       subjectName: 'Cálculo Diferencial',
       posts: [
-        { id: 'post-3', author: 'Daniela Y.', content: '¿Algún truco para recordar qué elegir como u y dv?', createdAt: '2024-05-22T18:10:00Z' },
-        { id: 'post-4', author: 'Ian Salazar', content: 'Aplica LIATE y practica con integrales de logaritmos. Arma una tabla rápida.', createdAt: '2024-05-22T19:05:00Z' }
+        { id: 'post-3', author: 'Daniela Y.', content: '¿Algún truco para recordar qué elegir como u y dv?', createdAt: '2024-05-22T18:10:00Z', votes: 5 },
+        { id: 'post-4', author: 'Ian Salazar', content: 'Aplica LIATE y practica con integrales de logaritmos. Arma una tabla rápida.', createdAt: '2024-05-22T19:05:00Z', votes: 8 }
       ]
     },
     {

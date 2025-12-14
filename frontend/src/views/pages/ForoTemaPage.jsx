@@ -1,10 +1,25 @@
 import { useState } from 'react';
 import { useAppContext } from '../../context/AppContext.jsx';
+import { apiService } from '../../lib/api';
 
 const ForoTemaPage = ({ topic, onBack, onReply }) => {
   const { pushToast } = useAppContext();
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [voteOverrides, setVoteOverrides] = useState({});
+
+  const handleVote = async (postId) => {
+    try {
+      const response = await apiService.voteAnswer(postId);
+      if (response.success) {
+        setVoteOverrides(prev => ({ ...prev, [postId]: response.votes }));
+        pushToast({ title: 'Voto registrado', message: 'Gracias por tu voto.', type: 'success' });
+      }
+    } catch (error) {
+      console.error(error);
+      pushToast({ title: 'Error', message: 'No se pudo registrar tu voto.', type: 'alert' });
+    }
+  };
 
   if (!topic) {
     return (
@@ -47,6 +62,18 @@ const ForoTemaPage = ({ topic, onBack, onReply }) => {
               <div>
                 <p className="font-semibold">{post.author}</p>
                 <p className="text-xs text-slate-400">{new Date(post.createdAt).toLocaleString('es-MX')}</p>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handleVote(post.id)}
+                  className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition"
+                  title="Votar como útil"
+                >
+                  👍
+                </button>
+                <span className="text-sm font-bold text-primary">
+                  {voteOverrides[post.id] !== undefined ? voteOverrides[post.id] : (post.votes || 0)}
+                </span>
               </div>
             </div>
             <p className="text-slate-600 dark:text-slate-300 whitespace-pre-line">{post.content}</p>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { apiService } from '../../lib/api';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -27,7 +28,6 @@ ChartJS.register(
 
 const useDarkMode = () => {
   const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
-
   useEffect(() => {
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
@@ -36,29 +36,49 @@ const useDarkMode = () => {
         }
       });
     });
-
     observer.observe(document.documentElement, { attributes: true });
     return () => observer.disconnect();
   }, []);
-
   return isDark;
 };
 
-const ProgresoPage = ({ subjects }) => {
+const ProgresoPage = () => {
   const isDark = useDarkMode();
-  const bestSubjects = [...subjects].sort((a, b) => (b.progress || 0) - (a.progress || 0)).slice(0, 3);
-  const totalProgress = subjects.length ? subjects.reduce((sum, subj) => sum + (subj.progress || 0), 0) : 0;
-  const average = subjects.length ? Math.round(totalProgress / subjects.length) : 0;
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Chart Colors & Config
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const response = await apiService.getDetailedProgress();
+        setData(response);
+      } catch (error) {
+        console.error('Error loading progress:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  const subjects = data?.progreso_cursos || [];
+  const stats = data?.estadisticas || {};
+  const bestSubjects = [...subjects].sort((a, b) => b.progreso_porcentaje - a.progreso_porcentaje).slice(0, 3);
+
+  // Calculate average from course progresses if overall average not provided, or use stats.promedio_general if available (backend doesn't send it explicit, but we can compute)
+  const average = subjects.length
+    ? Math.round(subjects.reduce((sum, s) => sum + s.progreso_porcentaje, 0) / subjects.length)
+    : 0;
+
   const textColor = isDark ? '#e2e8f0' : '#334155';
   const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
 
+  // Placeholder charts (Backend doesn't provide time-series data yet, keeping visual mocks but labeled as estimates)
   const lineChartData = {
     labels: ['Sim 1', 'Sim 2', 'Sim 3', 'Sim 4', 'Sim 5'],
     datasets: [
       {
-        label: 'Puntaje',
+        label: 'Puntaje Estimado',
         data: [55, 62, 75, 68, 82],
         borderColor: '#8b5cf6',
         backgroundColor: 'rgba(139, 92, 246, 0.2)',
@@ -79,22 +99,10 @@ const ProgresoPage = ({ subjects }) => {
   const lineChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        labels: { color: textColor },
-      },
-    },
+    plugins: { legend: { labels: { color: textColor } } },
     scales: {
-      y: {
-        beginAtZero: true,
-        max: 100,
-        ticks: { color: textColor },
-        grid: { color: gridColor },
-      },
-      x: {
-        ticks: { color: textColor },
-        grid: { color: gridColor },
-      },
+      y: { beginAtZero: true, max: 100, ticks: { color: textColor }, grid: { color: gridColor } },
+      x: { ticks: { color: textColor }, grid: { color: gridColor } },
     },
   };
 
@@ -103,7 +111,7 @@ const ProgresoPage = ({ subjects }) => {
     datasets: [
       {
         label: 'Minutos',
-        data: [45, 60, 25, 90, 30, 75],
+        data: [45, 60, 25, 90, 30, 75], // Static for now until backend improves
         backgroundColor: '#10b981',
         borderRadius: 5,
       },
@@ -113,30 +121,24 @@ const ProgresoPage = ({ subjects }) => {
   const barChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-    },
+    plugins: { legend: { display: false } },
     scales: {
-      y: {
-        beginAtZero: true,
-        ticks: { color: textColor },
-        grid: { color: gridColor },
-      },
-      x: {
-        ticks: { color: textColor },
-        grid: { color: gridColor },
-      },
+      y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: gridColor } },
+      x: { ticks: { color: textColor }, grid: { color: gridColor } },
     },
   };
+
+  if (loading) return <div className="p-8 text-center">Cargando progreso...</div>;
 
   return (
     <div className="page active space-y-6">
       <div>
         <h1 className="text-3xl font-bold mb-2">Mi Progreso General</h1>
-        <p className="text-slate-600 dark:text-slate-400">Analiza tu evolución y áreas de mejora.</p>
+        <p className="text-slate-600 dark:text-slate-400">
+          Nivel {stats.nivel || 1} • {stats.total_puntos || 0} Puntos Totales
+        </p>
       </div>
 
-      {/* Chart Grid - 5 columns layout */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3 glass-effect-light p-6 rounded-2xl h-80 dark:border-white/5 border border-slate-200">
           <h3 className="font-bold mb-4">Evolución en Simulacros</h3>
@@ -145,7 +147,7 @@ const ProgresoPage = ({ subjects }) => {
           </div>
         </div>
         <div className="lg:col-span-2 glass-effect-light p-6 rounded-2xl h-80 dark:border-white/5 border border-slate-200">
-          <h3 className="font-bold mb-4">Tiempo de Estudio (Última Semana)</h3>
+          <h3 className="font-bold mb-4">Tiempo de Estudio (Semanal: {stats.actividades_semana || 0} actividades)</h3>
           <div className="h-64">
             <Bar data={barChartData} options={barChartOptions} />
           </div>
@@ -157,9 +159,12 @@ const ProgresoPage = ({ subjects }) => {
           <h3 className="font-bold mb-4">Materias con Mejor Progreso</h3>
           <ul className="space-y-3">
             {bestSubjects.map((subject) => (
-              <li key={subject.id} className="flex items-center justify-between">
-                <span>{subject.title}</span>
-                <span className="font-bold text-primary">{subject.progress || 0}%</span>
+              <li key={subject.curso_id} className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">{subject.curso_titulo}</div>
+                  <div className="text-xs text-slate-500">Exámenes: {subject.total_examenes} | Promedio: {subject.promedio_examenes}</div>
+                </div>
+                <span className="font-bold text-primary">{subject.progreso_porcentaje}%</span>
               </li>
             ))}
             {!bestSubjects.length && <p className="text-slate-500">No hay materias registradas.</p>}
@@ -179,19 +184,19 @@ const ProgresoPage = ({ subjects }) => {
         <h3 className="font-bold">Estadísticas de Estudio</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <div>
-            <div className="text-2xl font-bold text-primary">{subjects.length}</div>
+            <div className="text-2xl font-bold text-primary">{stats.total_cursos || 0}</div>
             <p className="text-sm text-slate-500 dark:text-slate-400">Materias</p>
           </div>
           <div>
-            <div className="text-2xl font-bold text-primary">{subjects.length * 5}</div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Recursos</p>
+            <div className="text-2xl font-bold text-primary">{stats.cursos_completados || 0}</div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Completadas</p>
           </div>
           <div>
             <div className="text-2xl font-bold text-primary">{average}%</div>
             <p className="text-sm text-slate-500 dark:text-slate-400">Progreso Promedio</p>
           </div>
           <div>
-            <div className="text-2xl font-bold text-primary">12h</div>
+            <div className="text-2xl font-bold text-primary">{stats.tiempo_total_horas || 0}h</div>
             <p className="text-sm text-slate-500 dark:text-slate-400">Horas estudiadas</p>
           </div>
         </div>

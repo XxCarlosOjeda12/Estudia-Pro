@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useAppContext } from '../../context/AppContext.jsx';
+import { apiService } from '../../lib/api';
 
 const normalize = (value) => (value || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
@@ -23,8 +24,14 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
     });
   }, [resources, search, subjectFilter, typeFilter]);
 
-  const handleDownload = (resource) => {
-    pushToast({ title: 'Descarga', message: `Descargando ${resource.title} (demo).`, type: 'info' });
+  const handleDownload = async (resource) => {
+    pushToast({ title: 'Descarga', message: `Descargando ${resource.title}.`, type: 'info' });
+    try {
+      await apiService.markResourceCompleted(resource.id);
+      pushToast({ title: 'Progreso', message: 'Recurso marcado como visto.', type: 'success' });
+    } catch (error) {
+      console.error('Error marking completed:', error);
+    }
   };
 
   const handlePurchase = (resourceId) => {
