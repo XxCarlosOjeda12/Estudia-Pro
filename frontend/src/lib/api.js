@@ -91,10 +91,14 @@ const DemoAPI = {
     const demoUsers = HARDCODED_DATA.demoUsersList;
 
     if (endpoint === API_CONFIG.ENDPOINTS.AUTH.LOGIN && method === 'POST') {
-      const identifier = (data?.email || data?.username || '').toLowerCase();
-      const profile = demoUsers.find((user) =>
-        [user.email?.toLowerCase(), user.username?.toLowerCase()].includes(identifier)
-      );
+      const identifier = (data?.email || data?.username || '').toString().toLowerCase().trim();
+
+      const profile = demoUsers.find((user) => {
+        const u = (user.username || '').toString().toLowerCase().trim();
+        const e = (user.email || '').toString().toLowerCase().trim();
+        return u === identifier || (e && e === identifier);
+      });
+
       if (profile && (profile.password || 'demo123') === data?.password) {
         this.currentUser = profile;
         localStorage.setItem('authToken', 'demo-token');
