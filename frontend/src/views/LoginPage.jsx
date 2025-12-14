@@ -3,18 +3,11 @@ import { DEMO_PROFILES } from '../lib/constants.js';
 import { apiService } from '../lib/api.js';
 import { useAppContext } from '../context/AppContext.jsx';
 
-const LoginPage = () => {
+const LoginPage = ({ onNavigate }) => {
   const { login, loading, demoEnabled, toggleDemoMode, pushToast } = useAppContext();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(false);
-  const [mode, setMode] = useState('login');
-  const [registerData, setRegisterData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    role: 'ESTUDIANTE'
-  });
 
   useEffect(() => {
     const saved = localStorage.getItem('savedIdentifier');
@@ -26,39 +19,15 @@ const LoginPage = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (mode === 'login') {
-      if (!identifier || !password) {
-        pushToast({ title: 'Campos requeridos', message: 'Escribe tu usuario y contraseña.', type: 'alert' });
-        return;
-      }
-      const response = await login(identifier, password, remember);
-      if (!response?.success) {
-        pushToast({ title: 'Inicio de sesión', message: response?.message || 'No pudimos iniciar sesión.', type: 'alert' });
-      } else {
-        pushToast({ title: 'Bienvenido', message: 'Redirigiendo a tu panel principal.', type: 'success' });
-      }
+    if (!identifier || !password) {
+      pushToast({ title: 'Campos requeridos', message: 'Escribe tu usuario y contraseña.', type: 'alert' });
       return;
     }
-
-    if (!registerData.email || !registerData.password || !registerData.name) {
-      pushToast({ title: 'Campos requeridos', message: 'Completa nombre, correo y contraseña.', type: 'alert' });
-      return;
-    }
-    const payload = {
-      email: registerData.email,
-      password: registerData.password,
-      username: registerData.email.split('@')[0],
-      name: registerData.name,
-      rol: registerData.role
-    };
-    const response = await apiService.register(payload);
-    if (response?.success) {
-      pushToast({ title: 'Registro', message: response?.message || 'Registro exitoso, ahora inicia sesión.', type: 'success' });
-      setMode('login');
-      setIdentifier(registerData.email);
-      setPassword(registerData.password);
+    const response = await login(identifier, password, remember);
+    if (!response?.success) {
+      pushToast({ title: 'Inicio de sesión', message: response?.message || 'No pudimos iniciar sesión.', type: 'alert' });
     } else {
-      pushToast({ title: 'Registro', message: response?.message || 'No se pudo completar el registro.', type: 'alert' });
+      pushToast({ title: 'Bienvenido', message: 'Redirigiendo a tu panel principal.', type: 'success' });
     }
   };
 
@@ -75,53 +44,40 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-bg via-[#0b1224] to-[#0c1530] text-slate-200 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-dark-bg via-[#0b1224] to-[#0c1530] text-slate-200 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Ambience */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary/20 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-600/20 blur-[120px] rounded-full" />
+      </div>
+
+      <div className="w-full max-w-md relative z-10 animate-in fade-in zoom-in-95 duration-500">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-primary">Estudia-Pro</h1>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">Estudia-Pro</h1>
           <p className="text-slate-400 mt-2">Tu aliado para aprobar y avanzar en matemáticas.</p>
         </div>
 
         <div className="glass-effect-light p-8 rounded-2xl shadow-2xl border border-white/10">
-          <div className="flex border-b border-slate-700/40 mb-4">
-            <button
-              className={`flex-1 py-2 font-medium text-center ${mode === 'login' ? 'text-primary border-b-2 border-primary' : 'text-slate-500'}`}
-              onClick={() => setMode('login')}
-            >
-              Iniciar Sesión
-            </button>
-            <button
-              className={`flex-1 py-2 font-medium text-center ${mode === 'register' ? 'text-primary border-b-2 border-primary' : 'text-slate-500'}`}
-              onClick={() => setMode('register')}
-            >
-              Registrarse
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-3">
-            <span>Modo Demo listo para pruebas</span>
+          <div className="flex items-center justify-between text-xs text-slate-400 mb-6">
+            <span>Inicio de Sesión</span>
             <button
               type="button"
               onClick={toggleDemoMode}
-              className={`px-3 py-1 rounded-full border text-[11px] font-semibold uppercase tracking-widest ${demoEnabled ? 'border-primary/40 text-primary' : 'border-slate-400 text-slate-400'}`}
+              className={`px-3 py-1 rounded-full border text-[10px] font-semibold uppercase tracking-widest transition-all ${demoEnabled ? 'border-primary/40 text-primary bg-primary/5' : 'border-slate-600 text-slate-500 hover:text-slate-300'}`}
             >
-              {demoEnabled ? 'Activado' : 'Desactivado'}
+              {demoEnabled ? 'Demo Mode On' : 'Real Mode'}
             </button>
           </div>
 
-          <div className="text-[11px] mb-6 bg-slate-900/50 border border-white/5 rounded-lg px-3 py-2 text-slate-400">
-            También puedes usar tus credenciales reales. Para la demo utiliza <span className="font-semibold text-primary">demo@estudiapro.com / demo123</span>.
-          </div>
-
-          <div className={`${demoEnabled && mode === 'login' ? 'block' : 'hidden'} mb-6`}>
-            <p className="text-xs uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">Perfiles rápidos</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+          <div className={`${demoEnabled ? 'block' : 'hidden'} mb-6`}>
+            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2 font-semibold">Accesos Rápidos (Demo)</p>
+            <div className="grid grid-cols-3 gap-2 text-xs">
               {Object.keys(DEMO_PROFILES).map((key) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => handleDemoProfile(key)}
-                  className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary hover:text-primary transition-colors"
+                  className="px-2 py-2 rounded-lg border border-slate-700 hover:border-primary hover:text-primary transition-colors bg-slate-800/50"
                 >
                   {key.charAt(0).toUpperCase() + key.slice(1)}
                 </button>
@@ -129,121 +85,67 @@ const LoginPage = () => {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'login' ? (
-              <>
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-slate-200 mb-1">
-                    Usuario o correo electrónico
-                  </label>
-                  <input
-                    id="email"
-                    type="text"
-                    value={identifier}
-                    onChange={(event) => setIdentifier(event.target.value)}
-                    placeholder="tu.usuario o correo"
-                    className="w-full px-4 py-2 bg-slate-900/50 border border-white/10 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-slate-200 mb-1">
-                    Contraseña
-                  </label>
-                  <input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="••••••••"
-                    className="w-full px-4 py-2 bg-slate-900/50 border border-white/10 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none text-slate-100"
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 text-sm text-slate-400">
-                    <input
-                      type="checkbox"
-                      checked={remember}
-                      onChange={(event) => setRemember(event.target.checked)}
-                      className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                    />
-                    Recordarme
-                  </label>
-                  <button type="button" className="text-primary text-sm hover:underline">
-                    ¿Olvidaste tu contraseña?
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-slate-200 mb-1">Nombre completo</label>
-                  <input
-                    type="text"
-                    value={registerData.name}
-                    onChange={(event) => setRegisterData((prev) => ({ ...prev, name: event.target.value }))}
-                    placeholder="Tu nombre"
-                    className="w-full px-4 py-2 bg-slate-900/50 border border-white/10 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-200 mb-1">Correo</label>
-                  <input
-                    type="email"
-                    value={registerData.email}
-                    onChange={(event) => setRegisterData((prev) => ({ ...prev, email: event.target.value }))}
-                    placeholder="correo@estudiapro.com"
-                    className="w-full px-4 py-2 bg-slate-900/50 border border-white/10 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-200 mb-1">Contraseña</label>
-                  <input
-                    type="password"
-                    value={registerData.password}
-                    onChange={(event) => setRegisterData((prev) => ({ ...prev, password: event.target.value }))}
-                    placeholder="••••••••"
-                    className="w-full px-4 py-2 bg-slate-900/50 border border-white/10 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-200 mb-1">Rol</label>
-                  <select
-                    value={registerData.role}
-                    onChange={(event) => setRegisterData((prev) => ({ ...prev, role: event.target.value }))}
-                    className="w-full px-4 py-2 bg-slate-900/50 border border-white/10 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none text-slate-100"
-                  >
-                    <option value="ESTUDIANTE">Estudiante</option>
-                    <option value="CREADOR">Creador</option>
-                    <option value="ADMINISTRADOR">Administrador</option>
-                  </select>
-                </div>
-              </>
-            )}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-1.5 ml-1">
+                Usuario o correo
+              </label>
+              <input
+                id="email"
+                type="text"
+                value={identifier}
+                onChange={(event) => setIdentifier(event.target.value)}
+                placeholder="tu.usuario o correo"
+                className="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl focus:ring-2 focus:ring-primary focus:outline-none text-slate-100 placeholder-slate-500 transition-all"
+              />
+            </div>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-1.5 ml-1">
+                Contraseña
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="••••••••"
+                className="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl focus:ring-2 focus:ring-primary focus:outline-none text-slate-100 placeholder-slate-500 transition-all"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer hover:text-slate-300 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(event) => setRemember(event.target.checked)}
+                  className="h-4 w-4 text-primary bg-slate-800 border-slate-600 rounded focus:ring-primary"
+                />
+                Recordarme
+              </label>
+              <button type="button" className="text-primary text-sm hover:text-primary-focus transition-colors">
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary hover:bg-primary-focus text-white font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105 disabled:opacity-60"
+              className="w-full py-3.5 bg-gradient-to-r from-primary to-blue-600 hover:opacity-90 text-white font-bold rounded-xl shadow-lg shadow-primary/25 transform hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
             >
-              {loading ? 'Procesando...' : mode === 'login' ? 'Ingresar' : 'Crear cuenta'}
+              {loading ? 'Iniciando sesión...' : 'Ingresar al Portal'}
             </button>
           </form>
 
-          <p className="text-center text-slate-400 text-sm mt-6">
-            {mode === 'login' ? (
-              <>
-                ¿No tienes cuenta?{' '}
-                <button type="button" className="text-primary font-bold hover:underline" onClick={() => setMode('register')}>
-                  Regístrate gratis
-                </button>
-              </>
-            ) : (
-              <>
-                ¿Ya tienes cuenta?{' '}
-                <button type="button" className="text-primary font-bold hover:underline" onClick={() => setMode('login')}>
-                  Inicia sesión
-                </button>
-              </>
-            )}
+          <p className="text-center text-slate-400 text-sm mt-8 border-t border-white/5 pt-6">
+            ¿No tienes cuenta?{' '}
+            <button
+              type="button"
+              className="text-primary font-bold hover:text-primary-focus transition-colors ml-1"
+              onClick={() => onNavigate('register')}
+            >
+              Regístrate gratis
+            </button>
           </p>
         </div>
       </div>

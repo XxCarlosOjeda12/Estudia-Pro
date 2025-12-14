@@ -2,56 +2,61 @@ export const API_CONFIG = {
   BASE_URL: 'http://127.0.0.1:8000/api',
   ENDPOINTS: {
     AUTH: {
-      LOGIN: '/auth/login',
-      REGISTER: '/auth/register',
-      VERIFY: '/auth/verify',
-      LOGOUT: '/auth/logout'
+      LOGIN: '/auth/login/',
+      REGISTER: '/auth/register/',
+      VERIFY: '/auth/verify/',
+      LOGOUT: '/auth/logout/'
     },
     USERS: {
-      GET_PROFILE: '/auth/profile',
-      UPDATE_PROFILE: '/users/profile'
+      GET_PROFILE: '/auth/profile/',
+      UPDATE_PROFILE: '/users/profile/'
     },
     SUBJECTS: {
-      GET_ALL: '/subjects',
-      GET_USER_SUBJECTS: '/users/subjects',
-      ADD_SUBJECT: '/users/subjects',
-      UPDATE_EXAM_DATE: '/users/subjects/exam-date'
+      GET_ALL: '/cursos/',
+      GET_USER_SUBJECTS: '/mis-cursos/',
+      ADD_SUBJECT: '/mis-cursos/inscribir/', // Assuming enrollment endpoint
+      UPDATE_EXAM_DATE: '/mis-cursos/fecha-examen/'
     },
     RESOURCES: {
-      GET_ALL: '/resources',
-      GET_PURCHASED: '/users/resources',
-      PURCHASE: '/resources/purchase',
-      DOWNLOAD: '/resources/download'
+      GET_ALL: '/recursos/',
+      GET_PURCHASED: '/recursos/mis-compras/', // Validating existence later
+      PURCHASE: '/recursos/comprar/',
+      DOWNLOAD: '/recursos/descargar/'
     },
     EXAMS: {
-      GET_ALL: '/exams',
-      START_EXAM: '/exams/start',
-      SUBMIT_EXAM: '/exams/submit'
+      GET_ALL: '/examenes/',
+      START_EXAM: '/examenes/iniciar/',
+      SUBMIT_EXAM: '/examenes/enviar/'
     },
     TUTORS: {
-      GET_ALL: '/tutors',
-      SCHEDULE: '/tutors/schedule'
+      GET_ALL: '/tutores/', // Should create if missing or handle 404 gracefully
+      SCHEDULE: '/tutores/agendar/'
     },
     FORUMS: {
-      GET_ALL: '/forums',
-      CREATE_TOPIC: '/forums/topics',
-      GET_TOPIC: '/forums/topics'
+      GET_ALL: '/foro/',
+      CREATE_TOPIC: '/foro/temas/',
+      GET_TOPIC: '/foro/temas/'
     },
     ACHIEVEMENTS: {
-      GET_USER_ACHIEVEMENTS: '/users/achievements',
-      GET_ALL: '/achievements'
+      GET_USER_ACHIEVEMENTS: '/mis-logros/',
+      GET_ALL: '/logros/'
     },
     NOTIFICATIONS: {
-      GET_USER_NOTIFICATIONS: '/users/notifications',
-      MARK_READ: '/users/notifications/read'
+      GET_USER_NOTIFICATIONS: '/notificaciones/',
+      MARK_READ: '/notificaciones/leer/'
     },
     ADMIN: {
-      USERS: '/admin/users',
-      SUBJECTS: '/admin/subjects',
-      RESOURCES: '/admin/resources'
+      USERS: '/admin/users/',
+      SUBJECTS: '/admin/custom/cursos/',
+      RESOURCES: '/admin/custom/recursos/'
     },
     FORMULARIES: {
-      GET_ALL: '/formularies'
+      GET_ALL: '/formularios/'
+    },
+    COMMUNITY_RESOURCES: {
+      BASE: '/recursos-comunidad/',
+      MY_RESOURCES: '/recursos-comunidad/mis_recursos/',
+      SEARCH: '/recursos-comunidad/buscar/' // Correct as per backend code
     }
   }
 };

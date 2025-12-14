@@ -55,23 +55,65 @@ const DashboardShell = () => {
 
   useEffect(() => {
     const bootstrap = async () => {
-      const [
-        subjectsData,
-        resourcesData,
-        examsData,
-        forumsData,
-        formulariesData,
-        tutorsData
-      ] = await Promise.all([
+      const results = await Promise.allSettled([
         apiService.getAllSubjects(),
         apiService.getAllResources(),
+        apiService.getCommunityResources(), // Fetch approved community resources
         apiService.getAllExams(),
         apiService.getAllForums(),
         apiService.getAllFormularies(),
         apiService.getAllTutors()
       ]);
+
+      const subjectsData = results[0].status === 'fulfilled' ? results[0].value : [];
+      const resourcesData = results[1].status === 'fulfilled' ? results[1].value : [];
+      const communityResourcesData = results[2].status === 'fulfilled' ? results[2].value : [];
+      const examsData = results[3].status === 'fulfilled' ? results[3].value : [];
+      const forumsData = results[4].status === 'fulfilled' ? results[4].value : [];
+      const formulariesData = results[5].status === 'fulfilled' ? results[5].value : [];
+      const tutorsData = []; // Mock empty for now due to 404
+
+      if (results[2].status === 'rejected') console.error('Community Resources Error:', results[2].reason);
+
+      // Normalize resources to match UI expectations (handle backend/frontend field mismatches)
+      const normalizeResource = (res) => {
+        let authorName = 'Anónimo';
+        if (typeof res.author === 'string') authorName = res.author;
+        else if (typeof res.autor_nombre === 'string') authorName = res.autor_nombre;
+        else if (res.autor && typeof res.autor === 'object') {
+          // Handle Django User Serializer object
+          const { first_name, last_name, username, name } = res.autor;
+          if (name) authorName = name;
+          else if (first_name || last_name) authorName = `${first_name || ''} ${last_name || ''}`.trim();
+          else authorName = username || 'Anónimo';
+        } else if (typeof res.autor === 'string') {
+          authorName = res.autor;
+        }
+
+        return {
+          ...res,
+          id: res.id,
+          title: res.title || res.titulo || 'Sin título',
+          description: res.description || res.descripcion || '',
+          subjectName: res.subjectName || res.nombre_curso || res.curso_nombre || 'General',
+          author: authorName,
+          type: (res.type || res.tipo || 'DOCUMENTO').toLowerCase(),
+          price: res.price || res.precio || 0,
+          rating: res.rating || res.calificacion_promedio || 0,
+          downloads: res.downloads || res.descargas || 0,
+          free: res.hasOwnProperty('free') ? res.free : (res.es_gratuito || res.precio === 0)
+        };
+      };
+
+      const allResources = [
+        ...resourcesData.map(normalizeResource),
+        ...communityResourcesData.map(normalizeResource)
+      ];
+
+      console.log('Normalized Combined Resources:', allResources);
+
       setSubjects(subjectsData);
-      setResources(resourcesData);
+      setResources(allResources);
       setExams(examsData);
       setForums(forumsData);
       setFormularies(formulariesData);
@@ -95,7 +137,7 @@ const DashboardShell = () => {
       }
       await refreshNotifications();
     };
-    bootstrap().catch((error) => console.error(error));
+    bootstrap().catch((error) => console.error('Bootstrap Error:', error));
   }, [user, refreshNotifications]);
 
   // Icons defined as simple SVG components for minimalist look

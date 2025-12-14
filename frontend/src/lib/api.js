@@ -346,7 +346,16 @@ const request = async (endpoint, method = 'GET', data = null, requiresAuth = tru
   const response = await fetch(url, options);
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `Error ${response.status}`);
+    let errorMessage = errorData.message || errorData.detail;
+
+    if (!errorMessage && typeof errorData === 'object') {
+      const values = Object.values(errorData).flat();
+      if (values.length > 0) {
+        errorMessage = values.join(', ');
+      }
+    }
+
+    throw new Error(errorMessage || `Error ${response.status}`);
   }
   return response.json();
 };
@@ -468,5 +477,18 @@ export const apiService = {
   },
   deleteSubject(subjectId) {
     return request(`${API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS}/${subjectId}`, 'DELETE');
+  },
+  // Community Resources
+  createCommunityResource(resourceData) {
+    return request(API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.BASE, 'POST', resourceData);
+  },
+  getMyCommunityResources() {
+    return request(API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.MY_RESOURCES);
+  },
+  getCommunityResources(query = '', type = '') {
+    const params = new URLSearchParams();
+    if (query) params.append('q', query);
+    if (type) params.append('tipo', type);
+    return request(`${API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.SEARCH}?${params.toString()}`);
   }
 };
