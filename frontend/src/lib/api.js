@@ -889,7 +889,7 @@ const DemoAPI = {
       return { success: true, message: 'Tutoría agendada (demo)' };
     }
 
-    if (endpoint === API_CONFIG.ENDPOINTS.FORUMS.GET_ALL) {
+    if (endpoint === API_CONFIG.ENDPOINTS.FORUMS.GET_ALL && method === 'GET') {
       this.ensureForumsLoaded();
       return deepClone(
         (this.forums || []).map((topic) => ({
@@ -970,7 +970,8 @@ const DemoAPI = {
         this.broadcastChange('forums');
         return { success: true, post: deepClone(newPost) };
       }
-      const topicId = endpoint.split('/').pop();
+      const parts = endpoint.split('/').filter(Boolean);
+      const topicId = parts[parts.length - 1];
       const topic = (this.forums || []).find((forum) => forum.id === topicId);
       if (!topic) throw new Error('Tema no encontrado');
       return deepClone({

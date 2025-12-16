@@ -99,15 +99,15 @@ export const AppProvider = ({ children }) => {
     resetSession();
   };
 
-  const pushToast = ({ title, message, type = 'info' }) => {
+  const dismissToast = useCallback((id) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  }, []);
+
+  const pushToast = useCallback(({ title, message, type = 'info' }) => {
     const id = Date.now().toString();
     setToasts((prev) => [...prev, { id, title, message, type }]);
     setTimeout(() => dismissToast(id), 5000);
-  };
-
-  const dismissToast = (id) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  };
+  }, [dismissToast]);
 
   const value = useMemo(() => ({
     user,
@@ -126,7 +126,7 @@ export const AppProvider = ({ children }) => {
     enableDemoMode,
     pushToast,
     dismissToast
-  }), [user, token, loading, notifications, demoEnabled, cache, toasts]);
+  }), [user, token, loading, notifications, demoEnabled, cache, toasts, loadProfile, pushToast, dismissToast]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };

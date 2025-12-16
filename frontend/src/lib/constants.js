@@ -371,6 +371,20 @@ export const HARDCODED_DATA = {
           answer: '3',
           explanation: 'Usa el límite notable sin(x)/x = 1.',
           wolframQuery: 'limit sin(3x)/x as x->0'
+        },
+        {
+          id: 'q-4',
+          text: 'Determina la derivada de $y = \\ln(x^2 + 1)$',
+          answer: '\\frac{2x}{x^2+1}',
+          explanation: 'Regla de la cadena: $\\frac{1}{u} \\cdot u\'$.',
+          wolframQuery: 'derivative ln(x^2+1)'
+        },
+        {
+          id: 'q-5',
+          text: 'Encuentra la pendiente de la recta tangente a $f(x) = e^x$ en $x=0$',
+          answer: '1',
+          explanation: 'La derivada es $e^x$, evaluada en $0$ es $1$.',
+          wolframQuery: 'slope of e^x at x=0'
         }
       ]
     },
@@ -391,9 +405,118 @@ export const HARDCODED_DATA = {
         {
           id: 'alg-q2',
           text: '¿Cuál es el vector propio asociado a $\\lambda=3$ de la matriz $A = \\begin{pmatrix}4 & 1\\\\0 & 3\\end{pmatrix}$?',
-          answer: '\\begin{pmatrix}0\\\\1\\end{pmatrix}',
-          explanation: 'Resuelve (A-3I)v=0.',
+          answer: '\\begin{pmatrix}1\\\\-1\\end{pmatrix}',
+          explanation: 'Resuelve $(A-3I)v=0$.',
           wolframQuery: 'eigenvectors [[4,1],[0,3]]'
+        },
+        {
+          id: 'alg-q3',
+          text: 'Si $A$ es una matriz de $3\\times3$ y $\\det(A)=2$, ¿cuánto es $\\det(2A)$?',
+          answer: '16',
+          explanation: 'Propiedad: $\\det(kA) = k^n \\det(A)$ donde $n=3$. $2^3(2) = 16$.',
+          wolframQuery: 'det(2A) for 3x3 matrix if det(A)=2'
+        },
+        {
+          id: 'alg-q4',
+          text: 'Calcula la traza de $B = \\begin{pmatrix} 1 & 0 & 5 \\\\ 0 & 2 & 0 \\\\ 3 & 4 & 1 \\end{pmatrix}$',
+          answer: '4',
+          explanation: 'Suma de la diagonal principal: $1 + 2 + 1 = 4$.',
+          wolframQuery: 'trace {{1,0,5},{0,2,0},{3,4,1}}'
+        },
+        {
+          id: 'alg-q5',
+          text: '¿Son los vectores $v_1=(1,0), v_2=(0,1), v_3=(1,1)$ linealmente independientes?',
+          answer: 'No',
+          explanation: 'Tres vectores en $\\mathbb{R}^2$ siempre son dependientes ($v_3 = v_1 + v_2$).',
+          wolframQuery: 'are (1,0), (0,1), (1,1) linearly independent'
+        }
+      ]
+    },
+    {
+      id: 'exam-ecuaciones',
+      subjectId: 'ecu-1',
+      subjectName: 'Ecuaciones Diferenciales',
+      title: 'Simulacro Ecuaciones Orden 1',
+      duration: 3000,
+      questions: [
+        {
+          id: 'ecu-q1',
+          text: 'Resuelve la ecuación separable $y\' = y$',
+          answer: 'y = Ce^x',
+          explanation: 'Separando variables $\\frac{dy}{y} = dx \\implies \\ln|y| = x + C$.',
+          wolframQuery: 'solve y\' = y'
+        },
+        {
+          id: 'ecu-q2',
+          text: '¿Cuál es el factor integrante para $y\' + \\frac{1}{x}y = x$?',
+          answer: 'x',
+          explanation: '$\\mu(x) = e^{\\int (1/x) dx} = e^{\\ln x} = x$.',
+          wolframQuery: 'integrating factor y\' + y/x = x'
+        },
+        {
+          id: 'ecu-q3',
+          text: 'Transformada de Laplace de $f(t) = 1$',
+          answer: '\\frac{1}{s}',
+          explanation: 'Definición: $\\int_0^\\infty e^{-st} dt = 1/s$.',
+          wolframQuery: 'Laplace transform of 1'
+        },
+        {
+          id: 'ecu-q4',
+          text: 'Determina el orden de la ecuación $y\'\' + (y\')^3 = x$',
+          answer: '2',
+          explanation: 'El orden es la derivada más alta, que es $y\'\'$.',
+          wolframQuery: 'order of y\'\' + (y\')^3 = x'
+        },
+        {
+          id: 'ecu-q5',
+          text: 'Solución general de $y\'\' - y = 0$',
+          answer: 'y = C_1 e^x + C_2 e^{-x}',
+          explanation: 'Ecuación característica $r^2 - 1 = 0 \\implies r = \\pm 1$.',
+          wolframQuery: 'solve y\'\' - y = 0'
+        }
+      ]
+    },
+    {
+      id: 'exam-probabilidad',
+      subjectId: 'prob-1',
+      subjectName: 'Probabilidad y Estadística',
+      title: 'Simulacro Probabilidad Básica',
+      duration: 2400,
+      questions: [
+        {
+          id: 'prob-q1',
+          text: 'Calcula $\\binom{5}{2}$',
+          answer: '10',
+          explanation: 'Combinaciones: $\\frac{5!}{2!(5-2)!} = \\frac{120}{2 \\cdot 6} = 10$.',
+          wolframQuery: '5 choose 2'
+        },
+        {
+          id: 'prob-q2',
+          text: 'Probabilidad de obtener "Cara" al lanzar una moneda justa',
+          answer: '0.5',
+          explanation: 'Casos favorables (1) / Casos totales (2).',
+          wolframQuery: 'probability of heads'
+        },
+        {
+          id: 'prob-q3',
+          text: 'Si $P(A)=0.3, P(B)=0.4$ y son independientes, halla $P(A \\cap B)$',
+          answer: '0.12',
+          explanation: 'Independencia implica $P(A \\cap B) = P(A)P(B) = (0.3)(0.4)$.',
+          wolframQuery: '0.3 * 0.4'
+        },
+        {
+          id: 'prob-q4',
+          text: '¿Cuál es la media de una distribución normal estándar $Z$?',
+          answer: '0',
+          explanation: 'Por definición, $N(0, 1)$ tiene media 0.',
+          wolframQuery: 'mean of standard normal distribution'
+        },
+        {
+          id: 'prob-q5',
+          text: 'Permutaciones de las letras de la palabra "SOL"',
+          answer: '6',
+          explanation: '$3! = 3 \\times 2 \\times 1 = 6$.',
+          wolframQuery: 'permutations of SOL'
         }
       ]
     }
@@ -442,7 +565,8 @@ export const HARDCODED_DATA = {
       subjectName: 'Álgebra Lineal',
       posts: [
         { id: 'post-1', author: 'Carlos T.', content: 'Estoy atascado en la parte donde debo eliminar una raíz repetida.', createdAt: '2024-05-23T11:15:00Z', votes: 2 },
-        { id: 'post-2', author: 'Ana García (Mentora)', content: 'Utiliza división sintética dos veces, luego factoriza el resultado cuadrático.', createdAt: '2024-05-23T12:20:00Z', votes: 12 }
+        { id: 'post-2', author: 'Ana García (Mentora)', content: 'Utiliza división sintética dos veces, luego factoriza el resultado cuadrático.', createdAt: '2024-05-23T12:20:00Z', votes: 12 },
+        { id: 'post-new-1', author: 'Ian Salazar', content: 'También puedes graficarlo rápido en W.Alpha para encontrar una raíz entera y bajarle el grado.', createdAt: '2024-05-23T13:45:00Z', votes: 4 }
       ]
     },
     {
@@ -451,7 +575,8 @@ export const HARDCODED_DATA = {
       subjectName: 'Cálculo Diferencial',
       posts: [
         { id: 'post-3', author: 'Daniela Y.', content: '¿Algún truco para recordar qué elegir como u y dv?', createdAt: '2024-05-22T18:10:00Z', votes: 5 },
-        { id: 'post-4', author: 'Ian Salazar', content: 'Aplica LIATE y practica con integrales de logaritmos. Arma una tabla rápida.', createdAt: '2024-05-22T19:05:00Z', votes: 8 }
+        { id: 'post-4', author: 'Ian Salazar', content: 'Aplica LIATE y practica con integrales de logaritmos. Arma una tabla rápida.', createdAt: '2024-05-22T19:05:00Z', votes: 8 },
+        { id: 'post-new-2', author: 'Prof. Sofía', content: 'Recuerda: si tienes e^x y sen(x), es cíclica. Tienes que integrar dos veces y despejar.', createdAt: '2024-05-23T09:10:00Z', votes: 10 }
       ]
     },
     {
@@ -460,7 +585,26 @@ export const HARDCODED_DATA = {
       subjectName: 'Ecuaciones Diferenciales',
       posts: [
         { id: 'post-5', author: 'Sofía', content: '¿Recomiendan empezar por separables o por factor integrante?', createdAt: '2024-05-21T07:45:00Z' },
-        { id: 'post-6', author: 'Monitor IA', content: 'Empieza con separables y exactas, después pasa a coeficientes constantes.', createdAt: '2024-05-21T08:30:00Z' }
+        { id: 'post-6', author: 'Monitor IA', content: 'Empieza con separables y exactas, después pasa a coeficientes constantes.', createdAt: '2024-05-21T08:30:00Z' },
+        { id: 'post-new-3', author: 'Carlos T.', content: 'Ojo con las EDOs exactas, revisa siempre que My = Nx antes de integrar.', createdAt: '2024-05-21T10:20:00Z', votes: 3 }
+      ]
+    },
+    {
+      id: 'forum-4',
+      title: 'Duda sobre Teorema de Bayes',
+      subjectName: 'Probabilidad y Estadística',
+      posts: [
+        { id: 'post-7', author: 'Kevin M.', content: 'No entiendo cuándo el denominador es la suma de probabilidades totales. ayuda :(', createdAt: '2024-05-24T09:00:00Z', votes: 1 },
+        { id: 'post-8', author: 'Ian Salazar', content: 'Piensa en el denominador como "todos los casos posibles" de que ocurra el evento B. Suma P(B|Ai)P(Ai).', createdAt: '2024-05-24T10:15:00Z', votes: 6 }
+      ]
+    },
+    {
+      id: 'forum-5',
+      title: 'Matriz Inversa - Método de Gauss-Jordan',
+      subjectName: 'Álgebra Lineal Avanzada',
+      posts: [
+        { id: 'post-9', author: 'Luisa F.', content: '¿Qué pasa si al escalar la matriz me queda una fila de ceros?', createdAt: '2024-05-20T14:20:00Z', votes: 3 },
+        { id: 'post-10', author: 'Mtro. Armando', content: 'Si obtienes una fila de ceros en la parte izquierda, la matriz NO tiene inversa (es singular).', createdAt: '2024-05-20T16:45:00Z', votes: 15 }
       ]
     }
   ],

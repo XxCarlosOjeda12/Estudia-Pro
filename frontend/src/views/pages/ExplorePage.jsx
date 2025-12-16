@@ -8,9 +8,7 @@ const ExplorePage = ({ subjects, onAddSubject }) => {
 
   const [results, setResults] = useState(subjects);
 
-  useEffect(() => {
-    setResults(subjects);
-  }, [subjects]);
+
 
   useEffect(() => {
     const term = normalize(search);
