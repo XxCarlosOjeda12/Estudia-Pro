@@ -23,6 +23,14 @@ export const AppProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
   const [demoEnabled, setDemoEnabled] = useState(isDemoMode());
 
+  const resetSession = () => {
+    localStorage.removeItem('authToken');
+    setToken(null);
+    setUser(null);
+    setNotifications([]);
+    setCache(initialCache);
+  };
+
   const login = async (identifier, password, remember) => {
     setLoading(true);
     const response = await apiService.login(identifier, password);
@@ -58,10 +66,7 @@ export const AppProvider = ({ children }) => {
     } catch (error) {
       console.warn('Logout error', error);
     } finally {
-      localStorage.removeItem('authToken');
-      setToken(null);
-      setUser(null);
-      setCache(initialCache);
+      resetSession();
     }
   };
 
@@ -84,23 +89,14 @@ export const AppProvider = ({ children }) => {
   const toggleDemoMode = () => {
     const enabled = toggleDemo();
     setDemoEnabled(enabled);
-    if (enabled) {
-      localStorage.removeItem('authToken');
-      setToken(null);
-      setUser(null);
-      setCache(initialCache);
-    }
+    resetSession();
     return enabled;
   };
 
   const enableDemoMode = (flag) => {
     setDemoMode(flag);
     setDemoEnabled(flag);
-    if (!flag) return;
-    localStorage.removeItem('authToken');
-    setToken(null);
-    setUser(null);
-    setCache(initialCache);
+    resetSession();
   };
 
   const pushToast = ({ title, message, type = 'info' }) => {

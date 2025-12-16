@@ -1,5 +1,6 @@
 const PanelCreator = ({ user, resources, navigateTo }) => {
   const creatorResources = resources.filter((res) => res.author === user?.name);
+  const creatorProfile = user?.raw?.perfil_creador || {};
   const stats = user?.raw?.dashboard || { tutoring: [] };
 
   return (
@@ -15,11 +16,11 @@ const PanelCreator = ({ user, resources, navigateTo }) => {
         </div>
         <div className="glass-effect-light p-5 rounded-2xl text-center">
           <p className="text-xs uppercase text-slate-500 tracking-widest">Rating Promedio</p>
-          <p className="text-4xl font-bold text-primary mt-2">{stats.rating ?? '4.8'}</p>
+          <p className="text-4xl font-bold text-primary mt-2">{stats.rating ?? creatorProfile.calificacion_promedio ?? '—'}</p>
         </div>
         <div className="glass-effect-light p-5 rounded-2xl text-center">
           <p className="text-xs uppercase text-slate-500 tracking-widest">Estudiantes Ayudados</p>
-          <p className="text-4xl font-bold text-primary mt-2">{stats.studentsHelped ?? 0}</p>
+          <p className="text-4xl font-bold text-primary mt-2">{stats.studentsHelped ?? creatorProfile.num_resenas ?? 0}</p>
         </div>
       </div>
 

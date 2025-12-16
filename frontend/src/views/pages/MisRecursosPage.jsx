@@ -4,10 +4,11 @@ import { apiService } from '../../lib/api';
 import { useAppContext } from '../../context/AppContext';
 
 const MisRecursosPage = () => {
-  const { pushToast, user } = useAppContext();
+  const { pushToast } = useAppContext();
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [localFile, setLocalFile] = useState(null);
   const [formData, setFormData] = useState({
     titulo: '',
     descripcion: '',
@@ -40,10 +41,22 @@ const MisRecursosPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await apiService.createCommunityResource(formData);
+      if (localFile) {
+        const payload = new FormData();
+        payload.append('titulo', formData.titulo);
+        payload.append('descripcion', formData.descripcion);
+        payload.append('tipo', formData.tipo);
+        payload.append('contenido_texto', formData.contenido_texto || '');
+        if (formData.archivo_url) payload.append('archivo_url', formData.archivo_url);
+        payload.append('archivo', localFile);
+        await apiService.createCommunityResource(payload);
+      } else {
+        await apiService.createCommunityResource(formData);
+      }
       pushToast({ title: 'Éxito', message: 'Recurso creado correctamente', type: 'success' });
       setShowModal(false);
       setFormData({ titulo: '', descripcion: '', tipo: 'DOCUMENTO', archivo_url: '', contenido_texto: '' });
+      setLocalFile(null);
       fetchResources();
     } catch (error) {
       pushToast({ title: 'Error', message: error.message || 'Error al crear recurso', type: 'error' });
@@ -166,6 +179,17 @@ const MisRecursosPage = () => {
                   className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary outline-none"
                   placeholder="https://drive.google.com/..."
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Subir PDF (opcional)</label>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(event) => setLocalFile(event.target.files?.[0] || null)}
+                  className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary outline-none"
+                />
+                <p className="text-xs text-slate-500 mt-1">Puedes subir desde tu computadora o usar una URL.</p>
               </div>
 
               <div className="flex justify-end gap-3 pt-4">

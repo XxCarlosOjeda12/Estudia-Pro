@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppContext } from '../context/AppContext.jsx';
 import { apiService } from '../lib/api.js';
 import PanelStudent from './pages/PanelStudent.jsx';
@@ -17,9 +17,10 @@ import MisRecursosPage from './pages/MisRecursosPage.jsx';
 import TutoriasPage from './pages/TutoriasPage.jsx';
 import GestionUsuariosPage from './pages/GestionUsuariosPage.jsx';
 import GestionMateriasPage from './pages/GestionMateriasPage.jsx';
+import GestionFormulariosPage from './pages/GestionFormulariosPage.jsx';
 
 const DashboardShell = () => {
-  const { user, logout, refreshNotifications, notifications, pushToast } = useAppContext();
+  const { user, logout, refreshNotifications, notifications, pushToast, demoEnabled } = useAppContext();
   const [currentPage, setCurrentPage] = useState('panel');
   const [subjects, setSubjects] = useState([]);
   const [userSubjects, setUserSubjects] = useState([]);
@@ -37,6 +38,7 @@ const DashboardShell = () => {
   const [mobileMenu, setMobileMenu] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
+  const refreshAllTimer = useRef(null);
 
   const handleMarkRead = async (id) => {
     await apiService.markNotificationAsRead(id);
@@ -54,95 +56,172 @@ const DashboardShell = () => {
     }
   }, [darkMode]);
 
-  useEffect(() => {
-    const bootstrap = async () => {
-      const results = await Promise.allSettled([
-        apiService.getAllSubjects(),
-        apiService.getAllResources(),
-        apiService.getCommunityResources(), // Fetch approved community resources
-        apiService.getAllExams(),
-        apiService.getAllForums(),
-        apiService.getAllFormularies(),
-        apiService.getAllTutors()
-      ]);
+  const refreshAllData = useCallback(async () => {
+    const results = await Promise.allSettled([
+      apiService.getAllSubjects(),
+      apiService.getAllResources(),
+      apiService.getCommunityResources(),
+      apiService.getAllExams(),
+      apiService.getAllForums(),
+      apiService.getAllFormularies(),
+      apiService.getAllTutors()
+    ]);
 
-      const subjectsData = results[0].status === 'fulfilled' ? results[0].value : [];
-      const resourcesData = results[1].status === 'fulfilled' ? results[1].value : [];
-      const communityResourcesData = results[2].status === 'fulfilled' ? results[2].value : [];
-      const examsData = results[3].status === 'fulfilled' ? results[3].value : [];
-      const forumsData = results[4].status === 'fulfilled' ? results[4].value : [];
-      const formulariesData = results[5].status === 'fulfilled' ? results[5].value : [];
-      const tutorsData = []; // Mock empty for now due to 404
+    const subjectsData = results[0].status === 'fulfilled' ? results[0].value : [];
+    const resourcesData = results[1].status === 'fulfilled' ? results[1].value : [];
+    const communityResourcesData = results[2].status === 'fulfilled' ? results[2].value : [];
+    const examsData = results[3].status === 'fulfilled' ? results[3].value : [];
+    const forumsData = results[4].status === 'fulfilled' ? results[4].value : [];
+    const formulariesData = results[5].status === 'fulfilled' ? results[5].value : [];
+    const tutorsData = results[6].status === 'fulfilled' ? results[6].value : [];
 
-      if (results[2].status === 'rejected') console.error('Community Resources Error:', results[2].reason);
+    if (results[2].status === 'rejected') console.error('Community Resources Error:', results[2].reason);
+    if (results[6].status === 'rejected') console.error('Tutors Error:', results[6].reason);
 
-      // Normalize resources to match UI expectations (handle backend/frontend field mismatches)
-      const normalizeResource = (res) => {
-        let authorName = 'Anónimo';
-        if (typeof res.author === 'string') authorName = res.author;
-        else if (typeof res.autor_nombre === 'string') authorName = res.autor_nombre;
-        else if (res.autor && typeof res.autor === 'object') {
-          // Handle Django User Serializer object
-          const { first_name, last_name, username, name } = res.autor;
-          if (name) authorName = name;
-          else if (first_name || last_name) authorName = `${first_name || ''} ${last_name || ''}`.trim();
-          else authorName = username || 'Anónimo';
-        } else if (typeof res.autor === 'string') {
-          authorName = res.autor;
-        }
+    const normalizeResource = (res, source) => {
+      let authorName = 'Anónimo';
+      if (typeof res.author === 'string') authorName = res.author;
+      else if (typeof res.autor_nombre === 'string') authorName = res.autor_nombre;
+      else if (res.autor && typeof res.autor === 'object') {
+        const { first_name, last_name, username, name } = res.autor;
+        if (name) authorName = name;
+        else if (first_name || last_name) authorName = `${first_name || ''} ${last_name || ''}`.trim();
+        else authorName = username || 'Anónimo';
+      } else if (typeof res.autor === 'string') {
+        authorName = res.autor;
+      }
 
-        return {
-          ...res,
-          id: res.id,
-          title: res.title || res.titulo || 'Sin título',
-          description: res.description || res.descripcion || '',
-          subjectName: res.subjectName || res.nombre_curso || res.curso_nombre || 'General',
-          author: authorName,
-          type: (res.type || res.tipo || 'DOCUMENTO').toLowerCase(),
-          price: res.price || res.precio || 0,
-          rating: res.rating || res.calificacion_promedio || 0,
-          downloads: res.downloads || res.descargas || 0,
-          free: res.hasOwnProperty('free') ? res.free : (res.es_gratuito || res.precio === 0)
-        };
+      const inferredFree = res.hasOwnProperty('free') ? res.free : (res.es_gratuito || res.precio === 0);
+      const rawType = (res.type || res.tipo || 'DOCUMENTO').toString().toLowerCase();
+      let normalizedType = rawType;
+      if (source === 'community') {
+        if (['documento', 'pdf', 'presentacion'].includes(rawType)) normalizedType = 'pdf';
+        else if (rawType.includes('examen')) normalizedType = 'exam';
+        else if (rawType.includes('formula')) normalizedType = 'formula';
+      }
+
+      return {
+        ...res,
+        id: res.id,
+        title: res.title || res.titulo || 'Sin título',
+        description: res.description || res.descripcion || '',
+        subjectName: res.subjectName || res.curso_titulo || res.nombre_curso || res.curso_nombre || 'General',
+        author: authorName,
+        type: normalizedType,
+        price: res.price || res.precio || 0,
+        rating: res.rating || res.calificacion_promedio || 0,
+        downloads: res.downloads || res.descargas || 0,
+        free: source === 'community' ? true : Boolean(inferredFree),
+        source
       };
-
-      const allResources = [
-        ...resourcesData.map(normalizeResource),
-        ...communityResourcesData.map(normalizeResource)
-      ];
-
-      console.log('Normalized Combined Resources:', allResources);
-
-      setSubjects(subjectsData);
-      setResources(allResources);
-      setExams(examsData);
-      setForums(forumsData);
-      setFormularies(formulariesData);
-      setTutors(tutorsData);
-      if (user?.role === 'estudiante') {
-        const [studentSubjects, purchased, upcoming] = await Promise.all([
-          apiService.getUserSubjects(),
-          apiService.getPurchasedResources(),
-          apiService.getUpcomingActivities()
-        ]);
-        setUserSubjects(studentSubjects);
-        setPurchasedResources(purchased);
-        setUpcomingActivities(upcoming);
-      } else {
-        setUserSubjects([]);
-        setPurchasedResources([]);
-        setUpcomingActivities([]);
-      }
-      if (user?.role === 'administrador') {
-        const data = await apiService.getAllUsers();
-        setAdminUsers(data);
-      } else {
-        setAdminUsers([]);
-      }
-      await refreshNotifications();
     };
-    bootstrap().catch((error) => console.error('Bootstrap Error:', error));
+
+    const allResources = [
+      ...resourcesData.map((res) => normalizeResource(res, 'market')),
+      ...communityResourcesData.map((res) => normalizeResource(res, 'community'))
+    ];
+
+    setSubjects(subjectsData);
+    setResources(allResources);
+    setExams(examsData);
+    setForums(forumsData);
+    setFormularies(formulariesData);
+    setTutors(tutorsData);
+
+    if (user?.role === 'estudiante') {
+      const [studentSubjects, purchased, upcoming] = await Promise.all([
+        apiService.getUserSubjects(),
+        apiService.getPurchasedResources(),
+        apiService.getUpcomingActivities()
+      ]);
+      setUserSubjects(studentSubjects);
+      setPurchasedResources(purchased);
+      setUpcomingActivities(upcoming);
+    } else {
+      setUserSubjects([]);
+      setPurchasedResources([]);
+      setUpcomingActivities([]);
+    }
+
+    if (user?.role === 'administrador') {
+      const data = await apiService.getAllUsers();
+      setAdminUsers(data);
+    } else {
+      setAdminUsers([]);
+    }
+
+    await refreshNotifications();
   }, [user, refreshNotifications]);
+
+  const scheduleRefreshAll = useCallback(() => {
+    if (refreshAllTimer.current) clearTimeout(refreshAllTimer.current);
+    refreshAllTimer.current = setTimeout(() => {
+      refreshAllTimer.current = null;
+      refreshAllData().catch((error) => console.error('RefreshAll Error:', error));
+    }, 150);
+  }, [refreshAllData]);
+
+  useEffect(() => {
+    refreshAllData().catch((error) => console.error('Bootstrap Error:', error));
+  }, [refreshAllData]);
+
+  useEffect(() => {
+    if (demoEnabled) return;
+    if (!user) return;
+
+    let cancelled = false;
+    let inFlight = false;
+
+    const tick = async () => {
+      if (cancelled || inFlight) return;
+      inFlight = true;
+      try {
+        await refreshAllData();
+      } catch (error) {
+        console.error('Real-time refresh error:', error);
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    const interval = setInterval(tick, 7000);
+    const handleFocus = () => scheduleRefreshAll();
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [demoEnabled, user, refreshAllData, scheduleRefreshAll]);
+
+  useEffect(() => {
+    if (!demoEnabled) return;
+    if (!user) return;
+
+    const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('estudia-pro-demo-sync') : null;
+    const handleMessage = () => scheduleRefreshAll();
+    const handleStorage = (event) => {
+      if (event.key === 'estudia-pro-demo-sync') scheduleRefreshAll();
+    };
+
+    try {
+      channel?.addEventListener('message', handleMessage);
+    } catch {
+      /* ignore */
+    }
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      try {
+        channel?.removeEventListener('message', handleMessage);
+        channel?.close();
+      } catch {
+        /* ignore */
+      }
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [demoEnabled, user, scheduleRefreshAll]);
 
   // Icons defined as simple SVG components for minimalist look
   const Icons = {
@@ -161,7 +240,8 @@ const DashboardShell = () => {
       return [
         { id: 'panel', name: 'Panel General', icon: Icons.Dashboard },
         { id: 'gestion-usuarios', name: 'Usuarios', icon: Icons.Users },
-        { id: 'gestion-materias', name: 'Gestión Materias', icon: Icons.Settings }
+        { id: 'gestion-materias', name: 'Gestión Materias', icon: Icons.Settings },
+        { id: 'gestion-formularios', name: 'Formularios', icon: Icons.Document }
       ];
     }
     if (user?.role === 'creador') {
@@ -229,6 +309,23 @@ const DashboardShell = () => {
       setUpcomingActivities(list);
     } catch (error) {
       console.error('Upcoming activities error:', error);
+    }
+  };
+
+  const handleDropSubject = async (subjectId) => {
+    setUserSubjects((prev) => prev.filter((s) => s.id !== subjectId));
+    setCurrentSubject((prev) => (prev?.id === subjectId ? null : prev));
+    try {
+      await apiService.dropSubject(subjectId);
+      const studentSubjects = await apiService.getUserSubjects();
+      setUserSubjects(studentSubjects);
+      await refreshUpcomingActivities();
+      pushToast({ title: 'Materias', message: 'Materia eliminada de tu panel.', type: 'success' });
+      navigateTo('panel');
+    } catch (error) {
+      const studentSubjects = await apiService.getUserSubjects().catch(() => null);
+      if (Array.isArray(studentSubjects)) setUserSubjects(studentSubjects);
+      pushToast({ title: 'Materias', message: error?.message || 'No se pudo dar de baja la materia.', type: 'alert' });
     }
   };
 
@@ -310,6 +407,19 @@ const DashboardShell = () => {
     pushToast({ title: 'Materias', message: 'Materia eliminada.', type: 'success' });
   };
 
+  const handleCreateFormulary = async (payload) => {
+    try {
+      const response = await apiService.createFormulary(payload);
+      const list = await apiService.getAllFormularies();
+      setFormularies(Array.isArray(list) ? list : []);
+      pushToast({ title: 'Formularios', message: 'Formulario publicado.', type: 'success' });
+      return response?.formulary || response;
+    } catch (error) {
+      pushToast({ title: 'Formularios', message: error?.message || 'No se pudo publicar.', type: 'alert' });
+      throw error;
+    }
+  };
+
   const renderPage = () => {
     switch (currentPage) {
       case 'panel':
@@ -340,12 +450,13 @@ const DashboardShell = () => {
             onStartExam={(examId) => navigateTo('examen', { examId })}
             onNavigate={navigateTo}
             onUpdateExamDate={handleUpdateExamDate}
+            onDropSubject={handleDropSubject}
           />
         );
       case 'recursos':
         return (
           <RecursosPage
-            resources={resources}
+            resources={resources.filter((res) => res.source === 'community')}
             purchasedResources={purchasedResources}
             onPurchase={handlePurchaseResource}
           />
@@ -390,6 +501,8 @@ const DashboardShell = () => {
         return <GestionUsuariosPage users={adminUsers} onDelete={handleDeleteUser} />;
       case 'gestion-materias':
         return <GestionMateriasPage subjects={subjects} onCreate={handleCreateSubject} onDelete={handleDeleteSubject} />;
+      case 'gestion-formularios':
+        return <GestionFormulariosPage formularies={formularies} onCreate={handleCreateFormulary} />;
       default:
         return <div className="page active"><p>Página no disponible.</p></div>;
     }

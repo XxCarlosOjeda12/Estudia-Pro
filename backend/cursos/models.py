@@ -1,7 +1,5 @@
 from django.db import models
-from usuarios.models import Creador, Estudiante
-from django.db import models
-from usuarios.models import Creador, Estudiante, Usuario 
+from usuarios.models import Creador, Estudiante, Usuario
 
 
 class Curso(models.Model):
@@ -133,6 +131,8 @@ class Inscripcion(models.Model):
     fecha_inscripcion = models.DateTimeField(auto_now_add=True)
     fecha_ultimo_acceso = models.DateTimeField(auto_now=True)
     progreso_porcentaje = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    fecha_examen = models.DateField(null=True, blank=True)
+    hora_examen = models.TimeField(null=True, blank=True)
     completado = models.BooleanField(default=False)
     
     class Meta:
@@ -288,7 +288,119 @@ class ActividadEstudiante(models.Model):
     
     def __str__(self):
         return f"{self.estudiante.id_usuario.username} - {self.get_tipo_display()}"
+
+
+class ProximaActividad(models.Model):
+    """Actividades futuras del estudiante (calendario ligero)."""
+    TIPOS = [
+        ('EXAMEN', 'Examen'),
+        ('QUIZ', 'Quiz'),
+        ('TAREA', 'Tarea'),
+        ('ESTUDIO', 'Estudio'),
+        ('TUTORIA', 'Tutoría'),
+        ('OTRO', 'Otro'),
+    ]
+
+    ORIGENES = [
+        ('MANUAL', 'Manual'),
+        ('FECHA_EXAMEN', 'Fecha de examen'),
+    ]
+
+    estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE, related_name='proximas_actividades')
+    curso = models.ForeignKey(Curso, on_delete=models.SET_NULL, null=True, blank=True, related_name='proximas_actividades')
+    titulo = models.CharField(max_length=255)
+    tipo = models.CharField(max_length=20, choices=TIPOS, default='OTRO')
+    fecha = models.DateField()
+    hora = models.TimeField(null=True, blank=True)
+    origen = models.CharField(max_length=20, choices=ORIGENES, default='MANUAL')
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'proxima_actividad'
+        ordering = ['fecha', 'hora', 'id']
+        verbose_name = 'Próxima actividad'
+        verbose_name_plural = 'Próximas actividades'
+
+    def __str__(self):
+        return f"{self.estudiante.id_usuario.username} - {self.titulo} ({self.fecha})"
     
+
+class TutorPerfil(models.Model):
+    """Configuración del creador como tutor (materias y tarifas)."""
+
+    creador = models.OneToOneField(Creador, on_delete=models.CASCADE, related_name='tutor_perfil', primary_key=True)
+    materias = models.CharField(max_length=255, blank=True, default='')
+    bio = models.TextField(blank=True, default='')
+    tarifa_30_min = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    tarifa_60_min = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    activo = models.BooleanField(default=False)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'tutor_perfil'
+        verbose_name = 'Perfil de tutor'
+        verbose_name_plural = 'Perfiles de tutor'
+
+    def __str__(self):
+        return f"TutorPerfil({self.creador.id_usuario.username})"
+
+
+class Tutoria(models.Model):
+    """Solicitud/registro de tutorías entre estudiantes y creadores."""
+
+    ESTADOS = [
+        ('SOLICITADA', 'Solicitada'),
+        ('ACEPTADA', 'Aceptada'),
+        ('CANCELADA', 'Cancelada'),
+        ('COMPLETADA', 'Completada'),
+    ]
+
+    estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE, related_name='tutorias')
+    tutor = models.ForeignKey(Creador, on_delete=models.CASCADE, related_name='tutorias')
+    curso = models.ForeignKey(Curso, on_delete=models.SET_NULL, null=True, blank=True, related_name='tutorias')
+    duracion_minutos = models.PositiveIntegerField(default=30)
+    tema = models.CharField(max_length=255, blank=True, default='')
+    fecha_hora = models.DateTimeField(null=True, blank=True)
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='SOLICITADA')
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'tutoria'
+        ordering = ['-creado_en']
+        verbose_name = 'Tutoría'
+        verbose_name_plural = 'Tutorías'
+
+    def __str__(self):
+        return f"Tutoria({self.estudiante.id_usuario.username} -> {self.tutor.id_usuario.username})"
+
+
+class Notificacion(models.Model):
+    """Notificaciones del usuario."""
+
+    TIPOS = [
+        ('info', 'Info'),
+        ('success', 'Success'),
+        ('alert', 'Alert'),
+    ]
+
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='notificaciones')
+    titulo = models.CharField(max_length=255)
+    mensaje = models.TextField()
+    tipo = models.CharField(max_length=20, choices=TIPOS, default='info')
+    leida = models.BooleanField(default=False)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'notificacion'
+        ordering = ['-fecha_creacion', '-id']
+        verbose_name = 'Notificación'
+        verbose_name_plural = 'Notificaciones'
+
+    def __str__(self):
+        return f"Notificacion({self.usuario.username}: {self.titulo})"
+
 
 class TemaForo(models.Model):
     """Temas/Hilos del foro"""
@@ -373,6 +485,7 @@ class RecursoComunidad(models.Model):
     descripcion = models.TextField()
     tipo = models.CharField(max_length=20, choices=TIPOS)
     archivo_url = models.URLField(blank=True, null=True)
+    archivo = models.FileField(upload_to='recursos_comunidad/', blank=True, null=True)
     contenido_texto = models.TextField(blank=True)
     autor = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='recursos_compartidos')
     curso = models.ForeignKey(Curso, on_delete=models.CASCADE, related_name='recursos_comunidad', null=True, blank=True)
@@ -447,6 +560,27 @@ class Formulario(models.Model):
         verbose_name = 'Formulario'
         verbose_name_plural = 'Formularios'
     
+    def __str__(self):
+        return self.titulo
+
+
+class FormularioEstudio(models.Model):
+    """Formularios PDF de estudio (compendios de fórmulas)."""
+
+    titulo = models.CharField(max_length=200)
+    materia = models.CharField(max_length=200, blank=True, default='General')
+    archivo = models.FileField(upload_to='formularios_estudio/', blank=True, null=True)
+    archivo_url = models.URLField(blank=True, null=True)
+    creado_por = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True, blank=True, related_name='formularios_estudio')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'formulario_estudio'
+        ordering = ['-fecha_creacion']
+        verbose_name = 'Formulario de estudio'
+        verbose_name_plural = 'Formularios de estudio'
+
     def __str__(self):
         return self.titulo
 

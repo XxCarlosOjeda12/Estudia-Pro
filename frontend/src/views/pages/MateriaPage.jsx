@@ -16,7 +16,7 @@ const openExternalSearch = (service, query) => {
   window.open(url, '_blank');
 };
 
-const MateriaPage = ({ subject, userRole, exams, onStartExam, onNavigate, onUpdateExamDate }) => {
+const MateriaPage = ({ subject, userRole, exams, onStartExam, onNavigate, onUpdateExamDate, onDropSubject }) => {
   if (!subject) {
     return <div className="page active"><p>Selecciona una materia para continuar.</p></div>;
   }
@@ -33,23 +33,38 @@ const MateriaPage = ({ subject, userRole, exams, onStartExam, onNavigate, onUpda
           <p className="text-slate-500 dark:text-slate-400">{subject.professor} | {subject.school}</p>
         </div>
         {userRole === 'estudiante' && (
-          <div className="space-y-1">
-            <label className="text-sm text-slate-500 dark:text-slate-400">Fecha y hora de examen (hora opcional):</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="date"
-                className="bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-lg p-2 text-sm"
-                value={subject.examDate || ''}
-                onChange={(event) => onUpdateExamDate(subject.id, event.target.value, subject.examTime || null)}
-              />
-              <input
-                type="time"
-                disabled={!subject.examDate}
-                className="bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-lg p-2 text-sm disabled:opacity-50"
-                value={subject.examTime || ''}
-                onChange={(event) => onUpdateExamDate(subject.id, subject.examDate || '', event.target.value || null)}
-              />
+          <div className="flex flex-col gap-2 items-start md:items-end">
+            <div className="space-y-1">
+              <label className="text-sm text-slate-500 dark:text-slate-400">Fecha y hora de examen (hora opcional):</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  className="bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-lg p-2 text-sm"
+                  value={subject.examDate || ''}
+                  onChange={(event) => onUpdateExamDate(subject.id, event.target.value, subject.examTime || null)}
+                />
+                <input
+                  type="time"
+                  disabled={!subject.examDate}
+                  className="bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-lg p-2 text-sm disabled:opacity-50"
+                  value={subject.examTime || ''}
+                  onChange={(event) => onUpdateExamDate(subject.id, subject.examDate || '', event.target.value || null)}
+                />
+              </div>
             </div>
+            {typeof onDropSubject === 'function' ? (
+              <button
+                type="button"
+                className="text-sm text-red-500 hover:underline"
+                onClick={() => {
+                  if (confirm('¿Dar de baja esta materia? Se quitará de tu panel.')) {
+                    onDropSubject(subject.id);
+                  }
+                }}
+              >
+                Dar de baja esta materia
+              </button>
+            ) : null}
           </div>
         )}
       </div>

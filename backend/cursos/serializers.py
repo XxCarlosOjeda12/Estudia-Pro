@@ -4,9 +4,12 @@ from .models import (
     Inscripcion, ProgresoRecurso, Examen,
     IntentoExamen, RespuestaEstudiante,
     Logro, LogroEstudiante, ActividadEstudiante,
+    ProximaActividad,
+    TutorPerfil, Tutoria, Notificacion,
     TemaForo, RespuestaForo, VotoRespuesta,
     RecursoComunidad, CalificacionRecurso, DescargaRecurso,
-    Formulario, PreguntaFormulario, RespuestaFormulario, DetalleRespuesta
+    Formulario, PreguntaFormulario, RespuestaFormulario, DetalleRespuesta,
+    FormularioEstudio
 )
 from usuarios.models import Creador
 from usuarios.models import Usuario
@@ -224,6 +227,82 @@ class ActividadEstudianteSerializer(serializers.ModelSerializer):
         ]
 
 
+class ProximaActividadSerializer(serializers.ModelSerializer):
+    curso_id = serializers.IntegerField(source='curso.id', read_only=True)
+    curso_titulo = serializers.CharField(source='curso.titulo', read_only=True)
+
+    class Meta:
+        model = ProximaActividad
+        fields = [
+            'id',
+            'titulo',
+            'tipo',
+            'fecha',
+            'hora',
+            'origen',
+            'curso_id',
+            'curso_titulo',
+        ]
+        read_only_fields = ['origen', 'curso_id', 'curso_titulo']
+
+
+class TutorPublicSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(source='creador.id_creador', read_only=True)
+    name = serializers.SerializerMethodField()
+    specialties = serializers.CharField(source='materias', read_only=True)
+    tariff30 = serializers.DecimalField(source='tarifa_30_min', max_digits=10, decimal_places=2, allow_null=True, read_only=True)
+    tariff60 = serializers.DecimalField(source='tarifa_60_min', max_digits=10, decimal_places=2, allow_null=True, read_only=True)
+    rating = serializers.DecimalField(source='creador.calificacion_promedio', max_digits=3, decimal_places=2, allow_null=True, read_only=True)
+    sessions = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TutorPerfil
+        fields = ['id', 'name', 'specialties', 'bio', 'tariff30', 'tariff60', 'rating', 'sessions']
+
+    def get_name(self, obj):
+        user = getattr(obj.creador, 'id_usuario', None)
+        if not user:
+            return 'Tutor'
+        full_name = f"{user.first_name} {user.last_name}".strip()
+        return full_name or user.username
+
+    def get_sessions(self, obj):
+        try:
+            return obj.creador.tutorias.count()
+        except Exception:
+            return None
+
+
+class TutorPerfilMeSerializer(serializers.ModelSerializer):
+    specialties = serializers.CharField(source='materias', allow_blank=True, required=False)
+    active = serializers.BooleanField(source='activo', required=False)
+    tariff30 = serializers.DecimalField(source='tarifa_30_min', max_digits=10, decimal_places=2, allow_null=True, required=False)
+    tariff60 = serializers.DecimalField(source='tarifa_60_min', max_digits=10, decimal_places=2, allow_null=True, required=False)
+
+    class Meta:
+        model = TutorPerfil
+        fields = ['specialties', 'bio', 'active', 'tariff30', 'tariff60']
+
+
+class TutoriaCreateSerializer(serializers.Serializer):
+    tutorId = serializers.IntegerField()
+    subjectId = serializers.IntegerField(required=False, allow_null=True)
+    duration = serializers.IntegerField(required=False, min_value=15)
+    topic = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+
+class NotificacionSerializer(serializers.ModelSerializer):
+    title = serializers.CharField(source='titulo', read_only=True)
+    message = serializers.CharField(source='mensaje', read_only=True)
+    type = serializers.CharField(source='tipo', read_only=True)
+    read = serializers.BooleanField(source='leida', read_only=True)
+    date = serializers.DateTimeField(source='fecha_creacion', read_only=True)
+
+    class Meta:
+        model = Notificacion
+        fields = ['id', 'title', 'message', 'type', 'read', 'date']
+
+
 class UsuarioBasicoSerializer(serializers.ModelSerializer):
     """Serializer básico para mostrar info del usuario"""
     
@@ -296,11 +375,12 @@ class RecursoComunidadSerializer(serializers.ModelSerializer):
     autor = UsuarioBasicoSerializer(read_only=True)
     curso_titulo = serializers.CharField(source='curso.titulo', read_only=True)
     total_calificaciones = serializers.SerializerMethodField()
+    archivo = serializers.FileField(required=False, allow_null=True, write_only=True)
     
     class Meta:
         model = RecursoComunidad
         fields = [
-            'id', 'titulo', 'descripcion', 'tipo', 'archivo_url',
+            'id', 'titulo', 'descripcion', 'tipo', 'archivo_url', 'archivo',
             'contenido_texto', 'autor', 'curso', 'curso_titulo',
             'modulo', 'fecha_creacion', 'descargas',
             'calificacion_promedio', 'total_calificaciones',
@@ -311,20 +391,91 @@ class RecursoComunidadSerializer(serializers.ModelSerializer):
     def get_total_calificaciones(self, obj):
         return obj.calificaciones.count()
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        if getattr(instance, 'archivo', None):
+            try:
+                file_url = instance.archivo.url
+                if request:
+                    file_url = request.build_absolute_uri(file_url)
+                data['archivo_url'] = file_url
+            except Exception:
+                pass
+        return data
+
 
 class RecursoComunidadDetalleSerializer(serializers.ModelSerializer):
     """Serializer detallado con calificaciones"""
     autor = UsuarioBasicoSerializer(read_only=True)
     calificaciones = CalificacionRecursoSerializer(many=True, read_only=True)
+    archivo = serializers.FileField(required=False, allow_null=True, write_only=True)
     
     class Meta:
         model = RecursoComunidad
         fields = [
-            'id', 'titulo', 'descripcion', 'tipo', 'archivo_url',
+            'id', 'titulo', 'descripcion', 'tipo', 'archivo_url', 'archivo',
             'contenido_texto', 'autor', 'curso', 'modulo',
             'fecha_creacion', 'descargas', 'calificacion_promedio',
             'calificaciones', 'aprobado', 'activo'
         ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        if getattr(instance, 'archivo', None):
+            try:
+                file_url = instance.archivo.url
+                if request:
+                    file_url = request.build_absolute_uri(file_url)
+                data['archivo_url'] = file_url
+            except Exception:
+                pass
+        return data
+
+
+# ========== Formularios de Estudio (PDF) ==========
+
+class FormularioEstudioSerializer(serializers.ModelSerializer):
+    title = serializers.CharField(source='titulo')
+    subject = serializers.CharField(source='materia', required=False, allow_blank=True)
+    file = serializers.FileField(source='archivo', required=False, allow_null=True, write_only=True)
+    url = serializers.URLField(source='archivo_url', required=False, allow_blank=True, allow_null=True)
+    type = serializers.SerializerMethodField()
+    fileName = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FormularioEstudio
+        fields = ['id', 'title', 'subject', 'type', 'url', 'fileName', 'file']
+
+    def get_type(self, obj):
+        return 'PDF'
+
+    def get_fileName(self, obj):
+        try:
+            if obj.archivo:
+                return obj.archivo.name.split('/')[-1]
+        except Exception:
+            return None
+        return None
+
+    def validate(self, attrs):
+        if not attrs.get('archivo') and not attrs.get('archivo_url'):
+            raise serializers.ValidationError('Se requiere file o url')
+        return attrs
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        if getattr(instance, 'archivo', None):
+            try:
+                file_url = instance.archivo.url
+                if request:
+                    file_url = request.build_absolute_uri(file_url)
+                data['url'] = file_url
+            except Exception:
+                pass
+        return data
 
 
 # ========== Formularios ==========

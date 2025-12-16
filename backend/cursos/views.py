@@ -1,16 +1,22 @@
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from usuarios.models import Creador
 from .models import (
     Curso, Modulo, Recurso, Pregunta,
     Inscripcion, ProgresoRecurso, Examen,
     IntentoExamen, RespuestaEstudiante,
     Logro, LogroEstudiante, ActividadEstudiante,  
+    ProximaActividad,
+    TutorPerfil, Tutoria, Notificacion,
     TemaForo, RespuestaForo, VotoRespuesta,
     RecursoComunidad, CalificacionRecurso, DescargaRecurso,
-    Formulario, PreguntaFormulario, RespuestaFormulario, DetalleRespuesta
+    Formulario, PreguntaFormulario, RespuestaFormulario, DetalleRespuesta,
+    FormularioEstudio
 )
 from .serializers import (
     CursoListSerializer, CursoDetalleSerializer,
@@ -20,9 +26,13 @@ from .serializers import (
     ExamenSerializer, IntentoExamenSerializer,
     RespuestaEstudianteSerializer,
     LogroSerializer, LogroEstudianteSerializer, ActividadEstudianteSerializer,  
+    ProximaActividadSerializer,
+    TutorPublicSerializer, TutorPerfilMeSerializer, TutoriaCreateSerializer,
+    NotificacionSerializer,
     TemaForoSerializer, TemaForoDetalleSerializer,
     RespuestaForoSerializer,
     RecursoComunidadSerializer, RecursoComunidadDetalleSerializer,
+    FormularioEstudioSerializer,
     FormularioSerializer, FormularioDetalleSerializer,
     RespuestaFormularioSerializer
 )
@@ -83,6 +93,30 @@ class CursoViewSet(viewsets.ReadOnlyModelViewSet):
             },
             status=status.HTTP_201_CREATED
         )
+
+    @action(detail=True, methods=['post'])
+    def desinscribirse(self, request, pk=None):
+        """Dar de baja al estudiante de un curso"""
+        curso = self.get_object()
+
+        if not hasattr(request.user, 'perfil_estudiante'):
+            return Response(
+                {'error': 'Solo los estudiantes pueden darse de baja de cursos'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        estudiante = request.user.perfil_estudiante
+        inscripcion = Inscripcion.objects.filter(estudiante=estudiante, curso=curso).first()
+        if not inscripcion:
+            return Response(
+                {'error': 'No estás inscrito en este curso'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        inscripcion.delete()
+        ProximaActividad.objects.filter(estudiante=estudiante, curso=curso).delete()
+
+        return Response({'success': True})
     
     @action(detail=True, methods=['get'])
     def mi_progreso(self, request, pk=None):
@@ -323,7 +357,9 @@ class ExamenViewSet(viewsets.ReadOnlyModelViewSet):
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 from django.db import models
+from datetime import date, time
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -472,6 +508,8 @@ def mis_cursos_inscritos(request):
             'completado': inscripcion.completado,
             'fecha_inscripcion': inscripcion.fecha_inscripcion,
             'ultimo_acceso': inscripcion.fecha_ultimo_acceso,
+            'examDate': inscripcion.fecha_examen.isoformat() if inscripcion.fecha_examen else None,
+            'examTime': inscripcion.hora_examen.strftime('%H:%M') if inscripcion.hora_examen else None,
         })
     
     return Response(cursos)
@@ -512,6 +550,210 @@ def buscar_cursos(request):
         'total': cursos.count(),
         'cursos': serializer.data
     })
+
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def actualizar_fecha_examen(request):
+    """
+    Guardar (o borrar) la fecha de examen para una materia inscrita
+    y mantener sincronizadas las próximas actividades.
+    """
+    if not hasattr(request.user, 'perfil_estudiante'):
+        return Response(
+            {'error': 'Solo disponible para estudiantes'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    estudiante = request.user.perfil_estudiante
+    subject_id = request.data.get('subjectId') or request.data.get('curso_id') or request.data.get('courseId')
+    exam_date_raw = request.data.get('examDate')
+    exam_time_raw = request.data.get('examTime')
+
+    if not subject_id:
+        return Response({'error': 'subjectId es requerido'}, status=status.HTTP_400_BAD_REQUEST)
+
+    inscripcion = get_object_or_404(Inscripcion, estudiante=estudiante, curso_id=subject_id)
+
+    # Borrar fecha
+    if not exam_date_raw:
+        inscripcion.fecha_examen = None
+        inscripcion.hora_examen = None
+        inscripcion.save(update_fields=['fecha_examen', 'hora_examen'])
+        ProximaActividad.objects.filter(
+            estudiante=estudiante,
+            curso_id=inscripcion.curso.id,
+            origen='FECHA_EXAMEN'
+        ).delete()
+        return Response({'success': True, 'examDate': None, 'examTime': None})
+
+    try:
+        parsed_date = date.fromisoformat(str(exam_date_raw))
+    except ValueError:
+        return Response({'error': 'examDate debe ser YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+
+    parsed_time = None
+    if exam_time_raw:
+        try:
+            # acepta HH:MM o HH:MM:SS
+            parsed_time = time.fromisoformat(str(exam_time_raw))
+        except ValueError:
+            return Response({'error': 'examTime debe ser HH:MM (opcional)'}, status=status.HTTP_400_BAD_REQUEST)
+
+    inscripcion.fecha_examen = parsed_date
+    inscripcion.hora_examen = parsed_time
+    inscripcion.save(update_fields=['fecha_examen', 'hora_examen'])
+
+    ProximaActividad.objects.update_or_create(
+        estudiante=estudiante,
+        curso=inscripcion.curso,
+        origen='FECHA_EXAMEN',
+        defaults={
+            'titulo': inscripcion.curso.titulo,
+            'tipo': 'EXAMEN',
+            'fecha': parsed_date,
+            'hora': parsed_time,
+        }
+    )
+
+    return Response(
+        {
+            'success': True,
+            'examDate': parsed_date.isoformat(),
+            'examTime': parsed_time.strftime('%H:%M') if parsed_time else None,
+        }
+    )
+
+
+class ProximaActividadViewSet(viewsets.ModelViewSet):
+    serializer_class = ProximaActividadSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        if not hasattr(self.request.user, 'perfil_estudiante'):
+            return ProximaActividad.objects.none()
+        estudiante = self.request.user.perfil_estudiante
+        return ProximaActividad.objects.filter(estudiante=estudiante)
+
+    def list(self, request, *args, **kwargs):
+        today = timezone.localdate()
+        queryset = self.get_queryset().filter(fecha__gte=today).order_by('fecha', 'hora', 'id')
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def perform_create(self, serializer):
+        if not hasattr(self.request.user, 'perfil_estudiante'):
+            raise PermissionDenied('Solo disponible para estudiantes')
+        serializer.save(estudiante=self.request.user.perfil_estudiante, origen='MANUAL')
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.origen != 'MANUAL':
+            return Response({'error': 'Esta actividad se gestiona desde la materia (fecha de examen).'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.origen != 'MANUAL':
+            return Response({'error': 'Esta actividad se gestiona desde la materia (fecha de examen).'}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
+
+class TutorViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = TutorPublicSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return TutorPerfil.objects.filter(activo=True).select_related('creador__id_usuario')
+
+    @action(detail=False, methods=['get', 'put'], url_path='me')
+    def me(self, request):
+        if not hasattr(request.user, 'perfil_creador'):
+            raise PermissionDenied('Solo disponible para creadores')
+
+        tutor_perfil, _ = TutorPerfil.objects.get_or_create(creador=request.user.perfil_creador)
+
+        if request.method == 'GET':
+            serializer = TutorPerfilMeSerializer(tutor_perfil)
+            return Response(serializer.data)
+
+        serializer = TutorPerfilMeSerializer(tutor_perfil, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'], url_path='agendar')
+    def agendar(self, request):
+        if not hasattr(request.user, 'perfil_estudiante'):
+            raise PermissionDenied('Solo disponible para estudiantes')
+
+        serializer = TutoriaCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        tutor_id = serializer.validated_data.get('tutorId')
+        subject_id = serializer.validated_data.get('subjectId')
+        duration = serializer.validated_data.get('duration') or 30
+        topic = (serializer.validated_data.get('topic') or '').strip()
+
+        if duration not in (30, 60):
+            return Response({'error': 'duration debe ser 30 o 60'}, status=status.HTTP_400_BAD_REQUEST)
+
+        creador = get_object_or_404(Creador, pk=tutor_id)
+        tutor_perfil = TutorPerfil.objects.filter(creador=creador, activo=True).first()
+        if not tutor_perfil:
+            return Response({'error': 'Tutor no disponible'}, status=status.HTTP_400_BAD_REQUEST)
+
+        curso = None
+        if subject_id:
+            curso = Curso.objects.filter(pk=subject_id).first()
+
+        tutoria = Tutoria.objects.create(
+            estudiante=request.user.perfil_estudiante,
+            tutor=creador,
+            curso=curso,
+            duracion_minutos=duration,
+            tema=topic
+        )
+
+        student_user = request.user
+        student_name = f"{student_user.first_name} {student_user.last_name}".strip() or student_user.username
+        Notificacion.objects.create(
+            usuario=creador.id_usuario,
+            titulo='Solicitud de tutoría',
+            mensaje=f"{student_name} solicitó una tutoría de {duration} min.{f' Tema: {topic}' if topic else ''}",
+            tipo='alert'
+        )
+
+        Notificacion.objects.create(
+            usuario=request.user,
+            titulo='Tutoría solicitada',
+            mensaje=f"Tu solicitud fue enviada a {creador.id_usuario.first_name or creador.id_usuario.username}.",
+            tipo='success'
+        )
+
+        return Response({'success': True, 'tutoriaId': tutoria.id})
+
+
+class NotificacionViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = NotificacionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Notificacion.objects.filter(usuario=self.request.user).order_by('-fecha_creacion', '-id')
+
+    @action(detail=False, methods=['post'], url_path='leer')
+    def leer(self, request):
+        notification_id = request.data.get('notificationId') or request.data.get('id')
+        if not notification_id:
+            return Response({'error': 'notificationId es requerido'}, status=status.HTTP_400_BAD_REQUEST)
+
+        notificacion = get_object_or_404(Notificacion, pk=notification_id, usuario=request.user)
+        if notificacion.leida:
+            return Response({'success': True})
+
+        notificacion.leida = True
+        notificacion.save(update_fields=['leida'])
+        return Response({'success': True})
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -838,7 +1080,9 @@ class RecursoComunidadViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         """Crear recurso (asignar autor automáticamente)"""
-        serializer.save(autor=self.request.user, aprobado=False)
+        # En esta versión, se aprueba automáticamente para reflejarse "en tiempo real".
+        # Nota: DRF trata BooleanField faltante en multipart como False, por eso forzamos activo=True.
+        serializer.save(autor=self.request.user, aprobado=True, activo=True)
     
     @action(detail=True, methods=['post'])
     def descargar(self, request, pk=None):
@@ -855,10 +1099,17 @@ class RecursoComunidadViewSet(viewsets.ModelViewSet):
         recurso.descargas += 1
         recurso.save()
         
+        url = recurso.archivo_url
+        if getattr(recurso, 'archivo', None):
+            try:
+                url = request.build_absolute_uri(recurso.archivo.url)
+            except Exception:
+                url = recurso.archivo_url
+
         return Response({
             'message': 'Descarga registrada',
             'total_descargas': recurso.descargas,
-            'url': recurso.archivo_url
+            'url': url
         })
     
     @action(detail=True, methods=['post'])
@@ -941,6 +1192,23 @@ class RecursoComunidadViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(recursos, many=True)
         return Response(serializer.data)
+
+
+# ========== Formularios de Estudio (PDF) ==========
+
+class FormularioEstudioViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para formularios PDF de estudio
+    """
+    queryset = FormularioEstudio.objects.filter(activo=True)
+    serializer_class = FormularioEstudioSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def perform_create(self, serializer):
+        if not hasattr(self.request.user, 'perfil_administrador'):
+            raise PermissionDenied('Solo administradores pueden subir formularios.')
+        serializer.save(creado_por=self.request.user)
 
 
 # ========== Formularios ==========

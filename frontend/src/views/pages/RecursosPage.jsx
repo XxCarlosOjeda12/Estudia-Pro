@@ -1,11 +1,45 @@
 import { useMemo, useState } from 'react';
 import { useAppContext } from '../../context/AppContext.jsx';
 import { apiService } from '../../lib/api';
+import { API_CONFIG } from '../../lib/constants.js';
+import { getDemoFile } from '../../lib/demoFileStore.js';
 
 const normalize = (value) => (value || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
-  const { pushToast } = useAppContext();
+const getBackendOrigin = () => API_CONFIG.BASE_URL.replace(/\/api\/?$/, '');
+
+const resolveFileUrl = (rawUrl) => {
+  if (!rawUrl || rawUrl === '#') return null;
+  if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
+  if (rawUrl.startsWith('/')) return `${getBackendOrigin()}${rawUrl}`;
+  return rawUrl;
+};
+
+const downloadBlob = (blob, filename) => {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = filename || 'archivo';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+};
+
+const clickDownloadLink = (url, filename) => {
+  if (!url) return;
+  const link = document.createElement('a');
+  link.href = url;
+  link.rel = 'noreferrer';
+  link.target = '_blank';
+  if (filename) link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+};
+
+const RecursosPage = ({ resources, purchasedResources }) => {
+  const { pushToast, demoEnabled } = useAppContext();
   const [search, setSearch] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -27,14 +61,47 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
   const handleDownload = async (resource) => {
     pushToast({ title: 'Descarga', message: `Descargando ${resource.title}.`, type: 'info' });
     try {
+      if (resource.source === 'community') {
+        const response = await apiService.downloadCommunityResource(resource.id);
+        const fileId = response?.fileId;
+        const url = resolveFileUrl(response?.url || resource.archivo_url || resource.contenido_url);
+
+        if (demoEnabled && fileId) {
+          const stored = await getDemoFile(fileId);
+          if (!stored?.blob) throw new Error('No se encontró el archivo del recurso (demo).');
+          downloadBlob(stored.blob, stored.name || resource.title || 'recurso');
+          pushToast({ title: 'Descarga', message: 'Descarga iniciada.', type: 'success' });
+          return;
+        }
+
+        if (url) {
+          const downloadName = `${resource.title || 'recurso'}.pdf`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`No se pudo descargar (${res.status})`);
+          const blob = await res.blob();
+          downloadBlob(blob, downloadName);
+          pushToast({ title: 'Descarga', message: 'Descarga iniciada.', type: 'success' });
+          return;
+        }
+
+        throw new Error('Este recurso no tiene archivo para descargar.');
+      }
+
+      const url = resolveFileUrl(resource.archivo_url || resource.contenido_url || resource.url);
+      if (url) {
+        clickDownloadLink(url, resource.title || 'recurso');
+        pushToast({ title: 'Descarga', message: 'Descarga iniciada.', type: 'success' });
+        return;
+      }
       await apiService.markResourceCompleted(resource.id);
       pushToast({ title: 'Progreso', message: 'Recurso marcado como visto.', type: 'success' });
     } catch (error) {
       console.error('Error marking completed:', error);
+      pushToast({ title: 'Descarga', message: error?.message || 'No se pudo descargar.', type: 'alert' });
     }
   };
 
-  const handlePurchase = (resourceId) => {
+  const handlePurchase = () => {
     // Instead of immediately calling onPurchase, we show the subscription offer
     setShowSubscriptionModal(true);
   };
@@ -180,7 +247,24 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
             <h3 className="text-2xl font-bold mb-2">{preview.title}</h3>
             <p className="text-sm text-slate-400 mb-4">Por {preview.author} • {preview.type.toUpperCase()}</p>
             <div className="bg-slate-800/60 border border-white/5 rounded-xl p-4 mb-4 text-sm text-slate-200">
-              Vista previa simulada (modo demo). Integra aquí tu visor PDF o embed real cuando conectes backend.
+              {demoEnabled ? (
+                'Vista previa simulada (modo demo). Integra aquí tu visor PDF o embed real cuando conectes backend.'
+              ) : (
+                <span className="text-slate-300">
+                  {preview.archivo_url || preview.contenido_url ? (
+                    <a
+                      href={preview.archivo_url || preview.contenido_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      Abrir recurso en una nueva pestaña
+                    </a>
+                  ) : (
+                    'Sin vista previa disponible para este recurso.'
+                  )}
+                </span>
+              )}
             </div>
             <div className="flex gap-3">
               <button className="flex-1 py-2 bg-primary text-white rounded-lg" onClick={() => setPreview(null)}>Cerrar</button>
