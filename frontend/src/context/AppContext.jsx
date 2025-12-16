@@ -25,27 +25,36 @@ export const AppProvider = ({ children }) => {
 
   const login = async (identifier, password, remember) => {
     setLoading(true);
-    const response = await apiService.login(identifier, password);
-    setLoading(false);
-    if (response?.success && response.token) {
-      setToken(response.token);
-      localStorage.setItem('authToken', response.token);
-      if (remember) localStorage.setItem('savedIdentifier', identifier);
-      const profile = await loadProfile();
-      return { success: true, profile };
+    try {
+      const response = await apiService.login(identifier, password);
+      if (response?.success && response.token) {
+        setToken(response.token);
+        localStorage.setItem('authToken', response.token);
+        if (remember) localStorage.setItem('savedIdentifier', identifier);
+        const profile = await loadProfile();
+        return { success: true, profile };
+      }
+      return response || { success: false, message: 'Inicio de sesion fallido' };
+    } catch (error) {
+      return { success: false, message: error.message || 'Inicio de sesion fallido' };
+    } finally {
+      setLoading(false);
     }
-    return response || { success: false, message: 'Inicio de sesión fallido' };
   };
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
     try {
       const profile = await apiService.getProfile();
-      setUser(formatUserForFrontend(profile?.raw || profile));
-      return { success: true, profile };
+      const normalized = formatUserForFrontend(profile?.raw || profile);
+      setUser(normalized);
+      return { success: true, profile: normalized };
     } catch (error) {
       console.error(error);
-      await logout();
+      if (error?.status === 401) {
+        await logout();
+        return { success: false, message: 'Sesion expirada, vuelve a iniciar sesion.' };
+      }
       return { success: false, message: error.message };
     } finally {
       setLoading(false);

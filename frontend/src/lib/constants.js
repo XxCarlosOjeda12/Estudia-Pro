@@ -4,41 +4,55 @@ export const API_CONFIG = {
     AUTH: {
       LOGIN: '/auth/login/',
       REGISTER: '/auth/register/',
-      VERIFY: '/auth/verify/',
-      LOGOUT: '/auth/logout/'
+      LOGOUT: '/auth/logout/',
+      PROFILE: '/auth/profile/',
+      VERIFY_ROLE: '/auth/verificar-rol/'
     },
     USERS: {
       GET_PROFILE: '/auth/profile/',
-      UPDATE_PROFILE: '/users/profile/',
+      GET_ROLE: '/auth/verificar-rol/',
       GET_DASHBOARD: '/mi-panel/',
-      GET_PROGRESS: '/mi-progreso/'
+      GET_PROGRESS: '/mi-progreso/',
+      GET_ACHIEVEMENTS: '/mis-logros/'
     },
     SUBJECTS: {
       GET_ALL: '/cursos/',
       GET_USER_SUBJECTS: '/mis-cursos/',
-      ADD_SUBJECT: '/mis-cursos/inscribir/', // Assuming enrollment endpoint
-      UPDATE_EXAM_DATE: '/mis-cursos/fecha-examen/'
+      DETAIL_SUFFIX: '/',
+      MODULES_SUFFIX: 'modulos/',
+      ENROLL_SUFFIX: 'inscribirse/',
+      PROGRESS_SUFFIX: 'mi_progreso/',
+      SEARCH: '/buscar-cursos/',
+      UPDATE_EXAM_DATE: '/__local_exam_date__/'
     },
     RESOURCES: {
       GET_ALL: '/recursos/',
+      DETAIL_SUFFIX: '/',
       GET_PURCHASED: '/recursos/mis-compras/',
       PURCHASE: '/recursos/comprar/',
       DOWNLOAD: '/recursos/descargar/',
-      MARK_COMPLETED: '/marcar_completado/' // Suffix for /recursos/{id}/...
+      MARK_COMPLETED_SUFFIX: 'marcar_completado/'
     },
     EXAMS: {
       GET_ALL: '/examenes/',
-      START_EXAM: '/examenes/iniciar/',
-      SUBMIT_EXAM: '/examenes/enviar/'
+      DETAIL_SUFFIX: '/',
+      START_SUFFIX: 'iniciar/',
+      SUBMIT_SUFFIX: 'enviar_respuestas/'
+    },
+    QUESTIONS: {
+      GET_ALL: '/preguntas/',
+      BY_MODULE: '/preguntas/por_modulo/',
+      BY_DIFFICULTY: '/preguntas/por_dificultad/'
     },
     TUTORS: {
-      GET_ALL: '/tutores/', // Should create if missing or handle 404 gracefully
+      GET_ALL: '/tutores/',
       SCHEDULE: '/tutores/agendar/'
     },
     FORUMS: {
       GET_ALL: '/foro/',
-      CREATE_TOPIC: '/foro/', // Backend expects POST /api/foro/
-      GET_TOPIC: '/foro/' // Used as base for /foro/{id}/
+      CREATE_TOPIC: '/foro/',
+      GET_TOPIC: '/foro/',
+      VOTE_ANSWER: '/foro/respuesta/'
     },
     ACHIEVEMENTS: {
       GET_USER_ACHIEVEMENTS: '/mis-logros/',
@@ -52,17 +66,24 @@ export const API_CONFIG = {
       UPCOMING: '/proximas-actividades/'
     },
     ADMIN: {
-      USERS: '/admin/users/',
+      USERS: '/auth/usuarios/',
       SUBJECTS: '/admin/custom/cursos/',
       RESOURCES: '/admin/custom/recursos/'
     },
     FORMULARIES: {
-      GET_ALL: '/formularios/'
+      GET_ALL: '/formularios/',
+      DETAIL_SUFFIX: '/',
+      ANSWER_SUFFIX: 'responder/',
+      RESULTS_SUFFIX: 'resultados/',
+      AVAILABLE: '/formularios/disponibles/',
+      MY_FORMS: '/formularios/mis_formularios/'
     },
     COMMUNITY_RESOURCES: {
       BASE: '/recursos-comunidad/',
       MY_RESOURCES: '/recursos-comunidad/mis_recursos/',
-      SEARCH: '/recursos-comunidad/buscar/' // Correct as per backend code
+      SEARCH: '/recursos-comunidad/buscar/',
+      DOWNLOAD_SUFFIX: 'descargar/',
+      RATE_SUFFIX: 'calificar/'
     }
   }
 };

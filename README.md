@@ -1,22 +1,59 @@
 # Estudia-Pro
 
-Plataforma web educativa para la práctica y evaluación de cursos de matemáticas a nivel universitario, construida con **Django (backend)** y **React (frontend)**, usando **PostgreSQL** como base de datos principal.
+Plataforma web educativa para la práctica y evaluación de cursos de matemáticas a nivel universitario, construida con **Django (backend)** y **React (frontend)**, usando **SQLite** en desarrollo y **PostgreSQL** para producción.
+
+---
+
+## Estado del Desarrollo
+
+### Funcionalidades Implementadas
+- Autenticación de usuarios (registro, login, logout)
+- Sistema de roles (Estudiante, Creador, Administrador)
+- Panel de Administrador (funcional)
+  - Gestión de usuarios
+  - Gestión de materias
+  - Gestión de recursos de comunidad
+  - Visualización de estadísticas
+- Exploración de cursos y materias
+- Sistema de inscripción a cursos
+- Recursos de aprendizaje (videos, PDFs, lecturas)
+- Formularios y encuestas
+- Foro de ayuda comunitaria
+- Recursos compartidos por la comunidad
+- Sistema de exámenes y preguntas
+
+### En Desarrollo
+- Panel de Estudiante (parcialmente implementado)
+  - Progreso de cursos
+  - Historial de exámenes
+  - Sistema de logros
+- Panel de Creador (pendiente de completar)
+  - Creación de contenido
+  - Gestión de cursos propios
+  - Estadísticas de estudiantes
+- Sistema de tutorías SOS
+- Marketplace de recursos premium
+- Sistema de gamificación completo
 
 ---
 
 ## Stack tecnológico
 
 - **Frontend**
-  - [React](https://react.dev/)
-  - [Tailwind CSS](https://tailwindcss.com/) (estilos y diseño)
-  - React Router (ruteo en el cliente)
-  - Axios o fetch API (consumo de API REST)
-  - Vite / Create React App (según configuración del proyecto)
+  - [React](https://react.dev/) 19.2.0
+  - [Tailwind CSS](https://tailwindcss.com/) 3.4.17 (estilos y diseño)
+  - [Vite](https://vitejs.dev/) 7.2.5 (bundler y servidor de desarrollo)
+  - Fetch API (consumo de API REST)
+  - KaTeX / MathLive (renderizado de ecuaciones matemáticas)
+  - Chart.js (visualización de estadísticas)
 - **Backend**
-  - [Django](https://www.djangoproject.com/)
-  - Django REST Framework (API REST)
+  - [Django](https://www.djangoproject.com/) 5.2.9
+  - Django REST Framework 3.14.0 (API REST)
+  - Django CORS Headers 4.3.0
+  - Token Authentication
 - **Base de datos**
-  - [PostgreSQL](https://www.postgresql.org/)
+  - SQLite (desarrollo local)
+  - [PostgreSQL](https://www.postgresql.org/) (producción - recomendado)
 - **Infraestructura / DevOps**
   - Git + GitHub (control de versiones)
   - Entorno virtual de Python (`venv` / `pipenv` / `poetry`)
@@ -56,34 +93,51 @@ El proyecto está organizado como una aplicación web con **frontend y backend d
 
 ---
 
-## Estructura del proyecto (propuesta)
+## Estructura del proyecto
 
 ```bash
-estudia-pro/
+Estudia-Pro/
 ├── backend/
 │   ├── manage.py
 │   ├── requirements.txt
-│   ├── estudia_pro/        # Configuración principal de Django
-│   └── apps/
-│       ├── users/
-│       ├── courses/
-│       ├── questions/
-│       ├── exams/
-│       ├── marketplace/
-│       └── tutoring/
+│   ├── db.sqlite3                    # Base de datos SQLite
+│   ├── estudiapro/                   # Configuración principal de Django
+│   │   ├── settings.py
+│   │   ├── urls.py
+│   │   └── wsgi.py
+│   ├── usuarios/                     # App de usuarios y autenticación
+│   │   ├── models.py
+│   │   ├── views.py
+│   │   ├── serializers.py
+│   │   └── urls.py
+│   └── cursos/                       # App de cursos, recursos y exámenes
+│       ├── models.py
+│       ├── views.py
+│       ├── serializers.py
+│       ├── urls.py
+│       └── management/
+│           └── commands/
+│               ├── poblar_calculo.py
+│               └── poblar_comunidad.py
 ├── frontend/
 │   ├── package.json
-│   ├── vite.config.js / webpack.config.js
+│   ├── vite.config.js
+│   ├── tailwind.config.js
 │   └── src/
-│       ├── components/
-│       ├── pages/
-│       ├── hooks/
-│       ├── services/       # Cliente API (axios, fetch)
-│       └── router/
+│       ├── main.jsx
+│       ├── App.jsx
+│       ├── components/               # Componentes reutilizables
+│       ├──8+ (recomendado 3.10+)
+- pip y virtualenv
+
+**Frontend**
+- Node.js 18+
+- npm└── AppContext.jsx
+│       └── lib/                      # Utilidades
+│           ├── api.js                # Cliente API
+│           └── constants.js          # Configuración
 └── README.md
 ```
-
-La estructura exacta puede variar según la implementación real del repo.
 
 ---
 
@@ -101,38 +155,26 @@ La estructura exacta puede variar según la implementación real del repo.
 ---
 
 ## Variables de entorno
+Configuración
 
 ### Backend (Django)
-Crear un archivo `.env` en el directorio `backend/` (o usar variables de entorno del sistema):
 
-```env
-# Django
-DJANGO_SECRET_KEY=tu_clave_secreta
-DJANGO_DEBUG=True
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+El proyecto está configurado para usar SQLite en desarrollo por defecto. No se requiere configuración adicional de base de datos.
 
-# Base de datos PostgreSQL
-DB_NAME=estudiapro_db
-DB_USER=postgres
-DB_PASSWORD=postgres_password
-DB_HOST=localhost
-DB_PORT=5432
-
-# CORS / frontend
-FRONTEND_URL=http://localhost:5173
-```
-
-Configurar `settings.py` para leer estas variables (por ejemplo con `python-dotenv` o `os.environ`).
+**CORS**: El backend ya está configurado para permitir peticiones desde `http://localhost:5173` (frontend en desarrollo).
 
 ### Frontend (React)
-Crear `.env` en `frontend/`:
 
-```env
-VITE_API_BASE_URL=http://localhost:8000/api
+La configuración de la API está en `frontend/src/lib/constants.js`:
+
+```javascript
+export const API_CONFIG = {
+  BASE_URL: 'http://127.0.0.1:8000/api',
+  // ... endpoints
+}
 ```
 
-o equivalente según el empaquetador usado.
-
+No se requieren archivos `.env` para desarrollo local
 ---
 
 ## Instalación y ejecución en local
@@ -162,76 +204,153 @@ python manage.py migrate
 
 # Crear superusuario (opcional, para admin)
 python manage.py createsuperuser
+ (opcional pero recomendado)
+python -m venv venv
+# Windows PowerShell:
+.\venv\Scripts\activate
+# Linux/macOS:
+# source venv/bin/activate
+
+# Instalar dependencias
+pip install -r requirements.txt
+
+# Aplicar migraciones
+python manage.py migrate
+
+# (Opcional) Poblar base de datos con datos de prueba
+python manage.py poblar_calculo      # Crea curso de Cálculo Diferencial
+python manage.py poblar_comunidad    # Crea recursos y formularios
+
+# Crear superusuario para acceso admin
+python manage.py createsuperuser
 
 # Ejecutar servidor de desarrollo
-python manage.py runserver 8000
-```
-
-El backend quedará disponible en:
-**http://localhost:8000/**
-
-### 3. Frontend (React)
-
-En otra terminal:
+python manage.py runserver
+``` (mantener el backend corriendo):
 
 ```bash
 cd frontend
 
 # Instalar dependencias
-npm install        # o yarn
+npm install
 
 # Ejecutar servidor de desarrollo
-npm run dev        # o yarn dev
+npm run dev
 ```
 
-El frontend quedará disponible en (ejemplo con Vite):
+El frontend quedará disponible en:
 **http://localhost:5173/**
 
----
+### 4. Acceso a la aplicación
 
-## Endpoints (visión general)
+Puedes:Implementados
 
-La lista detallada de endpoints puede documentarse con Swagger / Redoc / Postman.
+### Autenticación (`/api/auth/`)
+- `POST /api/auth/register/` - Registro de usuarios
+- `POST /api/auth/login/` - Inicio de sesión (retorna token)
+- `POST /api/auth/logout/` - Cerrar sesión
+- `Comandos de Gestión
 
-Algunos grupos de endpoints esperados:
+### Poblar Base de Datos
 
-- `auth/` – registro, login, refresh de tokens, gestión de perfil.
-- `users/` – gestión de usuarios y roles.
-- `courses/` – materias, temas, contenidos.
-- `questions/` – banco de preguntas.
-- `exams/` – creación y resolución de exámenes, simuladores.
-- `progress/` – resultados, estadísticas y métricas.
-- `marketplace/` – recursos de la comunidad (materiales, guías, etc.).
-- `tutoring/` – gestión de tutorías SOS.
-- `forum/` – hilos, respuestas, reacciones.
+El proyecto incluye comandos personalizados para poblar la base de datos con datos de prueba:
 
----
+```bash
+# Crear curso de Cálculo Diferencial con módulos, recursos y preguntas
+python manage.py poblar_calculo
 
-## Pruebas
+# Crear recursos de comunidad y formularios de ejemplo
+python manage.py poblar_comunidad
+```
+
+### Acceso al Panel de Django Admin
+
+El panel de administración de Django está disponible en:
+**http://127.0.0.1:8000/admin/**
+
+Permite gestionar directamente:
+- Usuarios y perfiles
+- Cursos y módulos
+- Recursos y preguntas
+- Formularios y respuestas
+- Inscripciones y progresoGET /api/recursos/` - Listar recursos de aprendizaje
+
+### Comunidad (`/api/recursos-comunidad/`)
+- `GET /api/recursos-comunidad/` - Recursos compartidos por usuarios
+- `POST /api/recursos-comunidad/` - Crear recurso comunitario
+- `Tecnologías y Librerías Principales
 
 ### Backend
-Pruebas unitarias/integración con `pytest` o el framework de pruebas de Django.
-
-```bash
-cd backend
-pytest
-# o
-python manage.py test
-```
+- Django 5.2.9
+- Django REST Framework 3.14.0
+- Django CORS Headers 4.3.0
+- Token Authentication (rest_framework.authtoken)
 
 ### Frontend
-Pruebas unitarias de componentes con Jest/Testing Library (según configuración).
+- React 19.2.0
+- Tailwind CSS 3.4.17
+- Vite 7.2.5
+- KaTeX 0.16.27 (renderizado de LaTeX)
+- MathLive 0.108.2 (editor matemático)
+- Chart.js 4.5.1 (gráficos y estadísticas)
+1. Cambiar a PostgreSQL en `settings.py`:
+   ```python
+   DATABASES = {
+       'default': {
+           'ENGINE': 'django.db.backends.postgresql',
+           'NAME': 'estudiapro_db',
+           'USER': 'postgres',
+           'PASSWORD': 'password',
+           'HOST': 'localhost',
+           'PORT': '5432',
+       }
+   }
+   ```
 
-```bash
-cd frontend
-npm test
-```
+2. Instalar dependencia PostgreSQL:
+   ```bash
+   pip install psycopg2-binary
+   ```
 
----
+3. Configurar variables de entorno:
+   ```bash
+   DJANGO_DEBUG=False
+   DJANGO_ALLOWED_HOSTS=tu-dominio.com
+   DJANGO_SECRET_KEY=clave-secreta-segura
+   ```
 
-## Estilo de código y calidad
+4. Aplicar migraciones:
+   ```bash
+   python manage.py migrate
+   ```
 
-**Python**
+5. Recopilar archivos estáticos:
+   ```bash
+   python manage.py collectstatic
+   ```
+
+6. Ejecutar con Gunicorn:
+   ```bash
+   gunicorn estudiapro.wsgi:application --bind 0.0.0.0:8000
+   ```
+
+### Frontend (React)
+
+1. Actualizar la URL del API en `src/lib/constants.js`:
+   ```javascript
+   BASE_URL: 'https://tu-backend.com/api'
+   ```
+
+2. Generar build de producción:
+   ```bash
+   npm run build
+   ```
+
+3. Servir archivos estáticos del directorio `dist/` en:
+   - Vercel
+   - Netlify
+   - Nginx/Apache
+   - Servidor estático
 - Formateo con `black` / `isort`
 - Lint con `flake8` o `ruff`
 

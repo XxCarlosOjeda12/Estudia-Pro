@@ -256,7 +256,8 @@ const DashboardShell = () => {
     setUserSubjects((prev) => prev.map((s) => (s.id === subjectId ? { ...s, examDate, examTime: examTime ?? s.examTime ?? null } : s)));
     setCurrentSubject((prev) => (prev?.id === subjectId ? { ...prev, examDate, examTime: examTime ?? prev.examTime ?? null } : prev));
     try {
-      const response = await apiService.updateExamDate(subjectId, examDate, examTime);
+      const subject = userSubjects.find((s) => s.id === subjectId) || currentSubject;
+      const response = await apiService.updateExamDate(subjectId, examDate, examTime, subject?.title);
       const normalizedDate = response?.examDate ?? examDate ?? null;
       const normalizedTime = response?.examTime ?? null;
       setUserSubjects((prev) =>

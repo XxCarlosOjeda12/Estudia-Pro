@@ -111,3 +111,23 @@ def verificar_rol(request):
         'nivel': usuario.nivel,
         'puntos': usuario.puntos_gamificacion
     })
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def listar_usuarios(request):
+    """
+    Función: listar_usuarios
+    Descripción: Lista todos los usuarios del sistema (solo para administradores).
+    Input:
+      - request: Objeto Request con usuario autenticado
+    Output:
+      - Response: Lista de todos los usuarios (200) o error de permiso (403)
+    """
+    if request.user.rol != 'ADMINISTRADOR':
+        return Response({
+            'error': 'No tienes permisos para ver esta información'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    usuarios = Usuario.objects.all().order_by('-date_joined')
+    serializer = UsuarioSerializer(usuarios, many=True)
+    return Response(serializer.data)

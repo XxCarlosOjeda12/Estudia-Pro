@@ -6,28 +6,14 @@ const DEMO_LATENCY = 350;
 const deepClone = (value) => JSON.parse(JSON.stringify(value));
 
 const DemoModeController = (() => {
-  let enabled = true;
-  try {
-    const stored = localStorage.getItem(DEMO_STORAGE_KEY);
-    if (stored !== null) {
-      enabled = stored === 'true';
-    }
-  } catch {
-    enabled = true;
-  }
+  let enabled = false;  
   return {
-    isEnabled: () => enabled,
+    isEnabled: () => false,  
     setEnabled: (flag) => {
-      enabled = Boolean(flag);
-      try {
-        localStorage.setItem(DEMO_STORAGE_KEY, enabled);
-      } catch {
-        /* ignore */
-      }
+      enabled = false;
     },
     toggle: () => {
-      DemoModeController.setEnabled(!enabled);
-      return enabled;
+      return false;
     }
   };
 })();
@@ -60,6 +46,238 @@ export const formatUserForFrontend = (rawUser) => {
     raw: rawUser
   };
 };
+
+const LOCAL_KEYS = {
+  CUSTOM_ACTIVITIES: 'estudia-pro-custom-activities',
+  EXAM_DATES: 'estudia-pro-exam-dates',
+  PURCHASES: 'estudia-pro-purchases'
+};
+
+const safeNumber = (value, fallback = 0) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+};
+
+const readLocalArray = (key) => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeLocalArray = (key, value) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* ignore */
+  }
+};
+
+const addLocalActivity = (activity) => {
+  const list = readLocalArray(LOCAL_KEYS.CUSTOM_ACTIVITIES);
+  const entry = { id: activity.id || `local-${Date.now()}`, origin: 'MANUAL', ...activity };
+  list.unshift(entry);
+  writeLocalArray(LOCAL_KEYS.CUSTOM_ACTIVITIES, list);
+  return entry;
+};
+
+const removeLocalActivity = (activityId) => {
+  const filtered = readLocalArray(LOCAL_KEYS.CUSTOM_ACTIVITIES).filter((item) => item.id !== activityId);
+  writeLocalArray(LOCAL_KEYS.CUSTOM_ACTIVITIES, filtered);
+};
+
+const getStoredExamDates = () => readLocalArray(LOCAL_KEYS.EXAM_DATES);
+
+const setStoredExamDate = (subjectId, examDate, examTime, subjectTitle) => {
+  const list = getStoredExamDates();
+  const index = list.findIndex((item) => item.subjectId === subjectId);
+  if (!examDate) {
+    if (index >= 0) list.splice(index, 1);
+    writeLocalArray(LOCAL_KEYS.EXAM_DATES, list);
+    return { examDate: null, examTime: null };
+  }
+  const entry = { subjectId, subjectTitle: subjectTitle || null, examDate, examTime: examTime || null };
+  if (index >= 0) list[index] = entry;
+  else list.push(entry);
+  writeLocalArray(LOCAL_KEYS.EXAM_DATES, list);
+  return entry;
+};
+
+const getLocalPurchases = () => readLocalArray(LOCAL_KEYS.PURCHASES);
+const addLocalPurchase = (resourceId) => {
+  const list = getLocalPurchases();
+  if (!list.includes(resourceId)) {
+    list.push(resourceId);
+    writeLocalArray(LOCAL_KEYS.PURCHASES, list);
+  }
+  return list;
+};
+
+const normalizeCourse = (course = {}) => ({
+  id: course.id ?? course.curso_id ?? course.inscripcion_id ?? null,
+  title: course.titulo || course.title || 'Curso',
+  description: course.descripcion || course.description || '',
+  professor: course.creador?.nombre_completo || course.creador?.name || course.profesor || 'Profesor asignado',
+  school: course.categoria || course.school || 'General',
+  level: course.nivel || course.level || 'General',
+  progress: safeNumber(course.progreso_porcentaje ?? course.progress ?? 0, 0),
+  examDate: course.examDate || null,
+  examTime: course.examTime || null,
+  temario: Array.isArray(course.modulos || course.temario)
+    ? (course.modulos || course.temario).map((modulo) => ({
+        id: modulo.id,
+        title: modulo.titulo || modulo.title || 'Modulo',
+        completed: Boolean(modulo.completado),
+        resources: modulo.recursos || []
+      }))
+    : [],
+  raw: course
+});
+
+const normalizeEnrollment = (inscription = {}) => {
+  const course = normalizeCourse(inscription.curso || inscription);
+  return {
+    ...course,
+    id: course.id || inscription.curso?.id || inscription.inscripcion_id || inscription.id,
+    progress: safeNumber(inscription.progreso_porcentaje ?? course.progress ?? 0, 0),
+    completed: Boolean(inscription.completado),
+    inscriptionId: inscription.inscripcion_id || inscription.id || null,
+    lastAccess: inscription.ultimo_acceso || null
+  };
+};
+
+const normalizeDashboard = (payload = {}) => {
+  const courses = Array.isArray(payload.mis_cursos) ? payload.mis_cursos.map(normalizeCourse) : [];
+  const upcomingExams = Array.isArray(payload.proximos_examenes)
+    ? payload.proximos_examenes.map((exam) => {
+        const [datePart, timePart] = (exam.fecha_inicio || '').split('T');
+        return {
+          id: exam.id,
+          title: exam.titulo || 'Examen',
+          type: 'EXAMEN',
+          date: datePart || null,
+          time: timePart ? timePart.slice(0, 5) : null,
+          origin: 'BACKEND',
+          courseTitle: exam.curso || '',
+          durationMinutes: safeNumber(exam.duracion_minutos, null)
+        };
+      })
+    : [];
+  return {
+    courses,
+    upcomingExams,
+    recentActivity: payload.actividades_recientes || [],
+    stats: payload.estadisticas || {}
+  };
+};
+
+const resolveAuthorName = (resource = {}) => {
+  if (resource.author) return resource.author;
+  if (resource.autor_nombre) return resource.autor_nombre;
+  if (resource.autor && typeof resource.autor === 'object') {
+    const { name, username, first_name, last_name } = resource.autor;
+    if (name) return name;
+    if (first_name || last_name) {
+      const full = `${first_name || ''} ${last_name || ''}`.trim();
+      return full || username || 'Anonimo';
+    }
+    return username || 'Anonimo';
+  }
+  if (typeof resource.autor === 'string') return resource.autor;
+  return 'Anonimo';
+};
+
+const normalizeResource = (resource = {}) => ({
+  id: resource.id,
+  title: resource.titulo || resource.title || 'Recurso',
+  description: resource.descripcion || resource.description || '',
+  subjectId: resource.curso || resource.curso_id || null,
+  subjectName: resource.curso_titulo || resource.nombre_curso || resource.subjectName || 'General',
+  author: resolveAuthorName(resource),
+  type: (resource.tipo || resource.type || 'DOCUMENTO').toString().toLowerCase(),
+  price: safeNumber(resource.precio ?? resource.price ?? 0, 0),
+  rating: safeNumber(resource.calificacion_promedio ?? resource.rating ?? 0, 0),
+  downloads: safeNumber(resource.descargas ?? resource.downloads ?? 0, 0),
+  free: resource.es_gratuito ?? resource.free ?? (resource.precio === 0 || resource.price === 0),
+  raw: resource
+});
+
+const normalizeCommunityResource = (resource = {}) => normalizeResource({
+  ...resource,
+  nombre_curso: resource.curso_titulo || resource.nombre_curso
+});
+
+const normalizeForumTopic = (topic = {}) => ({
+  id: topic.id,
+  title: topic.titulo || topic.title || 'Tema',
+  subjectId: topic.curso || null,
+  subjectName: topic.curso_titulo || topic.subjectName || 'General',
+  postCount: topic.total_respuestas ?? (topic.respuestas ? topic.respuestas.length : 0),
+  lastActivity: topic.ultima_actividad || topic.fecha_actualizacion || topic.fecha_creacion || null
+});
+
+const normalizeForumDetail = (topic = {}) => ({
+  id: topic.id,
+  title: topic.titulo || topic.title || 'Tema',
+  subjectId: topic.curso || null,
+  subjectName: topic.curso_titulo || topic.subjectName || 'General',
+  posts: Array.isArray(topic.respuestas)
+    ? topic.respuestas.map((reply) => ({
+        id: reply.id,
+        author: reply.autor?.username || reply.autor?.first_name || reply.autor?.last_name || 'Usuario',
+        content: reply.contenido || reply.content || '',
+        createdAt: reply.fecha_creacion || reply.createdAt,
+        votes: reply.total_votos ?? reply.votes ?? 0
+      }))
+    : []
+});
+
+const normalizeQuestion = (question = {}) => ({
+  id: question.id,
+  text: question.texto_pregunta || question.text || '',
+  optionA: question.opcion_a,
+  optionB: question.opcion_b,
+  optionC: question.opcion_c,
+  optionD: question.opcion_d,
+  answer: question.respuesta_correcta || question.answer || '',
+  difficulty: question.dificultad || question.difficulty,
+  points: safeNumber(question.puntos, 0)
+});
+
+const normalizeExamMetadata = (exam = {}) => ({
+  id: exam.id,
+  title: exam.titulo || exam.title || 'Examen',
+  description: exam.descripcion || exam.description || '',
+  duration: safeNumber(exam.duracion_minutos, 0) * 60,
+  questionCount: safeNumber(exam.numero_preguntas, 0),
+  minScore: safeNumber(exam.puntaje_minimo_aprobacion, 0),
+  questions: Array.isArray(exam.questions) ? exam.questions.map(normalizeQuestion) : []
+});
+
+const normalizeExamStart = (examId, payload = {}, metadata = {}) => ({
+  id: examId,
+  title: metadata.titulo || metadata.title || payload.titulo || 'Examen',
+  duration: safeNumber(payload.duracion_minutos ?? metadata.duracion_minutos, 0) * 60,
+  attemptId: payload.intento_id,
+  questions: Array.isArray(payload.preguntas) ? payload.preguntas.map(normalizeQuestion) : []
+});
+
+const normalizeFormulary = (formulary = {}) => ({
+  id: formulary.id,
+  title: formulary.titulo || formulary.title || 'Formulario',
+  description: formulary.descripcion || formulary.description || '',
+  type: formulary.tipo || formulary.type || 'ENCUESTA',
+  subject: formulary.curso?.titulo || formulary.curso_titulo || formulary.subject || 'General',
+  url: '#',
+  raw: formulary
+});
+
+const examCatalog = new Map();
+const activeExamAttempts = new Map();
 
 const DemoAPI = {
   currentUser: DEMO_PROFILES.estudiante,
@@ -564,11 +782,22 @@ const DemoAPI = {
   }
 };
 
+const extractErrorMessage = (data) => {
+  if (!data) return '';
+  if (typeof data === 'string') return data;
+  if (data.message) return data.message;
+  if (data.error) return data.error;
+  if (data.detail) return data.detail;
+  const values = Object.values(data).flat().filter(Boolean);
+  return values.length ? values.join(', ') : '';
+};
+
 const request = async (endpoint, method = 'GET', data = null, requiresAuth = true) => {
   if (isDemoMode()) {
     return DemoAPI.handle(endpoint, method, data);
   }
-  const url = `${API_CONFIG.BASE_URL}${endpoint}`;
+
+  const url = new URL(`${API_CONFIG.BASE_URL}${endpoint}`);
   const headers = { 'Content-Type': 'application/json' };
   if (requiresAuth) {
     const token = localStorage.getItem('authToken');
@@ -578,242 +807,355 @@ const request = async (endpoint, method = 'GET', data = null, requiresAuth = tru
   if (data && ['POST', 'PUT', 'PATCH'].includes(method)) {
     options.body = JSON.stringify(data);
   }
+
   const response = await fetch(url, options);
+  const contentType = response.headers.get('content-type') || '';
+  const isJson = contentType.includes('application/json');
+  const payload = isJson ? await response.json().catch(() => null) : null;
+
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    let errorMessage = errorData.message || errorData.detail;
-
-    if (!errorMessage && typeof errorData === 'object') {
-      const values = Object.values(errorData).flat();
-      if (values.length > 0) {
-        errorMessage = values.join(', ');
-      }
+    const message = extractErrorMessage(payload) || `Error ${response.status}`;
+    const error = new Error(message);
+    error.status = response.status;
+    error.data = payload;
+    if (response.status === 401) {
+      try {
+        localStorage.removeItem('authToken');
+      } catch {
+       }
     }
+    throw error;
+  }
 
-    throw new Error(errorMessage || `Error ${response.status}`);
+  if (payload === null) {
+    if (response.status === 204) return {};
+    const text = await response.text().catch(() => '');
+    return text ? { raw: text } : {};
   }
-  const text = await response.text();
-  if (!text) return {};
-  try {
-    return JSON.parse(text);
-  } catch {
-    return {};
-  }
+  return payload;
 };
 
 export const apiService = {
   async login(identifier, password) {
-    const payload = isDemoMode()
-      ? { email: identifier, password }
-      : { username: identifier, password };
-    if (!isDemoMode() && identifier.includes('@')) {
-      payload.email = identifier;
-    }
+    const payload = { username: identifier, password };
     try {
       const raw = await request(API_CONFIG.ENDPOINTS.AUTH.LOGIN, 'POST', payload, false);
-      if (raw?.success && raw?.token) return raw;
       if (raw?.token) {
-        return { success: true, token: raw.token, user: formatUserForFrontend(raw.usuario || raw.user || raw) };
+        const user = formatUserForFrontend(raw.usuario || raw.user || raw);
+        return { success: true, token: raw.token, user, message: raw.message };
       }
-      return { success: false, message: raw?.message || 'Respuesta inesperada del servidor' };
+      return { success: false, message: extractErrorMessage(raw) || 'Respuesta inesperada del servidor' };
     } catch (error) {
-      return { success: false, message: error.message };
+      return { success: false, message: error.message || 'No se pudo iniciar sesion' };
     }
   },
   async register(userData) {
     try {
       const response = await request(API_CONFIG.ENDPOINTS.AUTH.REGISTER, 'POST', userData, false);
-      if (response?.success) return response;
+      if (response?.token) {
+        const user = formatUserForFrontend(response.usuario || response.user || response);
+        return { success: true, token: response.token, user, message: response.message };
+      }
       return { success: true, message: response?.message || 'Registro exitoso' };
+    } catch (error) {
+      return { success: false, message: error.message || 'No se pudo registrar' };
+    }
+  },
+  async logout() {
+    if (isDemoMode()) return request(API_CONFIG.ENDPOINTS.AUTH.LOGOUT, 'POST');
+    try {
+      return await request(API_CONFIG.ENDPOINTS.AUTH.LOGOUT, 'POST');
     } catch (error) {
       return { success: false, message: error.message };
     }
   },
-  logout() {
-    return request(API_CONFIG.ENDPOINTS.AUTH.LOGOUT, 'POST');
+  async getProfile() {
+    const profile = await request(API_CONFIG.ENDPOINTS.USERS.GET_PROFILE);
+    const user = formatUserForFrontend(profile);
+    user.raw = profile;
+    return user;
   },
-  getProfile() {
-    return request(API_CONFIG.ENDPOINTS.USERS.GET_PROFILE);
+  async getRole() {
+    return request(API_CONFIG.ENDPOINTS.USERS.GET_ROLE);
   },
-  updateProfile(profileData) {
-    return request(API_CONFIG.ENDPOINTS.USERS.UPDATE_PROFILE, 'PUT', profileData);
+  async getDashboard() {
+    const payload = await request(API_CONFIG.ENDPOINTS.USERS.GET_DASHBOARD);
+    return normalizeDashboard(payload);
   },
-  getAllSubjects() {
-    return request(API_CONFIG.ENDPOINTS.SUBJECTS.GET_ALL);
+  async getAllSubjects() {
+    const raw = await request(API_CONFIG.ENDPOINTS.SUBJECTS.GET_ALL);
+    const list = Array.isArray(raw) ? raw : raw?.results || raw?.cursos || [];
+    return list.map(normalizeCourse);
   },
-  getUserSubjects() {
-    return request(API_CONFIG.ENDPOINTS.SUBJECTS.GET_USER_SUBJECTS).then((raw) => {
-      if (!Array.isArray(raw)) return [];
-      if (raw.length > 0 && raw[0] && typeof raw[0] === 'object' && raw[0].curso) {
-        return raw.map((row) => {
-          const course = row.curso || {};
-          const creator = course.creador || {};
-          return {
-            id: course.id,
-            title: course.titulo || course.title || 'Materia',
-            description: course.descripcion || course.description || '',
-            professor: creator.nombre_completo || course.professor || 'Profesor',
-            school: course.school || 'ESCOM',
-            progress: Number(row.progreso_porcentaje) || 0,
-            examDate: row.examDate || null,
-            examTime: row.examTime || null,
-            temario: []
-          };
-        });
-      }
-      return raw;
-    });
+  async getUserSubjects() {
+    const raw = await request(API_CONFIG.ENDPOINTS.SUBJECTS.GET_USER_SUBJECTS);
+    if (!Array.isArray(raw)) return [];
+    if (raw.length > 0 && raw[0]?.curso) {
+      return raw.map(normalizeEnrollment);
+    }
+    return raw.map(normalizeCourse);
   },
-  searchCourses(query) {
-    // GET /api/buscar-cursos/?q=...
-    // Note: checks if query is empty or not
-    const endpoint = `/buscar-cursos/?q=${encodeURIComponent(query)}`;
+  async searchCourses(query) {
+    const term = (query || '').toString().trim();
+    const endpoint = `${API_CONFIG.ENDPOINTS.SUBJECTS.SEARCH}?q=${encodeURIComponent(term)}`;
+    const raw = await request(endpoint);
+    const list = Array.isArray(raw?.cursos) ? raw.cursos : Array.isArray(raw) ? raw : [];
+    return list.map(normalizeCourse);
+  },
+  async addSubject(subjectId) {
+    const endpoint = `${API_CONFIG.ENDPOINTS.SUBJECTS.GET_ALL}${subjectId}/${API_CONFIG.ENDPOINTS.SUBJECTS.ENROLL_SUFFIX}`;
+    return request(endpoint, 'POST', {});
+  },
+  async getCourseProgress(subjectId) {
+    const endpoint = `${API_CONFIG.ENDPOINTS.SUBJECTS.GET_ALL}${subjectId}/${API_CONFIG.ENDPOINTS.SUBJECTS.PROGRESS_SUFFIX}`;
     return request(endpoint);
   },
-  addSubject(subjectId) {
-    // Backend expects: POST /api/cursos/{id}/inscribirse/
-    return request(`${API_CONFIG.ENDPOINTS.SUBJECTS.GET_ALL}${subjectId}/inscribirse/`, 'POST');
-  },
-  getCourseProgress(subjectId) {
-    // GET /api/cursos/{id}/mi_progreso/
-    return request(`${API_CONFIG.ENDPOINTS.SUBJECTS.GET_ALL}${subjectId}/mi_progreso/`);
-  },
-  getDashboard() {
-    return request(API_CONFIG.ENDPOINTS.USERS.GET_DASHBOARD);
-  },
-  getDetailedProgress() {
+  async getDetailedProgress() {
     return request(API_CONFIG.ENDPOINTS.USERS.GET_PROGRESS);
   },
-  updateExamDate(subjectId, examDate) {
-    const payload = { subjectId, examDate };
-    if (arguments.length >= 3) payload.examTime = arguments[2];
-    return request(API_CONFIG.ENDPOINTS.SUBJECTS.UPDATE_EXAM_DATE, 'PUT', payload);
+  async updateExamDate(subjectId, examDate, examTime, subjectTitle) {
+    if (isDemoMode()) {
+      const payload = { subjectId, examDate, examTime };
+      return request(API_CONFIG.ENDPOINTS.SUBJECTS.UPDATE_EXAM_DATE, 'PUT', payload);
+    }
+    return setStoredExamDate(subjectId, examDate || null, examTime || null, subjectTitle);
   },
-  getUpcomingActivities() {
-    return request(API_CONFIG.ENDPOINTS.ACTIVITIES.UPCOMING).then((raw) => {
-      if (!Array.isArray(raw)) return [];
-      return raw.map((activity) => ({
-        id: activity.id,
-        title: activity.titulo || activity.title || 'Actividad',
-        type: activity.tipo || activity.type || 'OTRO',
-        date: activity.fecha || activity.date,
-        time: activity.hora || activity.time || null,
-        origin: activity.origen || activity.origin || 'MANUAL',
-        courseId: activity.curso_id || activity.courseId || null,
-        courseTitle: activity.curso_titulo || activity.courseTitle || null
+  async getUpcomingActivities() {
+    if (isDemoMode()) {
+      return request(API_CONFIG.ENDPOINTS.ACTIVITIES.UPCOMING);
+    }
+    try {
+      const dashboard = await this.getDashboard();
+      const manual = readLocalArray(LOCAL_KEYS.CUSTOM_ACTIVITIES);
+      const examDates = getStoredExamDates().map((entry) => ({
+        id: `exam-${entry.subjectId}`,
+        title: entry.subjectTitle || 'Examen',
+        type: 'EXAMEN',
+        date: entry.examDate,
+        time: entry.examTime || null,
+        origin: 'FECHA_EXAMEN',
+        courseId: entry.subjectId
       }));
+      return [...dashboard.upcomingExams, ...examDates, ...manual];
+    } catch (error) {
+      console.error('upcoming activities error', error);
+      return readLocalArray(LOCAL_KEYS.CUSTOM_ACTIVITIES);
+    }
+  },
+  async createUpcomingActivity({ title, type, date, time }) {
+    if (isDemoMode()) {
+      return request(API_CONFIG.ENDPOINTS.ACTIVITIES.UPCOMING, 'POST', {
+        titulo: title,
+        tipo: type,
+        fecha: date,
+        hora: time || null
+      });
+    }
+    return addLocalActivity({
+      title: title || 'Actividad',
+      type: type || 'OTRO',
+      date,
+      time: time || null
     });
   },
-  createUpcomingActivity({ title, type, date, time }) {
-    return request(API_CONFIG.ENDPOINTS.ACTIVITIES.UPCOMING, 'POST', {
-      titulo: title,
-      tipo: type,
-      fecha: date,
-      hora: time || null
-    });
+  async deleteUpcomingActivity(activityId) {
+    if (isDemoMode()) {
+      return request(`${API_CONFIG.ENDPOINTS.ACTIVITIES.UPCOMING}${activityId}/`, 'DELETE');
+    }
+    removeLocalActivity(activityId);
+    return { success: true };
   },
-  deleteUpcomingActivity(activityId) {
-    return request(`${API_CONFIG.ENDPOINTS.ACTIVITIES.UPCOMING}${activityId}/`, 'DELETE');
+  async getAllResources() {
+    const raw = await request(API_CONFIG.ENDPOINTS.RESOURCES.GET_ALL);
+    const list = Array.isArray(raw) ? raw : raw?.results || [];
+    return list.map(normalizeResource);
   },
-  getAllResources() {
-    return request(API_CONFIG.ENDPOINTS.RESOURCES.GET_ALL);
+  async getPurchasedResources() {
+    if (isDemoMode()) {
+      return request(API_CONFIG.ENDPOINTS.RESOURCES.GET_PURCHASED);
+    }
+    const ids = getLocalPurchases();
+    const resources = await this.getAllResources().catch(() => []);
+    return ids.map((id) => resources.find((item) => item.id === id) || { id });
   },
-  getPurchasedResources() {
-    return request(API_CONFIG.ENDPOINTS.RESOURCES.GET_PURCHASED);
+  async purchaseResource(resourceId) {
+    if (isDemoMode()) {
+      return request(API_CONFIG.ENDPOINTS.RESOURCES.PURCHASE, 'POST', { resourceId });
+    }
+    addLocalPurchase(resourceId);
+    return { success: true };
   },
-  purchaseResource(resourceId) {
-    return request(API_CONFIG.ENDPOINTS.RESOURCES.PURCHASE, 'POST', { resourceId });
+  async downloadResource(resourceId) {
+    if (isDemoMode()) {
+      return request(API_CONFIG.ENDPOINTS.RESOURCES.DOWNLOAD, 'POST', { resourceId });
+    }
+    return { success: true, resourceId };
   },
-  downloadResource(resourceId) {
-    return request(API_CONFIG.ENDPOINTS.RESOURCES.DOWNLOAD, 'POST', { resourceId });
+  async markResourceCompleted(resourceId, timeSpent = 15) {
+    const endpoint = `${API_CONFIG.ENDPOINTS.RESOURCES.GET_ALL}${resourceId}/${API_CONFIG.ENDPOINTS.RESOURCES.MARK_COMPLETED_SUFFIX}`;
+    return request(endpoint, 'POST', { tiempo_dedicado: timeSpent });
   },
-  markResourceCompleted(resourceId) {
-    // POST /api/recursos/{id}/marcar_completado/
-    return request(`${API_CONFIG.ENDPOINTS.RESOURCES.GET_ALL}${resourceId}/marcar_completado/`, 'POST');
+  async getAllFormularies() {
+    const raw = await request(API_CONFIG.ENDPOINTS.FORMULARIES.GET_ALL);
+    const list = Array.isArray(raw) ? raw : raw?.results || [];
+    return list.map(normalizeFormulary);
   },
-  getAllFormularies() {
-    return request(API_CONFIG.ENDPOINTS.FORMULARIES.GET_ALL);
-  },
-  getAllAchievements() {
+  async getAllAchievements() {
     return request(API_CONFIG.ENDPOINTS.ACHIEVEMENTS.GET_ALL);
   },
-  getAllExams() {
-    return request(API_CONFIG.ENDPOINTS.EXAMS.GET_ALL);
+  async getUserAchievements() {
+    return request(API_CONFIG.ENDPOINTS.ACHIEVEMENTS.GET_USER_ACHIEVEMENTS);
   },
-  startExam(examId) {
-    // Backend expects: POST /api/examenes/{id}/iniciar/
-    return request(`${API_CONFIG.ENDPOINTS.EXAMS.GET_ALL}${examId}/iniciar/`, 'POST');
+  async getAllExams() {
+    const raw = await request(API_CONFIG.ENDPOINTS.EXAMS.GET_ALL);
+    const list = Array.isArray(raw) ? raw : raw?.results || [];
+    list.forEach((exam) => examCatalog.set(exam.id, exam));
+    return list.map(normalizeExamMetadata);
   },
-  submitExam(examId, answers) {
-    // Backend expects: POST /api/examenes/{id}/enviar_respuestas/
-    return request(`${API_CONFIG.ENDPOINTS.EXAMS.GET_ALL}${examId}/enviar_respuestas/`, 'POST', { answers });
+  async startExam(examId) {
+    const endpoint = `${API_CONFIG.ENDPOINTS.EXAMS.GET_ALL}${examId}/${API_CONFIG.ENDPOINTS.EXAMS.START_SUFFIX}`;
+    const payload = await request(endpoint, 'POST', {});
+    const normalized = normalizeExamStart(examId, payload, examCatalog.get(examId) || {});
+    if (normalized.attemptId) {
+      activeExamAttempts.set(examId, normalized.attemptId);
+    }
+    return normalized;
   },
-  getAllTutors() {
-    return request(API_CONFIG.ENDPOINTS.TUTORS.GET_ALL);
+  async submitExam(examId, answers) {
+    const attemptId = activeExamAttempts.get(examId);
+    if (!attemptId) {
+      throw new Error('Examen no iniciado. Inicia el examen antes de enviar respuestas.');
+    }
+    const respuestas = Object.entries(answers || {}).map(([questionId, value]) => ({
+      pregunta_id: Number(questionId),
+      respuesta: (value || '').toString().trim(),
+      tiempo: 0
+    }));
+    const payload = {
+      intento_id: attemptId,
+      respuestas,
+      tiempo_total: respuestas.length ? respuestas.length * 5 : 0
+    };
+    const endpoint = `${API_CONFIG.ENDPOINTS.EXAMS.GET_ALL}${examId}/${API_CONFIG.ENDPOINTS.EXAMS.SUBMIT_SUFFIX}`;
+    const result = await request(endpoint, 'POST', payload);
+    activeExamAttempts.delete(examId);
+    return {
+      calificacion: safeNumber(result.puntaje ?? result.calificacion ?? 0, 0),
+      correctas: result.respuestas_correctas ?? result.correctas ?? 0,
+      total: result.total_preguntas ?? result.total ?? respuestas.length,
+      aprobado: result.aprobado,
+      tiempo_usado: result.tiempo_usado
+    };
   },
-  scheduleTutoring(tutorId, subjectId, duration, topic) {
+  async getAllTutors() {
+    try {
+      const data = await request(API_CONFIG.ENDPOINTS.TUTORS.GET_ALL);
+      return Array.isArray(data) ? data : data?.results || [];
+    } catch {
+      return [];
+    }
+  },
+  async scheduleTutoring(tutorId, subjectId, duration, topic) {
     return request(API_CONFIG.ENDPOINTS.TUTORS.SCHEDULE, 'POST', { tutorId, subjectId, duration, topic });
   },
-  getAllForums() {
-    return request(API_CONFIG.ENDPOINTS.FORUMS.GET_ALL);
+  async getAllForums() {
+    const data = await request(API_CONFIG.ENDPOINTS.FORUMS.GET_ALL);
+    const list = Array.isArray(data) ? data : data?.results || [];
+    return list.map(normalizeForumTopic);
   },
-  createForumTopic(topicData) {
-    // Map keys for backend: { title -> titulo, content -> contenido, subjectId -> curso }
+  async createForumTopic(topicData) {
     const payload = {
       titulo: topicData.title,
       contenido: topicData.content,
-      categoria: topicData.category || 'General',
-      curso: topicData.subjectId
+      categoria: topicData.category || 'PREGUNTA',
+      curso: topicData.subjectId || null
     };
-    return request(API_CONFIG.ENDPOINTS.FORUMS.CREATE_TOPIC, 'POST', payload);
+    const data = await request(API_CONFIG.ENDPOINTS.FORUMS.CREATE_TOPIC, 'POST', payload);
+    return { success: true, topic: normalizeForumTopic(data) };
   },
-  getForumTopic(topicId) {
-    // GET /foro/{id}/
-    return request(`${API_CONFIG.ENDPOINTS.FORUMS.GET_TOPIC}${topicId}/`);
+  async getForumTopic(topicId) {
+    const topic = await request(`${API_CONFIG.ENDPOINTS.FORUMS.GET_TOPIC}${topicId}/`);
+    return normalizeForumDetail(topic);
   },
-  replyForumTopic(topicId, message) {
-    // POST /foro/{id}/responder/ with { contenido }
+  async replyForumTopic(topicId, message) {
     return request(`${API_CONFIG.ENDPOINTS.FORUMS.GET_TOPIC}${topicId}/responder/`, 'POST', { contenido: message });
   },
-  voteAnswer(answerId) {
-    // POST /api/foro/respuesta/{id}/votar/
-    return request(`/foro/respuesta/${answerId}/votar/`, 'POST');
+  async voteAnswer(answerId, type = 'UP') {
+    const response = await request(`${API_CONFIG.ENDPOINTS.FORUMS.VOTE_ANSWER}${answerId}/votar/`, 'POST', { tipo: type });
+    return { success: true, votes: response.total_votos ?? response.votes ?? 0 };
   },
-  getUserAchievements() {
-    return request(API_CONFIG.ENDPOINTS.ACHIEVEMENTS.GET_USER_ACHIEVEMENTS);
+  async getUserNotifications() {
+    if (isDemoMode()) {
+      return request(API_CONFIG.ENDPOINTS.NOTIFICATIONS.GET_USER_NOTIFICATIONS);
+    }
+    return [];
   },
-  getUserNotifications() {
-    return request(API_CONFIG.ENDPOINTS.NOTIFICATIONS.GET_USER_NOTIFICATIONS);
+  async markNotificationAsRead(notificationId) {
+    if (isDemoMode()) {
+      return request(API_CONFIG.ENDPOINTS.NOTIFICATIONS.MARK_READ, 'POST', { notificationId });
+    }
+    return { success: true };
   },
-  markNotificationAsRead(notificationId) {
-    return request(API_CONFIG.ENDPOINTS.NOTIFICATIONS.MARK_READ, 'POST', { notificationId });
+  async getAllUsers() {
+    try {
+      const data = await request(API_CONFIG.ENDPOINTS.ADMIN.USERS);
+      return Array.isArray(data) ? data.map(formatUserForFrontend) : [];
+    } catch (error) {
+      console.error('Error al obtener usuarios:', error);
+      return [];
+    }
   },
-  getAllUsers() {
-    return request(API_CONFIG.ENDPOINTS.ADMIN.USERS);
+  async manageUser(userId, action, data = {}) {
+    if (isDemoMode()) {
+      return request(`${API_CONFIG.ENDPOINTS.ADMIN.USERS}/${userId}`, 'PUT', { action, ...data });
+    }
+    return { success: false, message: 'No disponible' };
   },
-  manageUser(userId, action, data = {}) {
-    return request(`${API_CONFIG.ENDPOINTS.ADMIN.USERS}/${userId}`, 'PUT', { action, ...data });
+  async createSubject(subjectData) {
+    if (isDemoMode()) {
+      return request(API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS, 'POST', subjectData);
+    }
+    return { success: false, message: 'No disponible' };
   },
-  createSubject(subjectData) {
-    return request(API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS, 'POST', subjectData);
+  async updateSubject(subjectId, subjectData) {
+    if (isDemoMode()) {
+      return request(`${API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS}/${subjectId}`, 'PUT', subjectData);
+    }
+    return { success: false, message: 'No disponible' };
   },
-  updateSubject(subjectId, subjectData) {
-    return request(`${API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS}/${subjectId}`, 'PUT', subjectData);
+  async deleteSubject(subjectId) {
+    if (isDemoMode()) {
+      return request(`${API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS}/${subjectId}`, 'DELETE');
+    }
+    return { success: false, message: 'No disponible' };
   },
-  deleteSubject(subjectId) {
-    return request(`${API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS}/${subjectId}`, 'DELETE');
+  async createCommunityResource(resourceData) {
+    const data = await request(API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.BASE, 'POST', resourceData);
+    return normalizeCommunityResource(data);
   },
-  // Community Resources
-  createCommunityResource(resourceData) {
-    return request(API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.BASE, 'POST', resourceData);
+  async getMyCommunityResources() {
+    const data = await request(API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.MY_RESOURCES);
+    const list = Array.isArray(data) ? data : data?.results || [];
+    return list.map(normalizeCommunityResource);
   },
-  getMyCommunityResources() {
-    return request(API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.MY_RESOURCES);
-  },
-  getCommunityResources(query = '', type = '') {
+  async getCommunityResources(query = '', type = '') {
     const params = new URLSearchParams();
     if (query) params.append('q', query);
     if (type) params.append('tipo', type);
-    return request(`${API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.SEARCH}?${params.toString()}`);
+    const queryString = params.toString();
+    const endpoint = queryString
+      ? `${API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.SEARCH}?${queryString}`
+      : API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.BASE;
+    const data = await request(endpoint);
+    const list = Array.isArray(data) ? data : data?.results || [];
+    return list.map(normalizeCommunityResource);
+  },
+  async downloadCommunityResource(resourceId) {
+    const endpoint = `${API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.BASE}${resourceId}/${API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.DOWNLOAD_SUFFIX}`;
+    return request(endpoint, 'POST', {});
+  },
+  async rateCommunityResource(resourceId, rating, comment = '') {
+    const endpoint = `${API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.BASE}${resourceId}/${API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.RATE_SUFFIX}`;
+    return request(endpoint, 'POST', { calificacion: rating, comentario: comment });
   }
 };
