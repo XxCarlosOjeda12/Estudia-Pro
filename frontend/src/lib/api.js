@@ -172,13 +172,35 @@ const DemoAPI = {
     if (this.communityResources) return;
     const stored = readJsonFromStorage(DEMO_COMMUNITY_RESOURCES_KEY, null);
     const defaults = deepClone(HARDCODED_DATA.communityResources || []);
-    if (Array.isArray(stored) && stored.length) {
-      this.communityResources = stored;
-      return;
+
+    let list = Array.isArray(stored) ? stored : defaults;
+    if (Array.isArray(stored) && stored.length === 0 && defaults.length) {
+      list = defaults;
     }
-    this.communityResources = Array.isArray(stored) ? stored : defaults;
-    if ((!Array.isArray(stored) || stored.length === 0) && defaults.length) {
-      this.communityResources = defaults;
+
+    // Ensure all resources have a valid URL for demo purposes
+    // This fixes issues where user-created or legacy demo data might be missing files
+    const DEMO_URLS = [
+      'demo/recurso-integrales.pdf',
+      'demo/recurso-matrices.pdf',
+      'demo/recurso-probabilidad.pdf',
+      'demo/formulario-derivadas.pdf'
+    ];
+
+    let changed = false;
+    this.communityResources = list.map((item, index) => {
+      // Check if it has any valid URL field
+      const hasUrl = item.archivo_url || item.contenido_url || item.url || (item.fileId);
+      if (!hasUrl) {
+        changed = true;
+        // Assign a deterministic demo URL based on index or ID to keep it consistent
+        const demoUrl = DEMO_URLS[index % DEMO_URLS.length];
+        return { ...item, archivo_url: demoUrl };
+      }
+      return item;
+    });
+
+    if (changed || !stored) {
       this.saveCommunityResources();
     }
   },
