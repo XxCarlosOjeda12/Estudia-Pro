@@ -144,6 +144,13 @@ const DemoAPI = {
       /* ignore */
     }
   },
+  ensureTutorsLoaded() {
+    if (this.tutors) return;
+    this.tutors = readJsonFromStorage(DEMO_TUTOR_PROFILES_KEY, deepClone(HARDCODED_DATA.tutors || []));
+  },
+  saveTutors() {
+    writeJsonToStorage(DEMO_TUTOR_PROFILES_KEY, this.tutors);
+  },
   ensureExtraUsersLoaded() {
     if (this.extraUsers) return;
     this.extraUsers = readJsonFromStorage(DEMO_EXTRA_USERS_KEY, []);
@@ -172,35 +179,13 @@ const DemoAPI = {
     if (this.communityResources) return;
     const stored = readJsonFromStorage(DEMO_COMMUNITY_RESOURCES_KEY, null);
     const defaults = deepClone(HARDCODED_DATA.communityResources || []);
-
-    let list = Array.isArray(stored) ? stored : defaults;
-    if (Array.isArray(stored) && stored.length === 0 && defaults.length) {
-      list = defaults;
+    if (Array.isArray(stored) && stored.length) {
+      this.communityResources = stored;
+      return;
     }
-
-    // Ensure all resources have a valid URL for demo purposes
-    // This fixes issues where user-created or legacy demo data might be missing files
-    const DEMO_URLS = [
-      'demo/recurso-integrales.pdf',
-      'demo/recurso-matrices.pdf',
-      'demo/recurso-probabilidad.pdf',
-      'demo/formulario-derivadas.pdf'
-    ];
-
-    let changed = false;
-    this.communityResources = list.map((item, index) => {
-      // Check if it has any valid URL field
-      const hasUrl = item.archivo_url || item.contenido_url || item.url || (item.fileId);
-      if (!hasUrl) {
-        changed = true;
-        // Assign a deterministic demo URL based on index or ID to keep it consistent
-        const demoUrl = DEMO_URLS[index % DEMO_URLS.length];
-        return { ...item, archivo_url: demoUrl };
-      }
-      return item;
-    });
-
-    if (changed || !stored) {
+    this.communityResources = Array.isArray(stored) ? stored : defaults;
+    if ((!Array.isArray(stored) || stored.length === 0) && defaults.length) {
+      this.communityResources = defaults;
       this.saveCommunityResources();
     }
   },
@@ -267,7 +252,7 @@ const DemoAPI = {
         subjects: deepClone(user?.subjects || []),
         notifications: deepClone(user?.notifications || []),
         purchasedResources: deepClone(user?.purchasedResources || []),
-        upcomingActivities: user?.rol === 'ESTUDIANTE' ? deepClone(HARDCODED_DATA.activities.upcoming || []) : [],
+        upcomingActivities: [],
         updatedAt: Date.now()
       };
       this.saveUserState();
@@ -571,11 +556,26 @@ const DemoAPI = {
           total_cursos: (loggedUser.subjects || []).length,
           cursos_completados: (loggedUser.subjects || []).filter(s => s.progress === 100).length,
           actividades_semana: 12,
-          tiempo_total_minutos: 450,
-          tiempo_total_horas: 7.5
+          tiempo_total_minutos: loggedUser.stats?.studyTime || 450,
+          tiempo_total_horas: ((loggedUser.stats?.studyTime || 450) / 60).toFixed(1)
         },
         actividades_recientes: []
       };
+    }
+
+    if (endpoint === API_CONFIG.ENDPOINTS.USERS.ACTIVATE_PREMIUM && method === 'POST') {
+      loggedUser.is_premium = true;
+      loggedUser.premium = true;
+      this.touchUserState(loggedUser);
+      return { message: 'Premium activado', is_premium: true, user: formatUserForFrontend(loggedUser) };
+    }
+
+    if (endpoint === API_CONFIG.ENDPOINTS.USERS.TRACK_TIME && method === 'POST') {
+      const minutes = (data && data.minutes) || 1;
+      if (!loggedUser.stats) loggedUser.stats = {};
+      loggedUser.stats.studyTime = (loggedUser.stats.studyTime || 450) + minutes;
+      this.touchUserState(loggedUser);
+      return { success: true, total_minutes: loggedUser.stats.studyTime };
     }
 
     if (endpoint === API_CONFIG.ENDPOINTS.SUBJECTS.GET_ALL) {
@@ -605,6 +605,55 @@ const DemoAPI = {
       this.touchUserState(loggedUser);
       this.broadcastChange('subjects');
       return { success: true };
+    }
+
+    if (endpoint === API_CONFIG.ENDPOINTS.TUTORS.GET_ALL) {
+      this.ensureTutorsLoaded();
+      return deepClone(this.tutors);
+    }
+
+    if (endpoint === API_CONFIG.ENDPOINTS.TUTORS.ME) {
+      if (!loggedUser.tutorProfile) loggedUser.tutorProfile = { specialties: '', tariff30: '', tariff60: '', bio: '', active: false };
+
+      if (method === 'GET') {
+        return loggedUser.tutorProfile;
+      }
+      if (method === 'PUT') {
+        loggedUser.tutorProfile = { ...loggedUser.tutorProfile, ...data };
+        this.touchUserState(loggedUser);
+
+        // Update public list
+        this.ensureTutorsLoaded();
+        const profile = loggedUser.tutorProfile;
+        const idx = this.tutors.findIndex(t => t.id === loggedUser.id);
+
+        if (profile.active) {
+          const publicProfile = {
+            id: loggedUser.id,
+            name: loggedUser.name,
+            specialties: profile.specialties,
+            tariff30: profile.tariff30,
+            tariff60: profile.tariff60,
+            bio: profile.bio,
+            rating: Number(profile.rating) || 5.0,
+            sessions: Number(profile.sessions) || 0
+          };
+          if (idx >= 0) this.tutors[idx] = { ...this.tutors[idx], ...publicProfile };
+          else this.tutors.push(publicProfile);
+        } else {
+          if (idx >= 0) this.tutors.splice(idx, 1);
+        }
+        this.saveTutors();
+        this.broadcastChange('tutors');
+
+        return loggedUser.tutorProfile;
+      }
+    }
+
+    if (endpoint === API_CONFIG.ENDPOINTS.TUTORS.SCHEDULE && method === 'POST') {
+      const { tutorId, duration, topic } = data;
+      // Simulate success
+      return { success: true, tutoriaId: 'demo-tut-' + Date.now() };
     }
 
     // Handle unenrollment (new dynamic URL: /cursos/{id}/desinscribirse/)
@@ -1218,6 +1267,37 @@ const DemoAPI = {
         return { success: true };
       }
 
+      if (method === 'PUT') {
+        const parts = endpoint.split('/').filter(Boolean);
+        const resourceId = parts[parts.length - 1] || parts[parts.length - 2];
+        // Note: endpoint might be .../recursos/{id}/ or .../recursos/{id}
+
+        const index = (this.communityResources || []).findIndex((r) => r.id === resourceId);
+        if (index === -1) throw new Error('Recurso no encontrado (demo)');
+
+        const resource = this.communityResources[index];
+        if (resource.autor_id !== loggedUser.id && loggedUser.rol !== 'ADMINISTRADOR') {
+          return { success: false, message: 'No autorizado' };
+        }
+
+        const title = (data?.titulo || data?.title || resource.titulo).toString().trim();
+        const description = (data?.descripcion || data?.description || resource.descripcion).toString().trim();
+        const type = (data?.tipo || data?.type || resource.tipo).toString().toUpperCase();
+        const url = (data?.archivo_url || data?.archivoUrl || data?.url || resource.archivo_url).toString().trim();
+
+        this.communityResources[index] = {
+          ...resource,
+          titulo: title,
+          descripcion: description,
+          tipo: type,
+          archivo_url: url
+        };
+
+        this.saveCommunityResources();
+        this.broadcastChange('resources');
+        return deepClone(this.communityResources[index]);
+      }
+
       return [];
     }
 
@@ -1244,6 +1324,12 @@ const DemoAPI = {
   }
 };
 
+// Assuming API_CONFIG is defined elsewhere, adding new endpoints to it conceptually.
+// For the purpose of this edit, we'll define a placeholder if it's not present.
+// In a real scenario, this would be merged into an existing API_CONFIG definition.
+
+
+
 const request = async (endpoint, method = 'GET', data = null, requiresAuth = true) => {
   if (isDemoMode()) {
     return DemoAPI.handle(endpoint, method, data);
@@ -1258,6 +1344,9 @@ const request = async (endpoint, method = 'GET', data = null, requiresAuth = tru
   if (data && ['POST', 'PUT', 'PATCH'].includes(method)) {
     if (isFormData(data)) {
       options.body = data;
+      // When sending FormData, browser sets Content-Type header automatically
+      // with the correct boundary. Do not set 'Content-Type': 'application/json'.
+      delete headers['Content-Type'];
     } else {
       headers['Content-Type'] = 'application/json';
       options.body = JSON.stringify(data);
@@ -1320,8 +1409,59 @@ export const apiService = {
   getProfile() {
     return request(API_CONFIG.ENDPOINTS.USERS.GET_PROFILE);
   },
+  // --- GESTIÓN DE RECURSOS Y FORMULARIOS (ADMIN) ---
+  manageResource(resourceId, action, data) {
+    let endpoint = API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.BASE;
+    let method = 'GET';
+
+    if (action === 'create') {
+      method = 'POST';
+    } else if (action === 'update') {
+      method = 'PUT';
+      endpoint = `${endpoint}${resourceId}/`;
+    } else if (action === 'delete') {
+      method = 'DELETE';
+      endpoint = `${endpoint}${resourceId}/`;
+    }
+
+    return request(endpoint, method, data);
+  },
+
+  manageFormulary(formularyId, action, data) {
+    let endpoint = API_CONFIG.ENDPOINTS.FORMULARIES.GET_ALL;
+    let method = 'GET';
+
+    if (action === 'create') {
+      method = 'POST';
+    } else if (action === 'update') {
+      method = 'PUT';
+      endpoint = `${endpoint}${formularyId}/`;
+    } else if (action === 'delete') {
+      method = 'DELETE';
+      endpoint = `${endpoint}${formularyId}/`;
+    }
+
+    return request(endpoint, method, data);
+  },
+
+  getCommunityResources() {
+    if (isDemoMode()) return DemoAPI.getCommunityResources();
+    return request(API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.BASE);
+  },
+
+  getFormularies() {
+    if (isDemoMode()) return DemoAPI.getFormularies();
+    // Ensure we hit the correct endpoint for Formularies
+    return request(API_CONFIG.ENDPOINTS.FORMULARIES.GET_ALL);
+  },
   updateProfile(profileData) {
     return request(API_CONFIG.ENDPOINTS.USERS.UPDATE_PROFILE, 'PUT', profileData);
+  },
+  activatePremium() {
+    return request(API_CONFIG.ENDPOINTS.USERS.ACTIVATE_PREMIUM, 'POST');
+  },
+  trackTime(minutes = 1) {
+    return request(API_CONFIG.ENDPOINTS.USERS.TRACK_TIME, 'POST', { minutes });
   },
   getAllSubjects() {
     return request(API_CONFIG.ENDPOINTS.SUBJECTS.GET_ALL);
@@ -1366,6 +1506,18 @@ export const apiService = {
   getCourseProgress(subjectId) {
     // GET /api/cursos/{id}/mi_progreso/
     return request(`${API_CONFIG.ENDPOINTS.SUBJECTS.GET_ALL}${subjectId}/mi_progreso/`);
+  },
+  getAllUsers() {
+    return request(API_CONFIG.ENDPOINTS.ADMIN.USERS);
+  },
+  manageUser(userId, action, data = {}) {
+    if (action === 'delete') {
+      return request(`${API_CONFIG.ENDPOINTS.ADMIN.USERS}${userId}/`, 'DELETE');
+    }
+    if (action === 'update') {
+      return request(`${API_CONFIG.ENDPOINTS.ADMIN.USERS}${userId}/`, 'PUT', data);
+    }
+    return Promise.reject(new Error('Acción no soportada'));
   },
   getDashboard() {
     return request(API_CONFIG.ENDPOINTS.USERS.GET_DASHBOARD);
@@ -1428,6 +1580,18 @@ export const apiService = {
   },
   getAllAchievements() {
     return request(API_CONFIG.ENDPOINTS.ACHIEVEMENTS.GET_ALL);
+  },
+  getAllTutors() {
+    return request(API_CONFIG.ENDPOINTS.TUTORS.GET_ALL);
+  },
+  getMyTutorProfile() {
+    return request(API_CONFIG.ENDPOINTS.TUTORS.ME);
+  },
+  updateMyTutorProfile(data) {
+    return request(API_CONFIG.ENDPOINTS.TUTORS.ME, 'PUT', data);
+  },
+  scheduleTutoring(tutorId, subjectId, duration, topic) {
+    return request(API_CONFIG.ENDPOINTS.TUTORS.SCHEDULE, 'POST', { tutorId, subjectId, duration, topic });
   },
   getAllExams() {
     return request(API_CONFIG.ENDPOINTS.EXAMS.GET_ALL);
@@ -1534,5 +1698,11 @@ export const apiService = {
     if (query) params.append('q', query);
     if (type) params.append('tipo', type);
     return request(`${API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.SEARCH}?${params.toString()}`);
+  },
+  updateCommunityResource(resourceId, resourceData) {
+    return request(`${API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.BASE}${resourceId}/`, 'PUT', resourceData);
+  },
+  deleteCommunityResource(resourceId) {
+    return request(`${API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.BASE}${resourceId}/`, 'DELETE');
   }
 };

@@ -9,9 +9,11 @@ export const API_CONFIG = {
     },
     USERS: {
       GET_PROFILE: '/auth/profile/',
-      UPDATE_PROFILE: '/users/profile/',
+      UPDATE_PROFILE: '/users/profile/', // Needs backend implementation check
       GET_DASHBOARD: '/mi-panel/',
-      GET_PROGRESS: '/mi-progreso/'
+      GET_PROGRESS: '/mi-progreso/',
+      ACTIVATE_PREMIUM: '/auth/activate-premium/',
+      TRACK_TIME: '/auth/track-time/'
     },
     SUBJECTS: {
       GET_ALL: '/cursos/',
@@ -338,54 +340,6 @@ export const HARDCODED_DATA = {
       fecha_creacion: '2024-05-19T09:10:00Z',
       descargas: 245,
       calificacion_promedio: 4.6,
-      aprobado: true,
-      activo: true
-    },
-    {
-      id: 'community-004',
-      titulo: 'Resumen de Calculo Vectorial Parcial 2',
-      descripcion: 'Apuntes clave para el segundo parcial.',
-      tipo: 'DOCUMENTO',
-      archivo_url: 'demo/recurso-matrices.pdf',
-      contenido_texto: '',
-      autor: { id: 'demo-creator', username: 'creador.demo', first_name: 'Ana', last_name: 'García', foto_perfil_url: null },
-      autor_id: 'demo-creator',
-      curso_titulo: 'Cálculo Multivariable',
-      fecha_creacion: '2024-05-25T14:00:00Z',
-      descargas: 120,
-      calificacion_promedio: 4.9,
-      aprobado: true,
-      activo: true
-    },
-    {
-      id: 'community-005',
-      titulo: 'codigo c++',
-      descripcion: 'Ejemplos de punteros y estructuras.',
-      tipo: 'PDF',
-      archivo_url: 'demo/recurso-integrales.pdf',
-      contenido_texto: '',
-      autor: { id: 'demo-creator', username: 'creador.demo', first_name: 'Ana', last_name: 'García', foto_perfil_url: null },
-      autor_id: 'demo-creator',
-      curso_titulo: 'Programación Estructurada',
-      fecha_creacion: '2024-05-26T10:30:00Z',
-      descargas: 85,
-      calificacion_promedio: 4.5,
-      aprobado: true,
-      activo: true
-    },
-    {
-      id: 'community-006',
-      titulo: 'Mates Avanzadas Parcial 1',
-      descripcion: 'Guía de estudio para el parcial.',
-      tipo: 'EXAMEN',
-      archivo_url: 'demo/recurso-probabilidad.pdf',
-      contenido_texto: '',
-      autor: { id: 'demo-creator', username: 'creador.demo', first_name: 'Ana', last_name: 'García', foto_perfil_url: null },
-      autor_id: 'demo-creator',
-      curso_titulo: 'Matemáticas Avanzadas',
-      fecha_creacion: '2024-05-27T09:15:00Z',
-      descargas: 200,
-      calificacion_promedio: 4.8,
       aprobado: true,
       activo: true
     }

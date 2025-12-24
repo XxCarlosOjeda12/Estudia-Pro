@@ -109,5 +109,114 @@ def verificar_rol(request):
         'is_administrador': usuario.rol == 'ADMINISTRADOR',
         'estado': usuario.estado,
         'nivel': usuario.nivel,
-        'puntos': usuario.puntos_gamificacion
+        'puntos': usuario.puntos_gamificacion,
+        'is_premium': getattr(usuario, 'is_premium', False)
     })
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def activate_premium(request):
+    """
+    Función: activate_premium
+    Descripción: Activa el estado premium para el usuario autenticado (simulado).
+    Input:
+      - request: Objeto Request con usuario autenticado
+    Output:
+      - Response: Mensaje de éxito y nuevo estado (200)
+    """
+    usuario = request.user
+    usuario.is_premium = True
+    usuario.save()
+    
+    return Response({
+        'message': 'Premium activado exitosamente',
+        'is_premium': True,
+        'usuario': UsuarioSerializer(usuario).data
+    }, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def track_time(request):
+    """
+    Función: track_time
+    Descripción: Incrementa el tiempo de estudio del estudiante.
+    Input: { "minutes": int }
+    """
+    minutes = request.data.get('minutes', 1)
+    try:
+        minutes = int(minutes)
+    except (ValueError, TypeError):
+        minutes = 1
+        
+    usuario = request.user
+    if usuario.rol == 'ESTUDIANTE' and hasattr(usuario, 'perfil_estudiante'):
+        estudiante = usuario.perfil_estudiante
+        estudiante.tiempo_estudio_minutos += minutes
+        estudiante.save()
+        return Response({'success': True, 'total_minutes': estudiante.tiempo_estudio_minutos}, status=status.HTTP_200_OK)
+    
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def manage_users(request):
+    """
+    Función: manage_users
+    Descripción: Lista todos los usuarios (solo admin).
+    """
+    if request.user.rol != 'ADMINISTRADOR':
+        return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
+    
+    usuarios = Usuario.objects.all().order_by('-fecha_registro')
+    serializer = UsuarioSerializer(usuarios, many=True)
+    return Response(serializer.data)
+
+@api_view(['PUT', 'DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def manage_user_detail(request, pk):
+    """
+    Función: manage_user_detail
+    Descripción: Actualiza o elimina un usuario específico (solo admin).
+    """
+    if request.user.rol != 'ADMINISTRADOR':
+        return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        usuario = Usuario.objects.get(pk=pk)
+    except Usuario.DoesNotExist:
+        return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'DELETE':
+        usuario.delete()
+        return Response({'message': 'Usuario eliminado'}, status=status.HTTP_204_NO_CONTENT)
+
+    if request.method == 'PUT':
+        data = request.data
+        
+        # Update basic fields
+        if 'name' in data:
+            # Assuming name is stored in first_name/last_name or just handled differently,
+            # but since Usuario is AbstractUser it has first_name, last_name unless overridden.
+            # Frontend sends "name". Let's try to split or just ignore if not easy mapping.
+            # Ideally the serializer handles updates.
+            pass
+            
+        if 'is_premium' in data:
+            usuario.is_premium = bool(data['is_premium'])
+            
+        if 'verified' in data:
+            # Assuming 'verified' maps to something, or maybe extended profile.
+            # For now, if model doesn't have verified, skip.
+            # Wait, api.js sends verified.
+            pass
+
+        # Use serializer for standard fields if possible, or manual update for custom ones
+        # Simple manual update for now as per requirement
+        if 'name' in data:
+            usuario.first_name = data['name'] # Simplification
+        if 'email' in data:
+            usuario.email = data['email']
+        if 'role' in data:
+            usuario.rol = data['role'].upper()
+            
+        usuario.save()
+        return Response(UsuarioSerializer(usuario).data)

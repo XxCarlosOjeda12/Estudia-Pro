@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppContext } from '../../context/AppContext.jsx';
 import { apiService } from '../../lib/api';
 import { API_CONFIG } from '../../lib/constants.js';
 import { getDemoFile } from '../../lib/demoFileStore.js';
+import SubscriptionModal from '../../components/SubscriptionModal.jsx';
 
 const normalize = (value) => (value || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
@@ -38,69 +39,18 @@ const clickDownloadLink = (url, filename) => {
   link.remove();
 };
 
-const RecursosPage = ({ resources, purchasedResources }) => {
-  const { pushToast, demoEnabled } = useAppContext();
+const RecursosPage = ({ resources, purchasedResources, onPurchase }) => { // added onPurchase prop if needed, or use context
+  const { pushToast, demoEnabled, user, setUser } = useAppContext(); // exposed setUser to update premium status
   const [search, setSearch] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [preview, setPreview] = useState(null);
   const purchasedIds = new Set(purchasedResources.map((res) => res.id));
 
-  // --- New State for Subscription Flow ---
-  const [isSubscribed, setIsSubscribed] = useState(false); // Mock subscription state
-  const [showAccessDeniedModal, setShowAccessDeniedModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [pendingResource, setPendingResource] = useState(null);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
-  // --- Preview Logic State ---
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-
-  useEffect(() => {
-    if (!preview) return;
-    let activeUrl = null;
-    let cancelled = false;
-
-    const loadPreview = async () => {
-      setPreviewLoading(true);
-      setPreviewUrl(null);
-      try {
-        if (demoEnabled && preview.fileId) {
-          const stored = await getDemoFile(preview.fileId);
-          if (!stored?.blob) {
-            // Fallback if no demo blob found but we want to show something?
-            // For now just error or empty
-            console.warn('Demo file blob not found for', preview.title);
-          } else {
-            activeUrl = URL.createObjectURL(stored.blob);
-            if (cancelled) return;
-            setPreviewUrl(activeUrl);
-            return;
-          }
-        }
-
-        // Normal flow or fallback
-        const urlToResolve = preview.archivo_url || preview.contenido_url || preview.url;
-        const resolved = resolveFileUrl(urlToResolve);
-        if (cancelled) return;
-        setPreviewUrl(resolved);
-      } catch (error) {
-        console.error('Error loading preview:', error);
-        pushToast({ title: 'Vista Previa', message: 'No se pudo cargar el archivo.', type: 'alert' });
-      } finally {
-        if (!cancelled) setPreviewLoading(false);
-      }
-    };
-
-    loadPreview();
-
-    return () => {
-      cancelled = true;
-      if (activeUrl) URL.revokeObjectURL(activeUrl);
-    };
-  }, [preview, demoEnabled, pushToast]);
-
-  // Existing "Offer" modal logic replaced/integrated above.
+  // Check if user is premium
+  const isPremium = user?.is_premium || user?.premium;
 
   const filtered = useMemo(() => {
     const term = normalize(search);
@@ -155,34 +105,24 @@ const RecursosPage = ({ resources, purchasedResources }) => {
     }
   };
 
-  const handlePreviewRequest = (resource) => {
-    if (isSubscribed) {
-      setPreview(resource);
-    } else {
-      setPendingResource(resource);
-      setShowAccessDeniedModal(true);
-    }
+  const handlePurchaseClick = () => {
+    setShowSubscriptionModal(true);
   };
 
-  const handleOpenPayment = () => {
-    setShowAccessDeniedModal(false);
-    setShowPaymentModal(true);
-  };
-
-  const handlePaymentSuccess = () => {
-    // Mock processing
-    pushToast({ title: 'Procesando pago...', message: 'Validando tarjeta...', type: 'info' });
-
-    setTimeout(() => {
-      setIsSubscribed(true);
-      setShowPaymentModal(false);
-      pushToast({ title: 'Suscripción Activada', message: '¡Gracias por suscribirte!', type: 'success' });
-
-      if (pendingResource) {
-        setPreview(pendingResource);
-        setPendingResource(null);
+  const onSubscriptionSuccess = async () => {
+    localStorage.setItem('estudia_pro_premium', 'true');
+    try {
+      const response = await apiService.activatePremium();
+      if (response?.user && setUser) {
+        setUser(response.user);
+      } else if (setUser) {
+        setUser(prev => ({ ...prev, is_premium: true }));
       }
-    }, 1500);
+      pushToast({ title: 'Premium activado', message: '¡Gracias por tu suscripción!', type: 'success' });
+    } catch (error) {
+      console.error(error);
+      if (setUser) setUser(prev => ({ ...prev, is_premium: true }));
+    }
   };
 
   return (
@@ -190,18 +130,9 @@ const RecursosPage = ({ resources, purchasedResources }) => {
       <div>
         <h1 className="text-3xl font-bold mb-2">Recursos de la Comunidad</h1>
         <p className="text-slate-500 dark:text-slate-400">Apuntes, guías y exámenes compartidos por otros estudiantes.</p>
-        {!isSubscribed && (
-          <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl flex items-center gap-3">
-            <span className="text-2xl">🔒</span>
-            <div>
-              <p className="text-yellow-600 dark:text-yellow-400 font-bold">Modo Gratuito</p>
-              <p className="text-sm text-yellow-600/80 dark:text-yellow-400/80">Suscríbete para acceder a las vistas previas de los documentos.</p>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Filters & Search - Unchanged */}
+      {/* Filters & Search */}
       <div className="flex flex-col md:flex-row gap-4 items-start">
         <div className="flex-1 space-y-2">
           <div className="relative">
@@ -249,7 +180,7 @@ const RecursosPage = ({ resources, purchasedResources }) => {
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filtered.map((resource) => {
-          const isPurchased = purchasedIds.has(resource.id) || resource.free;
+          const isPurchased = isPremium || purchasedIds.has(resource.id) || resource.free;
           return (
             <div key={resource.id} className="glass-effect-light p-6 rounded-2xl flex flex-col">
               <span className="text-xs font-semibold bg-primary/20 text-primary py-1 px-2 rounded-full self-start">{resource.subjectName}</span>
@@ -258,17 +189,10 @@ const RecursosPage = ({ resources, purchasedResources }) => {
               <div className="mt-auto flex gap-2">
                 <button
                   className="flex-1 text-center py-2 px-4 bg-primary/20 hover:bg-primary/30 text-primary font-semibold rounded-lg"
-                  onClick={() => handlePreviewRequest(resource)}
+                  onClick={() => setPreview(resource)}
                 >
                   Vista Previa
                 </button>
-                {/* 
-                  Use existing simple download if purchased, 
-                  or just show download button anyway? 
-                  The requirement was specifically about "Vista previa" triggering subscription.
-                  We'll leave download as is for now or maybe block it too? 
-                  Assuming "Vista previa" is the main hook.
-                */}
                 {isPurchased ? (
                   <button
                     className="flex-1 text-center py-2 px-4 bg-slate-200 dark:bg-slate-700 text-slate-500 font-semibold rounded-lg"
@@ -277,13 +201,8 @@ const RecursosPage = ({ resources, purchasedResources }) => {
                     Descargar
                   </button>
                 ) : (
-                  /* Even "Adquirir" (Purchase individual) might not be what we want if we are pushing subscription.
-                     But let's leave it as "Adquirir" for specific items, or maybe that also triggers sub?
-                     User said: "cuando el usuario le de vista previa... mensaje... suscribir" 
-                     So we focus on preview button. */
-                  <button className="flex-1 text-center py-2 px-4 bg-secondary/80 hover:bg-secondary text-white font-semibold rounded-lg" onClick={() => handleDownload(resource)}>
-                    {/* Using handleDownload here as it seems to be the "Get it" flow in original code or maybe I should trigger sub here too? Be safe, stick to preview request. */}
-                    Descargar
+                  <button className="flex-1 text-center py-2 px-4 bg-secondary/80 hover:bg-secondary text-white font-semibold rounded-lg" onClick={handlePurchaseClick}>
+                    Adquirir
                   </button>
                 )}
               </div>
@@ -292,138 +211,48 @@ const RecursosPage = ({ resources, purchasedResources }) => {
         })}
       </div>
 
-      {/* --- MODALS --- */}
-
-      {/* 1. Access Denied / Subscribe Prompt */}
-      {showAccessDeniedModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-2xl w-full max-w-md p-8 relative shadow-2xl">
-            <button
-              onClick={() => setShowAccessDeniedModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-            >
-              ✕
-            </button>
-
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center text-3xl mx-auto">
-                🔒
-              </div>
-              <h3 className="text-2xl font-bold">Acceso Restringido</h3>
-              <p className="text-slate-500 dark:text-slate-400">
-                Para ver la vista previa de este recurso y acceder a todo el contenido de la comunidad, necesitas una suscripción activa.
-              </p>
-
-              <div className="py-4">
-                <button
-                  onClick={handleOpenPayment}
-                  className="w-full py-3 bg-gradient-to-r from-primary to-secondary text-white font-bold rounded-xl shadow-lg hover:opacity-90 transition-all hover:scale-[1.02]"
-                >
-                  Suscribirse Ahora
-                </button>
-                <button
-                  onClick={() => setShowAccessDeniedModal(false)}
-                  className="w-full mt-3 py-2 text-slate-500 dark:text-slate-400 font-medium hover:underline"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {showSubscriptionModal && (
+        <SubscriptionModal
+          onClose={() => setShowSubscriptionModal(false)}
+          onSuccess={onSubscriptionSuccess}
+        />
       )}
-
-      {/* 2. Payment Modal */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[70] p-4 animate-in zoom-in-95 duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-2xl w-full max-w-md p-6 relative shadow-2xl">
-            <div className="flex justify-between items-center mb-6 border-b border-light-border dark:border-dark-border pb-4">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                💳 Realizar Pago
-              </h3>
-              <button onClick={() => setShowPaymentModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl flex justify-between items-center">
-                <div>
-                  <p className="font-bold text-lg">Suscripción Pro</p>
-                  <p className="text-xs text-slate-500">Acceso ilimitado mensual</p>
-                </div>
-                <p className="font-bold text-2xl text-primary">$120.00</p>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">Nombre en la tarjeta</label>
-                  <input type="text" placeholder="Ej. Juan Pérez" className="w-full p-2.5 bg-transparent border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">Número de tarjeta</label>
-                  <input type="text" placeholder="0000 0000 0000 0000" className="w-full p-2.5 bg-transparent border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
-                </div>
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <label className="block text-xs font-semibold text-slate-500 mb-1">Vencimiento</label>
-                    <input type="text" placeholder="MM/AA" className="w-full p-2.5 bg-transparent border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
-                  </div>
-                  <div className="w-24">
-                    <label className="block text-xs font-semibold text-slate-500 mb-1">CVC</label>
-                    <input type="text" placeholder="123" className="w-full p-2.5 bg-transparent border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={handlePaymentSuccess}
-                className="w-full py-3 mt-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg transition-transform hover:scale-[1.01] flex justify-center items-center gap-2"
-              >
-                <span>🔒</span> Pagar $120.00 MXN
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
 
       {/* Preview Modal */}
       {preview && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 text-slate-100 rounded-2xl w-full max-w-4xl p-6 relative h-[85vh] flex flex-col">
+          <div className="bg-slate-900 text-slate-100 rounded-2xl w-full max-w-2xl p-6 relative">
             <button className="absolute top-3 right-3 text-slate-400 hover:text-white" onClick={() => setPreview(null)}>✕</button>
             <p className="text-xs uppercase text-slate-400 mb-1">{preview.subjectName}</p>
             <h3 className="text-2xl font-bold mb-2">{preview.title}</h3>
             <p className="text-sm text-slate-400 mb-4">Por {preview.author} • {preview.type.toUpperCase()}</p>
-
-            <div className="bg-slate-800/60 border border-white/5 rounded-xl flex-1 overflow-hidden relative">
-              {previewLoading ? (
-                <div className="absolute inset-0 flex items-center justify-center text-slate-400">
-                  <span className="animate-pulse">Cargando documento...</span>
+            <div className="bg-slate-800/60 border border-white/5 rounded-xl p-4 mb-4 text-sm text-slate-200">
+              {(isPremium || purchasedIds.has(preview.id) || preview.free) ? (
+                <div className="h-96 w-full flex items-center justify-center bg-white/5 rounded-lg">
+                  {preview.archivo_url || preview.contenido_url ? (
+                    <iframe
+                      src={resolveFileUrl(preview.archivo_url || preview.contenido_url)}
+                      className="w-full h-full rounded-lg"
+                    />
+                  ) : (
+                    <p>Vista previa no disponible (sin URL).</p>
+                  )}
                 </div>
-              ) : previewUrl ? (
-                <iframe
-                  title="Vista Previa de Recurso"
-                  src={`${previewUrl}#page=1&toolbar=0&navpanes=0`}
-                  className="w-full h-full"
-                />
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-slate-400 flex-col gap-2">
-                  <span className="text-3xl">📄</span>
-                  <span>No hay vista previa disponible para este documento.</span>
+                <div className="text-center py-12">
+                  <p className="mb-4">🔒 Contenido bloqueado</p>
+                  <button
+                    onClick={() => { setPreview(null); setShowSubscriptionModal(true); }}
+                    className="px-6 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-lg font-bold"
+                  >
+                    Desbloquear con Premium
+                  </button>
                 </div>
               )}
             </div>
 
-            <div className="flex gap-3 mt-4">
-              <button className="flex-1 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600" onClick={() => setPreview(null)}>Cerrar</button>
-              <button
-                className="flex-1 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
-                onClick={() => {
-                  handleDownload(preview);
-                }}
-              >
-                Descargar Completo
-              </button>
+            <div className="flex gap-3">
+              <button className="w-full py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600" onClick={() => setPreview(null)}>Cerrar</button>
             </div>
           </div>
         </div>

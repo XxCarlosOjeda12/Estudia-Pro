@@ -21,7 +21,7 @@ const PanelAdmin = ({ user, subjects, resources, users, navigateTo }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="glass-effect-light p-6 rounded-2xl">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold">Gestión de Usuarios</h2>
@@ -50,6 +50,22 @@ const PanelAdmin = ({ user, subjects, resources, users, navigateTo }) => {
               <li key={subject.id} className="flex items-center justify-between">
                 <span>{subject.title}</span>
                 <span className="text-xs text-slate-400">{subject.level || 'General'}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="glass-effect-light p-6 rounded-2xl">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold">Gestión de Recursos</h2>
+            <button className="text-sm text-primary hover:underline" onClick={() => navigateTo('gestion-recursos')}>
+              Administrar
+            </button>
+          </div>
+          <ul className="space-y-2 text-sm">
+            {resources.slice(0, 5).map((resource) => (
+              <li key={resource.id} className="flex items-center justify-between">
+                <span className="truncate max-w-[150px]">{resource.title || resource.titulo}</span>
+                <span className="text-xs text-slate-400 uppercase">{resource.type || resource.tipo}</span>
               </li>
             ))}
           </ul>

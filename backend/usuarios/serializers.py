@@ -5,12 +5,13 @@ from .models import Usuario, Estudiante, Creador, Administrador
 class EstudianteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Estudiante
-        fields = ['nivel_escolar', 'id_institucion']
+        fields = ['nivel_escolar', 'id_institucion', 'tiempo_estudio_minutos']
 
 class CreadorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Creador
-        fields = ['especialidad', 'calificacion_promedio', 'ranking_promedio', 'num_resenas']
+        fields = ['especialidad', 'calificacion_promedio', 'ranking_promedio', 'num_resenas',
+                  'biografia', 'tarifa_30_min', 'tarifa_60_min', 'activo']
 
 class AdministradorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -26,7 +27,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
         model = Usuario
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 
                   'fecha_registro', 'rol', 'puntos_gamificacion', 'nivel', 
-                  'foto_perfil_url', 'estado', 'perfil_estudiante', 
+                  'foto_perfil_url', 'estado', 'is_premium', 'perfil_estudiante', 
                   'perfil_creador', 'perfil_administrador']
         read_only_fields = ['fecha_registro', 'puntos_gamificacion', 'nivel']
 

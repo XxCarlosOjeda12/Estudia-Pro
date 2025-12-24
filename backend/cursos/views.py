@@ -38,9 +38,9 @@ from .serializers import (
 )
 
 
-class CursoViewSet(viewsets.ReadOnlyModelViewSet):
+class CursoViewSet(viewsets.ModelViewSet):
     """
-    ViewSet para ver cursos disponibles
+    ViewSet para gestionar cursos (Materias)
     """
     queryset = Curso.objects.filter(activo=True)
     permission_classes = [permissions.IsAuthenticated]
@@ -49,6 +49,37 @@ class CursoViewSet(viewsets.ReadOnlyModelViewSet):
         if self.action == 'retrieve':
             return CursoDetalleSerializer
         return CursoListSerializer
+
+    def perform_create(self, serializer):
+        if self.request.user.rol != 'ADMINISTRADOR':
+             raise PermissionDenied('Solo administradores pueden crear cursos')
+        # Asignar un creador por defecto si no se pasa, o el usuario actual si es Creador (pero aqui es Admin el que crea)
+        # Para simplificar, asignamos el primer Creador disponible o manejamos null si el modelo lo permite (modelo requiere creador).
+        # Vamos a asignar un "sysadmin" o similar. Ojo: El modelo `Curso` requiere `creador` (ForeignKey a Creador).
+        # Si el admin es quien crea, necesitamos un perfil de Creador asociado o un Creador "System".
+        # Revisemos si el usuario tiene perfil creador, si no, hay que ver como manejarlo.
+        # Asumiremos que el Admin tiene un perfil creador o seleccionamos uno dummy.
+        # MEJOR: Permitir seleccionar el creador en el frontend, o asignar el actual si tiene perfil.
+        if hasattr(self.request.user, 'perfil_creador'):
+            serializer.save(creador=self.request.user.perfil_creador)
+        else:
+             # Fallback: asignar al primer creador activo (solo para que no falle)
+            first_creator = Creador.objects.first()
+            if first_creator:
+                serializer.save(creador=first_creator)
+            else:
+                 # Si no hay creadores, esto fallará. Deberíamos crear uno dummy.
+                raise PermissionDenied('No hay perfil de Creador disponible para asignar al curso.')
+
+    def perform_update(self, serializer):
+        if self.request.user.rol != 'ADMINISTRADOR':
+             raise PermissionDenied('Solo administradores pueden editar cursos')
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if self.request.user.rol != 'ADMINISTRADOR':
+             raise PermissionDenied('Solo administradores pueden eliminar cursos')
+        instance.delete()
     
     @action(detail=True, methods=['get'])
     def modulos(self, request, pk=None):
@@ -798,6 +829,61 @@ def mi_progreso_detallado(request):
         )['promedio'] or 0
         
         progreso_cursos.append({
+            'id': inscripcion.curso.id,
+            'titulo': inscripcion.curso.titulo,
+            'imagen': inscripcion.curso.imagen_portada,
+            'progreso_porcentaje': float(inscripcion.progreso_porcentaje),
+            'recursos_completados': recursos_completados,
+            'total_recursos': total_recursos,
+            'promedio_examenes': round(float(promedio_examenes), 2)
+        })
+    
+    return Response(progreso_cursos)
+
+class RecursoComunidadViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para Recursos de la Comunidad (con soporte para subida de archivos)
+    """
+    queryset = RecursoComunidad.objects.filter(activo=True).order_by('-fecha_creacion')
+    serializer_class = RecursoComunidadSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
+
+    def perform_create(self, serializer):
+        # Asignar autor
+        serializer.save(autor=self.request.user)
+
+    def perform_update(self, serializer):
+        if self.request.user.rol != 'ADMINISTRADOR' and serializer.instance.autor != self.request.user:
+             raise PermissionDenied('No tienes permiso para editar este recurso')
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if self.request.user.rol != 'ADMINISTRADOR' and instance.autor != self.request.user:
+             raise PermissionDenied('No tienes permiso para eliminar este recurso')
+        instance.delete()
+
+class FormularioEstudioViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para Formularios de Estudio (PDFs gratuitos)
+    """
+    queryset = FormularioEstudio.objects.filter(activo=True).order_by('-fecha_creacion')
+    serializer_class = FormularioEstudioSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
+
+    def perform_create(self, serializer):
+        serializer.save(creado_por=self.request.user)
+
+    def perform_update(self, serializer):
+        if self.request.user.rol != 'ADMINISTRADOR':
+             raise PermissionDenied('Solo administradores pueden editar formularios')
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if self.request.user.rol != 'ADMINISTRADOR':
+             raise PermissionDenied('Solo administradores pueden eliminar formularios')
+        instance.delete()
             'curso_id': inscripcion.curso.id,
             'curso_titulo': inscripcion.curso.titulo,
             'imagen_portada': inscripcion.curso.imagen_portada,

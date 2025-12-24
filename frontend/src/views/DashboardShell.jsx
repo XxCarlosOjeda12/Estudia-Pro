@@ -18,6 +18,7 @@ import TutoriasPage from './pages/TutoriasPage.jsx';
 import GestionUsuariosPage from './pages/GestionUsuariosPage.jsx';
 import GestionMateriasPage from './pages/GestionMateriasPage.jsx';
 import GestionFormulariosPage from './pages/GestionFormulariosPage.jsx';
+import GestionRecursosPage from './pages/GestionRecursosPage.jsx';
 
 const DashboardShell = () => {
   const { user, logout, refreshNotifications, notifications, pushToast, demoEnabled } = useAppContext();
@@ -55,6 +56,15 @@ const DashboardShell = () => {
       document.body.classList.add('light');
     }
   }, [darkMode]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!document.hidden && user) {
+        apiService.trackTime(1).catch(err => console.error("Track time failed", err));
+      }
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [user]);
 
   const refreshAllData = useCallback(async () => {
     const results = await Promise.allSettled([
@@ -407,6 +417,22 @@ const DashboardShell = () => {
     pushToast({ title: 'Materias', message: 'Materia eliminada.', type: 'success' });
   };
 
+  const handleUpdateSubject = async (subjectId, payload) => {
+    const response = await apiService.updateSubject(subjectId, payload);
+    if (response?.success) {
+      setSubjects((prev) => prev.map((s) => (s.id === subjectId ? { ...s, ...response.subject } : s)));
+      pushToast({ title: 'Materias', message: 'Materia actualizada.', type: 'success' });
+    } else {
+      pushToast({ title: 'Materias', message: 'No se pudo actualizar.', type: 'alert' });
+    }
+  };
+
+  const handleUpdateUser = async (userId, payload) => {
+    await apiService.manageUser(userId, 'update', payload);
+    setAdminUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, ...payload } : u)));
+    pushToast({ title: 'Usuarios', message: 'Usuario actualizado.', type: 'success' });
+  };
+
   const handleCreateFormulary = async (payload) => {
     try {
       const response = await apiService.createFormulary(payload);
@@ -417,6 +443,53 @@ const DashboardShell = () => {
     } catch (error) {
       pushToast({ title: 'Formularios', message: error?.message || 'No se pudo publicar.', type: 'alert' });
       throw error;
+    }
+  };
+
+
+  const handleUpdateUnifiedResource = async (resourceId, payload, source) => {
+    // Detect type based on source passed from the UI component to avoid ID collisions
+    try {
+      if (source === 'formulary' || (payload instanceof FormData && payload.get('tipo') === 'FORMULARIO')) {
+        await apiService.manageFormulary(resourceId, 'update', payload);
+        // Refresh items
+        const list = await apiService.getFormularies();
+        // We really should just refresh everything to be safe and consistent
+        await refreshAllData();
+      } else {
+        await apiService.manageResource(resourceId, 'update', payload);
+        await refreshAllData();
+      }
+      pushToast({ title: 'Recursos', message: 'Actualizado correctamente.', type: 'success' });
+    } catch (err) {
+      pushToast({ title: 'Recursos', message: 'Error al actualizar.', type: 'alert' });
+    }
+  };
+
+  const handleDeleteUnifiedResource = async (resourceId, source) => {
+    try {
+      // Prioritize explicit source, otherwise try to find (fallback)
+      const targetSource = source || [...resources, ...formularies].find(r => r.id === resourceId)?.source;
+
+      if (targetSource === 'formulary') {
+        await apiService.manageFormulary(resourceId, 'delete');
+      } else {
+        await apiService.manageResource(resourceId, 'delete');
+      }
+      await refreshAllData();
+      pushToast({ title: 'Recursos', message: 'Eliminado correctamente.', type: 'success' });
+    } catch (err) {
+      pushToast({ title: 'Recursos', message: 'Error al eliminar.', type: 'alert' });
+    }
+  };
+
+  const handleDeleteResource = async (resourceId) => {
+    try {
+      await apiService.deleteCommunityResource(resourceId);
+      setResources((prev) => prev.filter((r) => r.id !== resourceId));
+      pushToast({ title: 'Recursos', message: 'Recurso eliminado.', type: 'success' });
+    } catch (error) {
+      pushToast({ title: 'Recursos', message: error.message || 'Error al eliminar.', type: 'alert' });
     }
   };
 
@@ -498,9 +571,16 @@ const DashboardShell = () => {
       case 'tutorias':
         return <TutoriasPage userRole={user?.role} tutors={tutors} />;
       case 'gestion-usuarios':
-        return <GestionUsuariosPage users={adminUsers} onDelete={handleDeleteUser} />;
+        return <GestionUsuariosPage users={adminUsers} onDelete={handleDeleteUser} onUpdate={handleUpdateUser} />;
       case 'gestion-materias':
-        return <GestionMateriasPage subjects={subjects} onCreate={handleCreateSubject} onDelete={handleDeleteSubject} />;
+        return <GestionMateriasPage subjects={subjects} onCreate={handleCreateSubject} onDelete={handleDeleteSubject} onUpdate={handleUpdateSubject} />;
+      case 'gestion-recursos':
+        // Combine resources and formularies for the admin view
+        const unifiedResources = [
+          ...resources.filter(r => r.source === 'community'),
+          ...formularies.map(f => ({ ...f, source: 'formulary', type: 'FORMULARIO' })) // Ensure source tag
+        ];
+        return <GestionRecursosPage resources={unifiedResources} onDelete={handleDeleteUnifiedResource} onUpdate={handleUpdateUnifiedResource} />;
       case 'gestion-formularios':
         return <GestionFormulariosPage formularies={formularies} onCreate={handleCreateFormulary} />;
       default:
@@ -567,11 +647,25 @@ const DashboardShell = () => {
               </button>
             </div>
             <div className="flex items-center p-2 rounded-lg">
-              <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold mr-3">
+              <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold mr-3 relative">
                 {initials}
+                {(user?.is_premium || user?.premium) && (
+                  <div className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-0.5 border-2 border-slate-900">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-white">
+                      <path d="M4.5 9.75l6-5.25 6 5.25v9a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 18.75v-9z" />
+                      <path d="M12 4.5L19.5 9.75M4.5 9.75L12 15M4.5 9.75v9A2.25 2.25 0 006.75 21h10.5A2.25 2.25 0 0019.5 18.75v-9" style={{ display: 'none' }} />
+                      {/* Using a simple diamond shape for premium */}
+                      <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clipRule="evenodd" className="hidden" />
+                      <path d="M12.53 16.273l-4.88-4.88a1.25 1.25 0 010-1.768l4.88-4.88a1.25 1.25 0 011.768 0l4.88 4.88a1.25 1.25 0 010 1.768l-4.88 4.88a1.25 1.25 0 01-1.768 0z" />
+                    </svg>
+                  </div>
+                )}
               </div>
               <div>
-                <p className="font-semibold">{user?.name}</p>
+                <p className="font-semibold flex items-center gap-1">
+                  {user?.name}
+                  {(user?.is_premium || user?.premium) && <span className="text-[10px] text-amber-400 font-bold border border-amber-400/30 px-1 rounded bg-amber-400/10">PRO</span>}
+                </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{user?.role}</p>
               </div>
             </div>

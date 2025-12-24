@@ -149,49 +149,19 @@ const ProgresoPage = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="glass-effect-light p-6 rounded-2xl dark:border-white/5 border border-slate-200">
-          <h3 className="font-bold mb-4">Materias con Mejor Progreso</h3>
-          <ul className="space-y-3">
-            {bestSubjects.map((subject) => (
-              <li key={subject.curso_id} className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">{subject.curso_titulo}</div>
-                  <div className="text-xs text-slate-500">Exámenes: {subject.total_examenes} | Promedio: {subject.promedio_examenes}</div>
-                </div>
-                <span className="font-bold text-primary">{subject.progreso_porcentaje}%</span>
-              </li>
-            ))}
-            {!bestSubjects.length && <p className="text-slate-500">No hay materias registradas.</p>}
-          </ul>
-        </div>
-        <div className="glass-effect-light p-6 rounded-2xl dark:border-white/5 border border-slate-200">
-          <h3 className="font-bold mb-4">Recomendaciones de Estudio</h3>
-          <ul className="space-y-2 list-disc list-inside text-slate-600 dark:text-slate-300 text-sm">
-            <li>Practica más ejercicios de derivadas.</li>
-            <li>Revisa los conceptos de espacios vectoriales.</li>
-            <li>Intenta resolver exámenes pasados.</li>
-          </ul>
-        </div>
-      </div>
-
       <div className="glass-effect-light p-6 rounded-2xl space-y-4 dark:border-white/5 border border-slate-200">
         <h3 className="font-bold">Estadísticas de Estudio</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
           <div>
             <div className="text-2xl font-bold text-primary">{stats.total_cursos || 0}</div>
             <p className="text-sm text-slate-500 dark:text-slate-400">Materias</p>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-primary">{stats.cursos_completados || 0}</div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Completadas</p>
           </div>
           <div>
             <div className="text-2xl font-bold text-primary">{average}%</div>
             <p className="text-sm text-slate-500 dark:text-slate-400">Progreso Promedio</p>
           </div>
           <div>
-            <div className="text-2xl font-bold text-primary">{stats.tiempo_total_horas || 0}h</div>
+            <div className="text-2xl font-bold text-primary">{Number(stats.tiempo_total_horas || 0).toFixed(1)}h</div>
             <p className="text-sm text-slate-500 dark:text-slate-400">Horas estudiadas</p>
           </div>
         </div>

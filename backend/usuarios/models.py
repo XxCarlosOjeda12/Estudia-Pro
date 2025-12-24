@@ -21,6 +21,7 @@ class Usuario(AbstractUser):
     nivel = models.IntegerField(default=1)
     foto_perfil_url = models.URLField(blank=True, null=True)
     estado = models.CharField(max_length=20, choices=ESTADOS, default='ACTIVO')
+    is_premium = models.BooleanField(default=False)
     
     class Meta:
         db_table = 'usuario'
@@ -40,6 +41,7 @@ class Estudiante(models.Model):
     )
     nivel_escolar = models.CharField(max_length=100)
     id_institucion = models.IntegerField(null=True, blank=True)
+    tiempo_estudio_minutos = models.IntegerField(default=0)
     
     class Meta:
         db_table = 'estudiante'
@@ -69,6 +71,10 @@ class Creador(models.Model):
         default=0.00
     )
     num_resenas = models.IntegerField(default=0)
+    biografia = models.TextField(blank=True, default='')
+    tarifa_30_min = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    tarifa_60_min = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    activo = models.BooleanField(default=True)
     
     class Meta:
         db_table = 'creador'
