@@ -21,7 +21,7 @@ import GestionFormulariosPage from './pages/GestionFormulariosPage.jsx';
 import GestionRecursosPage from './pages/GestionRecursosPage.jsx';
 
 const DashboardShell = () => {
-  const { user, logout, refreshNotifications, notifications, pushToast, demoEnabled } = useAppContext();
+  const { user, logout, refreshNotifications, notifications, pushToast, demoEnabled, loadProfile } = useAppContext();
   const [currentPage, setCurrentPage] = useState('panel');
   const [subjects, setSubjects] = useState([]);
   const [userSubjects, setUserSubjects] = useState([]);
@@ -121,7 +121,7 @@ const DashboardShell = () => {
         price: res.price || res.precio || 0,
         rating: res.rating || res.calificacion_promedio || 0,
         downloads: res.downloads || res.descargas || 0,
-        free: source === 'community' ? true : Boolean(inferredFree),
+        free: source === 'community' ? false : Boolean(inferredFree),
         source
       };
     };
@@ -210,9 +210,15 @@ const DashboardShell = () => {
     if (!user) return;
 
     const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('estudia-pro-demo-sync') : null;
-    const handleMessage = () => scheduleRefreshAll();
+    const handleMessage = () => {
+      scheduleRefreshAll();
+      loadProfile();
+    };
     const handleStorage = (event) => {
-      if (event.key === 'estudia-pro-demo-sync') scheduleRefreshAll();
+      if (event.key === 'estudia-pro-demo-sync') {
+        scheduleRefreshAll();
+        loadProfile();
+      }
     };
 
     try {
@@ -447,6 +453,28 @@ const DashboardShell = () => {
   };
 
 
+  const handleUpdateFormulary = async (formularyId, payload) => {
+    try {
+      await apiService.manageFormulary(formularyId, 'update', payload);
+      const list = await apiService.getAllFormularies();
+      setFormularies(Array.isArray(list) ? list : []);
+      pushToast({ title: 'Formularios', message: 'Formulario actualizado.', type: 'success' });
+    } catch (error) {
+      pushToast({ title: 'Formularios', message: error?.message || 'No se pudo actualizar.', type: 'alert' });
+    }
+  };
+
+  const handleDeleteFormulary = async (formularyId) => {
+    try {
+      await apiService.manageFormulary(formularyId, 'delete');
+      const list = await apiService.getAllFormularies();
+      setFormularies(Array.isArray(list) ? list : []);
+      pushToast({ title: 'Formularios', message: 'Formulario eliminado.', type: 'success' });
+    } catch (error) {
+      pushToast({ title: 'Formularios', message: error?.message || 'No se pudo eliminar.', type: 'alert' });
+    }
+  };
+
   const handleUpdateUnifiedResource = async (resourceId, payload, source) => {
     // Detect type based on source passed from the UI component to avoid ID collisions
     try {
@@ -454,6 +482,7 @@ const DashboardShell = () => {
         await apiService.manageFormulary(resourceId, 'update', payload);
         // Refresh items
         const list = await apiService.getFormularies();
+        setFormularies(Array.isArray(list) ? list : []); // Ensure formularies state is updated
         // We really should just refresh everything to be safe and consistent
         await refreshAllData();
       } else {
@@ -473,8 +502,11 @@ const DashboardShell = () => {
 
       if (targetSource === 'formulary') {
         await apiService.manageFormulary(resourceId, 'delete');
+        const list = await apiService.getAllFormularies();
+        setFormularies(Array.isArray(list) ? list : []);
       } else {
         await apiService.manageResource(resourceId, 'delete');
+        // Resources are refreshed in refreshAllData
       }
       await refreshAllData();
       pushToast({ title: 'Recursos', message: 'Eliminado correctamente.', type: 'success' });
@@ -582,7 +614,12 @@ const DashboardShell = () => {
         ];
         return <GestionRecursosPage resources={unifiedResources} onDelete={handleDeleteUnifiedResource} onUpdate={handleUpdateUnifiedResource} />;
       case 'gestion-formularios':
-        return <GestionFormulariosPage formularies={formularies} onCreate={handleCreateFormulary} />;
+        return <GestionFormulariosPage
+          formularies={formularies}
+          onCreate={handleCreateFormulary}
+          onUpdate={handleUpdateFormulary}
+          onDelete={handleDeleteFormulary}
+        />;
       default:
         return <div className="page active"><p>Página no disponible.</p></div>;
     }

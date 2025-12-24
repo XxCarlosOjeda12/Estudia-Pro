@@ -402,6 +402,7 @@ const DemoAPI = {
     }
     await this.simulateLatency();
     const loggedUser = this.getCurrentUser();
+
     const demoUsers = this.getAllDemoUsers();
 
     if (endpoint === API_CONFIG.ENDPOINTS.AUTH.LOGIN && method === 'POST') {
@@ -567,7 +568,7 @@ const DemoAPI = {
       loggedUser.is_premium = true;
       loggedUser.premium = true;
       this.touchUserState(loggedUser);
-      return { message: 'Premium activado', is_premium: true, user: formatUserForFrontend(loggedUser) };
+      return { success: true, message: 'Premium activado', is_premium: true, user: formatUserForFrontend(loggedUser) };
     }
 
     if (endpoint === API_CONFIG.ENDPOINTS.USERS.TRACK_TIME && method === 'POST') {
@@ -820,38 +821,92 @@ const DemoAPI = {
       return { success: true, message: 'Recurso marcado como completado' };
     }
 
-    if (endpoint === API_CONFIG.ENDPOINTS.FORMULARIES.GET_ALL) {
+    if (endpoint.startsWith(API_CONFIG.ENDPOINTS.FORMULARIES.GET_ALL)) {
       this.ensureFormulariesLoaded();
-      if (method === 'POST') {
-        const title = (data?.title || data?.titulo || '').toString().trim();
-        const subject = (data?.subject || data?.materia || '').toString().trim();
-        const url = (data?.url || data?.archivo_url || '').toString().trim();
+
+      if (endpoint === API_CONFIG.ENDPOINTS.FORMULARIES.GET_ALL) {
+        if (method === 'POST') {
+          const title = (data?.title || data?.titulo || '').toString().trim();
+          const subject = (data?.subject || data?.materia || '').toString().trim();
+          const url = (data?.url || data?.archivo_url || '').toString().trim();
+          const maybeFile = data?.file || data?.archivo || null;
+          if (!title) return { success: false, message: 'title es requerido' };
+          let fileId = null;
+          let fileName = null;
+          let mimeType = null;
+          if (maybeFile instanceof Blob) {
+            fileId = await putDemoFile(maybeFile);
+            fileName = maybeFile?.name || 'formulario.pdf';
+            mimeType = maybeFile?.type || 'application/pdf';
+          }
+          const item = {
+            id: this.nextId('form'),
+            title,
+            subject: subject || 'General',
+            type: 'PDF',
+            url: url || '#',
+            fileId,
+            fileName,
+            mimeType
+          };
+          this.formularies.unshift(item);
+          this.saveFormularies();
+          this.broadcastChange('formularies');
+          return { success: true, formulary: deepClone(item) };
+        }
+        return deepClone(this.formularies);
+      }
+
+      // Handle specific ID operations: /formularios-estudio/{id}/
+      const parts = endpoint.split('/').filter(Boolean);
+      const formularyId = parts[parts.length - 1];
+      const index = this.formularies.findIndex((f) => f.id === formularyId);
+
+      if (index === -1) {
+        // It might be a GET request to a specific ID which we haven't implemented, or invalid ID.
+        // But for PUT/DELETE we strictly need the item.
+        if (['PUT', 'DELETE'].includes(method)) {
+          return { success: false, message: 'Formulario no encontrado' };
+        }
+      }
+
+      if (method === 'DELETE') {
+        this.formularies.splice(index, 1);
+        this.saveFormularies();
+        this.broadcastChange('formularies');
+        return { success: true };
+      }
+
+      if (method === 'PUT') {
+        const form = this.formularies[index];
+        const title = (data?.title || data?.titulo || form.title).toString().trim();
+        const subject = (data?.subject || data?.materia || form.subject).toString().trim();
+        const url = (data?.url || data?.archivo_url || form.url).toString().trim();
         const maybeFile = data?.file || data?.archivo || null;
-        if (!title) return { success: false, message: 'title es requerido' };
-        let fileId = null;
-        let fileName = null;
-        let mimeType = null;
+
+        let fileId = form.fileId;
+        let fileName = form.fileName;
+        let mimeType = form.mimeType;
+
         if (maybeFile instanceof Blob) {
           fileId = await putDemoFile(maybeFile);
           fileName = maybeFile?.name || 'formulario.pdf';
           mimeType = maybeFile?.type || 'application/pdf';
         }
-        const item = {
-          id: this.nextId('form'),
+
+        this.formularies[index] = {
+          ...form,
           title,
-          subject: subject || 'General',
-          type: 'PDF',
-          url: url || '#',
+          subject,
+          url,
           fileId,
           fileName,
           mimeType
         };
-        this.formularies.unshift(item);
         this.saveFormularies();
         this.broadcastChange('formularies');
-        return { success: true, formulary: deepClone(item) };
+        return { success: true, formulary: deepClone(this.formularies[index]) };
       }
-      return deepClone(this.formularies);
     }
 
     if (endpoint === API_CONFIG.ENDPOINTS.ACHIEVEMENTS.GET_ALL) {
@@ -1089,7 +1144,19 @@ const DemoAPI = {
         this.broadcastChange('users');
       } else {
         const user = (this.adminUsers || []).find((u) => u.id === userId);
-        if (user) Object.assign(user, data);
+        if (user) {
+          Object.assign(user, data);
+          // Also update userStateByUserId if this user has state
+          this.ensureUserStateLoaded();
+          if (this.userStateByUserId?.[userId]) {
+            // Update premium fields in user state
+            if (data.hasOwnProperty('is_premium')) {
+              this.userStateByUserId[userId].is_premium = data.is_premium;
+              this.userStateByUserId[userId].premium = data.is_premium;
+            }
+            this.saveUserState();
+          }
+        }
         this.saveAdminUsers();
         this.broadcastChange('users');
       }
@@ -1284,13 +1351,27 @@ const DemoAPI = {
         const description = (data?.descripcion || data?.description || resource.descripcion).toString().trim();
         const type = (data?.tipo || data?.type || resource.tipo).toString().toUpperCase();
         const url = (data?.archivo_url || data?.archivoUrl || data?.url || resource.archivo_url).toString().trim();
+        const file = data?.file || data?.archivo || null;
+
+        let fileId = resource.fileId;
+        let fileName = resource.fileName;
+        let fileType = resource.fileType;
+
+        if (file instanceof Blob) {
+          fileId = await putDemoFile(file);
+          fileName = file?.name || 'recurso_actualizado';
+          fileType = file?.type || null;
+        }
 
         this.communityResources[index] = {
           ...resource,
           titulo: title,
           descripcion: description,
           tipo: type,
-          archivo_url: url
+          archivo_url: url,
+          fileId,
+          fileName,
+          fileType
         };
 
         this.saveCommunityResources();

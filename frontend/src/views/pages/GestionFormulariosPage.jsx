@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useAppContext } from '../../context/AppContext.jsx';
 
-const GestionFormulariosPage = ({ formularies, onCreate }) => {
+const GestionFormulariosPage = ({ formularies, onCreate, onDelete, onUpdate }) => {
   const { pushToast } = useAppContext();
   const list = useMemo(() => (Array.isArray(formularies) ? formularies : []), [formularies]);
 
@@ -10,6 +10,13 @@ const GestionFormulariosPage = ({ formularies, onCreate }) => {
   const [file, setFile] = useState(null);
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Edit state
+  const [editingForm, setEditingForm] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editSubject, setEditSubject] = useState('');
+  const [editFile, setEditFile] = useState(null);
+  const [editUrl, setEditUrl] = useState('');
 
   const submit = async (event) => {
     event.preventDefault();
@@ -26,21 +33,63 @@ const GestionFormulariosPage = ({ formularies, onCreate }) => {
     try {
       if (file) {
         const payload = new FormData();
-        payload.append('title', title.trim());
-        payload.append('subject', subject.trim());
-        payload.append('file', file);
+        payload.append('titulo', title.trim());
+        payload.append('materia', subject.trim()); // Fixed field name to match model
+        payload.append('archivo', file);
         await onCreate(payload);
       } else {
-        await onCreate({ title: title.trim(), subject: subject.trim(), url: url.trim() });
+        await onCreate({ titulo: title.trim(), materia: subject.trim(), archivo_url: url.trim() });
       }
       setTitle('');
       setSubject('');
       setFile(null);
       setUrl('');
+      pushToast({ title: 'Formulario', message: 'Formulario creado exitosamente.', type: 'success' });
     } catch (error) {
       pushToast({ title: 'Formularios', message: error?.message || 'No se pudo crear el formulario.', type: 'alert' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEditClick = (form) => {
+    setEditingForm(form);
+    setEditTitle(form.title || '');
+    setEditSubject(form.subject || '');
+    setEditUrl(form.url || '');
+    setEditFile(null);
+  };
+
+  const updateForm = async (e) => {
+    e.preventDefault();
+    if (!editTitle.trim()) return;
+
+    setLoading(true);
+    try {
+      const payload = new FormData();
+      payload.append('titulo', editTitle.trim());
+      payload.append('materia', editSubject.trim());
+      if (editFile) {
+        payload.append('archivo', editFile);
+      } else if (editUrl.trim() && editUrl !== editingForm.url) {
+        payload.append('archivo_url', editUrl.trim());
+      }
+
+      if (onUpdate) {
+        await onUpdate(editingForm.id, payload);
+        pushToast({ title: 'Actualización', message: 'Formulario actualizado correctamente.', type: 'success' });
+        setEditingForm(null);
+      }
+    } catch (error) {
+      pushToast({ title: 'Error', message: 'No se pudo actualizar.', type: 'alert' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteForm = (form) => {
+    if (confirm(`¿Estás seguro de eliminar "${form.title}"?`)) {
+      if (onDelete) onDelete(form.id);
     }
   };
 
@@ -122,7 +171,11 @@ const GestionFormulariosPage = ({ formularies, onCreate }) => {
                   <p className="font-semibold truncate">{form.title}</p>
                   <p className="text-xs text-slate-500 truncate">{form.subject}{form.fileName ? ` • ${form.fileName}` : ''}</p>
                 </div>
-                <span className="text-xs text-slate-500">{form.type || 'PDF'}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-slate-500 hidden md:inline">{form.type || 'PDF'}</span>
+                  <button className="text-blue-500 text-sm hover:underline" onClick={() => handleEditClick(form)}>Editar</button>
+                  <button className="text-red-500 text-sm hover:underline" onClick={() => deleteForm(form)}>Eliminar</button>
+                </div>
               </div>
             ))}
           </div>
@@ -130,6 +183,34 @@ const GestionFormulariosPage = ({ formularies, onCreate }) => {
           <p className="text-slate-500">Aún no hay formularios publicados.</p>
         )}
       </div>
+
+      {editingForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setEditingForm(null)} />
+          <div className="relative bg-white dark:bg-slate-900 p-6 rounded-2xl w-full max-w-lg shadow-xl">
+            <h3 className="text-lg font-bold mb-4">Editar Formulario</h3>
+            <form onSubmit={updateForm} className="space-y-4">
+              <div>
+                <label className="text-xs text-slate-500">Título</label>
+                <input type="text" value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full p-2 border rounded bg-transparent" />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500">Materia</label>
+                <input type="text" value={editSubject} onChange={e => setEditSubject(e.target.value)} className="w-full p-2 border rounded bg-transparent" />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500">Reemplazar Archivo (PDF)</label>
+                <input type="file" accept="application/pdf" onChange={e => setEditFile(e.target.files[0])} className="w-full p-2 border rounded bg-transparent" />
+                <p className="text-[10px] text-slate-400 mt-1">Sube un archivo solo si deseas reemplazar el actual.</p>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setEditingForm(null)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700">Cancelar</button>
+                <button type="submit" className="px-4 py-2 rounded bg-primary text-white">Guardar Cambios</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

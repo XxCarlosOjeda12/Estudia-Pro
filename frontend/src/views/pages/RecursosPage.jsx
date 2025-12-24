@@ -39,8 +39,8 @@ const clickDownloadLink = (url, filename) => {
   link.remove();
 };
 
-const RecursosPage = ({ resources, purchasedResources, onPurchase }) => { // added onPurchase prop if needed, or use context
-  const { pushToast, demoEnabled, user, setUser } = useAppContext(); // exposed setUser to update premium status
+const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
+  const { pushToast, demoEnabled, user, loadProfile } = useAppContext();
   const [search, setSearch] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -112,49 +112,53 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => { // add
   const onSubscriptionSuccess = async () => {
     localStorage.setItem('estudia_pro_premium', 'true');
     try {
-      const response = await apiService.activatePremium();
-      if (response?.user && setUser) {
-        setUser(response.user);
-      } else if (setUser) {
-        setUser(prev => ({ ...prev, is_premium: true }));
+      const data = await apiService.activatePremium();
+      if (data.success || data.is_premium) {
+        // Refresh user profile to get updated premium status
+        await loadProfile();
+        setShowSubscriptionModal(false);
+        pushToast({ title: '¡Felicidades!', message: 'Ahora eres Premium.', type: 'success' });
       }
-      pushToast({ title: 'Premium activado', message: '¡Gracias por tu suscripción!', type: 'success' });
-    } catch (error) {
-      console.error(error);
-      if (setUser) setUser(prev => ({ ...prev, is_premium: true }));
+    } catch (e) {
+      console.error(e);
+      pushToast({ title: 'Error', message: 'No se pudo activar premium.', type: 'alert' });
     }
   };
 
   return (
     <div className="page active space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Recursos de la Comunidad</h1>
-        <p className="text-slate-500 dark:text-slate-400">Apuntes, guías y exámenes compartidos por otros estudiantes.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Recursos de la Comunidad</h1>
+          <p className="text-slate-500 dark:text-slate-400">Apuntes, guías y exámenes compartidos por otros estudiantes.</p>
+          {!isPremium && (
+            <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl flex items-center gap-3">
+              <span className="text-2xl">🔒</span>
+              <div>
+                <p className="text-yellow-600 dark:text-yellow-400 font-bold">Modo Gratuito</p>
+                <p className="text-sm text-yellow-600/80 dark:text-yellow-400/80">Suscríbete para acceder a las vistas previas de los documentos.</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Access Denied Modal Logic dealt with by SubscriptionModal internal flow */}
       </div>
 
-      {/* Filters & Search */}
-      <div className="flex flex-col md:flex-row gap-4 items-start">
-        <div className="flex-1 space-y-2">
-          <div className="relative">
-            <input
-              type="text"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar recursos..."
-              className="w-full p-3 pl-12 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
-            />
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔎</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {['Integrales', 'Matrices', 'Probabilidad'].map((chip) => (
-              <button key={chip} type="button" className="px-3 py-1 text-xs rounded-full border border-slate-200 dark:border-slate-600" onClick={() => setSearch(chip)}>
-                {chip}
-              </button>
-            ))}
-          </div>
+      {/* Filters */}
+      <div className="glass-effect-light p-4 rounded-2xl flex flex-col md:flex-row gap-4">
+        <div className="flex-1 relative">
+          <span className="absolute left-3 top-3 text-slate-400">🔍</span>
+          <input
+            type="text"
+            placeholder="Buscar recursos..."
+            className="w-full pl-10 pr-4 py-2 bg-transparent border-none outline-none"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
         <select
-          className="p-3 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
+          className="bg-transparent border-l border-slate-200 dark:border-slate-700 px-4 py-2 outline-none"
           value={subjectFilter}
           onChange={(event) => setSubjectFilter(event.target.value)}
         >
@@ -166,7 +170,7 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => { // add
           ))}
         </select>
         <select
-          className="p-3 bg-white/80 dark:bg-slate-800/50 border border-light-border dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
+          className="bg-transparent border-l border-slate-200 dark:border-slate-700 px-4 py-2 outline-none"
           value={typeFilter}
           onChange={(event) => setTypeFilter(event.target.value)}
         >
@@ -201,8 +205,12 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => { // add
                     Descargar
                   </button>
                 ) : (
-                  <button className="flex-1 text-center py-2 px-4 bg-secondary/80 hover:bg-secondary text-white font-semibold rounded-lg" onClick={handlePurchaseClick}>
-                    Adquirir
+                  <button
+                    className="flex-1 text-center py-2 px-4 bg-slate-300 dark:bg-slate-700 text-slate-500 font-semibold rounded-lg flex items-center justify-center gap-2 hover:bg-slate-400 dark:hover:bg-slate-600 transition-colors"
+                    onClick={handlePurchaseClick}
+                  >
+                    <span>Descargar</span>
+                    <span>🔒</span>
                   </button>
                 )}
               </div>
