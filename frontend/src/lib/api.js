@@ -107,6 +107,8 @@ export const formatUserForFrontend = (rawUser) => {
       points: rawUser.puntos_gamificacion || rawUser.stats?.points || 0,
       streak: rawUser.streak || rawUser.racha || rawUser.stats?.streak || 0
     },
+    is_premium: Boolean(rawUser.is_premium || rawUser.premium),
+    premium: Boolean(rawUser.premium || rawUser.is_premium),
     raw: rawUser
   };
 };
@@ -253,6 +255,7 @@ const DemoAPI = {
         notifications: deepClone(user?.notifications || []),
         purchasedResources: deepClone(user?.purchasedResources || []),
         upcomingActivities: [],
+        is_premium: Boolean(user?.is_premium || user?.premium),
         updatedAt: Date.now()
       };
       this.saveUserState();
@@ -266,6 +269,8 @@ const DemoAPI = {
     user.notifications = state.notifications;
     user.purchasedResources = state.purchasedResources;
     user.upcomingActivities = state.upcomingActivities;
+    user.is_premium = state.is_premium || false;
+    user.premium = state.is_premium || false;
     return user;
   },
   touchUserState(user) {
@@ -567,6 +572,13 @@ const DemoAPI = {
     if (endpoint === API_CONFIG.ENDPOINTS.USERS.ACTIVATE_PREMIUM && method === 'POST') {
       loggedUser.is_premium = true;
       loggedUser.premium = true;
+
+      const state = this.getOrCreateUserState(loggedUser);
+      if (state) {
+        state.is_premium = true;
+        this.saveUserState();
+      }
+
       this.touchUserState(loggedUser);
       return { success: true, message: 'Premium activado', is_premium: true, user: formatUserForFrontend(loggedUser) };
     }
@@ -1123,7 +1135,14 @@ const DemoAPI = {
 
     if (endpoint === API_CONFIG.ENDPOINTS.ADMIN.USERS) {
       this.ensureAdminUsersLoaded();
-      return deepClone(this.adminUsers || []);
+      this.ensureUserStateLoaded();
+      return deepClone(this.adminUsers || []).map(u => {
+        const state = this.userStateByUserId[u.id];
+        if (state) {
+          return { ...u, is_premium: !!(state.is_premium || state.premium), premium: !!(state.is_premium || state.premium) };
+        }
+        return u;
+      });
     }
 
     if (endpoint.startsWith(API_CONFIG.ENDPOINTS.ADMIN.USERS) && method === 'PUT') {

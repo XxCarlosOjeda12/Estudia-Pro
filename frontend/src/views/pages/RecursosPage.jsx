@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext.jsx';
 import { apiService } from '../../lib/api';
 import { API_CONFIG } from '../../lib/constants.js';
@@ -45,6 +45,7 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [preview, setPreview] = useState(null);
+  const [visibleCount, setVisibleCount] = useState(9);
   const purchasedIds = new Set(purchasedResources.map((res) => res.id));
 
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
@@ -61,6 +62,13 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
       return matchesSearch && matchesSubject && matchesType;
     });
   }, [resources, search, subjectFilter, typeFilter]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setVisibleCount(9);
+  }, [search, subjectFilter, typeFilter]);
+
+  const visibleResources = filtered.slice(0, visibleCount);
 
   const handleDownload = async (resource) => {
     pushToast({ title: 'Descarga', message: `Descargando ${resource.title}.`, type: 'info' });
@@ -183,7 +191,7 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
 
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filtered.map((resource) => {
+        {visibleResources.map((resource) => {
           const isPurchased = isPremium || purchasedIds.has(resource.id) || resource.free;
           return (
             <div key={resource.id} className="glass-effect-light p-6 rounded-2xl flex flex-col">
@@ -199,14 +207,14 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
                 </button>
                 {isPurchased ? (
                   <button
-                    className="flex-1 text-center py-2 px-4 bg-slate-200 dark:bg-slate-700 text-slate-500 font-semibold rounded-lg"
+                    className="flex-1 text-center py-2 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow-lg shadow-emerald-500/20 transition-all"
                     onClick={() => handleDownload(resource)}
                   >
                     Descargar
                   </button>
                 ) : (
                   <button
-                    className="flex-1 text-center py-2 px-4 bg-slate-300 dark:bg-slate-700 text-slate-500 font-semibold rounded-lg flex items-center justify-center gap-2 hover:bg-slate-400 dark:hover:bg-slate-600 transition-colors"
+                    className="flex-1 text-center py-2 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
                     onClick={handlePurchaseClick}
                   >
                     <span>Descargar</span>
@@ -218,6 +226,20 @@ const RecursosPage = ({ resources, purchasedResources, onPurchase }) => {
           );
         })}
       </div>
+
+      {visibleCount < filtered.length && (
+        <div className="flex justify-center mt-8">
+          <button
+            onClick={() => setVisibleCount(prev => prev + 9)}
+            className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl transition-colors flex items-center gap-2"
+          >
+            <span>Cargar más recursos</span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {showSubscriptionModal && (
         <SubscriptionModal

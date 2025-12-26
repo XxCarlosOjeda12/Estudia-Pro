@@ -136,9 +136,9 @@ const GestionUsuariosPage = ({ users, onDelete, onUpdate }) => {
                 </td>
                 <td className="py-3">
                   {(user.is_premium || user.premium) ? (
-                    <span className="text-xs py-1 px-2 rounded-full bg-amber-500/20 text-amber-600 font-bold">PRO</span>
+                    <span className="text-emerald-500 font-medium text-sm">Activado</span>
                   ) : (
-                    <span className="text-xs text-slate-400">-</span>
+                    <span className="text-slate-400 text-sm">Desactivado</span>
                   )}
                 </td>
                 <td className="py-3 space-x-2">

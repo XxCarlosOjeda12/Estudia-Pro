@@ -616,8 +616,8 @@ export const HARDCODED_DATA = {
     { id: 'ach-3', title: 'SOS Master', description: 'Agendaste 2 tutorías en un mes.', icon: '🧑‍🏫', date: '2024-05-18' }
   ],
   adminUsers: [
-    { id: 'usr-001', name: 'Daniela Yáñez', email: 'daniela@estudiapro.com', role: 'ESTUDIANTE', verified: true },
-    { id: 'usr-002', name: 'Ana García', email: 'ana@estudiapro.com', role: 'CREADOR', verified: true },
+    { id: 'demo-1', name: 'Daniela Yáñez', email: 'daniela@estudiapro.com', role: 'ESTUDIANTE', verified: true },
+    { id: 'demo-creator', name: 'Ana García', email: 'ana@estudiapro.com', role: 'CREADOR', verified: true },
     { id: 'usr-003', name: 'Luis Hernández', email: 'luis@estudiapro.com', role: 'ESTUDIANTE', verified: false },
     { id: 'usr-004', name: 'María Torres', email: 'maria@estudiapro.com', role: 'ADMINISTRADOR', verified: true }
   ]
