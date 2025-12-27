@@ -1,0 +1,50 @@
+[
+    {
+        "id": "form-calc-dif",
+        "title": "Formulario de Cálculo Diferencial",
+        "subject": "Cálculo",
+        "url": "/formularios/formulario diferencial.pdf",
+        "type": "PDF",
+        "fileName": "formulario diferencial.pdf"
+    },
+    {
+        "id": "form-calc-int",
+        "title": "Formulario de Cálculo Integral",
+        "subject": "Cálculo",
+        "url": "/formularios/formulario integrales.pdf",
+        "type": "PDF",
+        "fileName": "formulario integrales.pdf"
+    },
+    {
+        "id": "form-var-com",
+        "title": "Formulario de Variable Compleja",
+        "subject": "Álgebra",
+        "url": "/formularios/FORMULARIO_DE_VARIABLE_COMPLEJA (1).pdf",
+        "type": "PDF",
+        "fileName": "FORMULARIO_DE_VARIABLE_COMPLEJA (1).pdf"
+    },
+    {
+        "id": "form-ec-dif",
+        "title": "Formulario de Ecuaciones Diferenciales",
+        "subject": "Ecuaciones",
+        "url": "/formularios/Formulario_ecdiferenciales.pdf",
+        "type": "PDF",
+        "fileName": "Formulario_ecdiferenciales.pdf"
+    },
+    {
+        "id": "form-prob",
+        "title": "Formulario de Probabilidad",
+        "subject": "Probabilidad",
+        "url": "/formularios/formulario_prob.pdf",
+        "type": "PDF",
+        "fileName": "formulario_prob.pdf"
+    },
+    {
+        "id": "form-laplace",
+        "title": "Formulario de Transformadas de Laplace",
+        "subject": "Ecuaciones",
+        "url": "/formularios/laplace.pdf",
+        "type": "PDF",
+        "fileName": "laplace.pdf"
+    }
+]

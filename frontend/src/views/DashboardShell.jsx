@@ -122,7 +122,9 @@ const DashboardShell = () => {
         rating: res.rating || res.calificacion_promedio || 0,
         downloads: res.downloads || res.descargas || 0,
         free: source === 'community' ? false : Boolean(inferredFree),
-        source
+        source,
+        archivo_url: res.archivo_url || null,
+        contenido_url: res.contenido_url || null
       };
     };
 
@@ -257,6 +259,7 @@ const DashboardShell = () => {
         { id: 'panel', name: 'Panel General', icon: Icons.Dashboard },
         { id: 'gestion-usuarios', name: 'Usuarios', icon: Icons.Users },
         { id: 'gestion-materias', name: 'Gestión Materias', icon: Icons.Settings },
+        { id: 'gestion-recursos', name: 'Recursos Comunidad', icon: Icons.Document },
         { id: 'gestion-formularios', name: 'Formularios', icon: Icons.Document }
       ];
     }
@@ -515,6 +518,16 @@ const DashboardShell = () => {
     }
   };
 
+  const handleCreateCommunityResource = async (payload) => {
+    try {
+      await apiService.manageResource(null, 'create', payload);
+      await refreshAllData();
+      pushToast({ title: 'Recursos', message: 'Recurso subido correctamente.', type: 'success' });
+    } catch (error) {
+      pushToast({ title: 'Recursos', message: error?.message || 'Error al subir recurso.', type: 'alert' });
+    }
+  };
+
   const handleDeleteResource = async (resourceId) => {
     try {
       await apiService.deleteCommunityResource(resourceId);
@@ -612,7 +625,12 @@ const DashboardShell = () => {
           ...resources.filter(r => r.source === 'community'),
           ...formularies.map(f => ({ ...f, source: 'formulary', type: 'FORMULARIO' })) // Ensure source tag
         ];
-        return <GestionRecursosPage resources={unifiedResources} onDelete={handleDeleteUnifiedResource} onUpdate={handleUpdateUnifiedResource} />;
+        return <GestionRecursosPage
+          resources={unifiedResources}
+          onDelete={handleDeleteUnifiedResource}
+          onUpdate={handleUpdateUnifiedResource}
+          onCreate={handleCreateCommunityResource}
+        />;
       case 'gestion-formularios':
         return <GestionFormulariosPage
           formularies={formularies}
@@ -687,7 +705,7 @@ const DashboardShell = () => {
               <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold mr-3 relative">
                 {initials}
                 {(user?.is_premium || user?.premium) && (
-                  <div className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-0.5 border-2 border-slate-900">
+                  <div className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-0.5 border-2 border-white dark:border-slate-900">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-white">
                       <path d="M4.5 9.75l6-5.25 6 5.25v9a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 18.75v-9z" />
                       <path d="M12 4.5L19.5 9.75M4.5 9.75L12 15M4.5 9.75v9A2.25 2.25 0 006.75 21h10.5A2.25 2.25 0 0019.5 18.75v-9" style={{ display: 'none' }} />
@@ -745,19 +763,19 @@ const DashboardShell = () => {
           </header>
 
           {mobileMenu && (
-            <div className="md:hidden bg-dark-bg/95 text-white fixed inset-0 z-40 p-6">
+            <div className="md:hidden bg-white/95 dark:bg-dark-bg/95 text-slate-900 dark:text-white fixed inset-0 z-40 p-6 backdrop-blur-md">
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-2xl font-bold">Menú</h2>
-                <button onClick={() => setMobileMenu(false)} className="p-2 ml-auto">✕</button>
+                <button onClick={() => setMobileMenu(false)} className="p-2 ml-auto text-slate-500">✕</button>
               </div>
               <nav className="space-y-3">
                 {navItems.map((nav) => (
                   <button
                     key={nav.id}
-                    className="flex items-center gap-3 w-full text-left py-2 text-lg"
-                    onClick={() => navigateTo(nav.id)}
+                    className={`flex items-center gap-3 w-full text-left py-3 px-4 rounded-xl text-lg transition-colors ${currentPage === nav.id ? 'bg-primary/20 text-primary font-bold' : 'hover:bg-slate-100 dark:hover:bg-white/5'}`}
+                    onClick={() => { navigateTo(nav.id); setMobileMenu(false); }}
                   >
-                    <div className="text-white">{nav.icon}</div>
+                    <div className={currentPage === nav.id ? 'text-primary' : 'text-slate-400'}>{nav.icon}</div>
                     {nav.name}
                   </button>
                 ))}
@@ -771,7 +789,7 @@ const DashboardShell = () => {
       {/* Notification Modal */}
       {showNotifications && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
-          <div className="bg-slate-900 border border-white/10 text-slate-100 rounded-2xl w-full max-w-lg p-6 relative shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-slate-100 rounded-2xl w-full max-w-lg p-6 relative shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
@@ -784,7 +802,7 @@ const DashboardShell = () => {
                   </span>
                 )}
               </h3>
-              <button className="p-1 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors" onClick={() => setShowNotifications(false)}>✕</button>
+              <button className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors" onClick={() => setShowNotifications(false)}>✕</button>
             </div>
 
             <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
@@ -792,13 +810,13 @@ const DashboardShell = () => {
                 notifications.map((notif) => (
                   <div
                     key={notif.id}
-                    className={`p-4 rounded-xl border transition-all ${notif.read ? 'bg-slate-800/50 border-white/5 opacity-70' : 'bg-slate-800 border-primary/30 shadow-lg shadow-primary/5'}`}
+                    className={`p-4 rounded-xl border transition-all ${notif.read ? 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-white/5 opacity-70' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-primary/30 shadow-lg dark:shadow-primary/5'}`}
                   >
                     <div className="flex justify-between items-start gap-4">
                       <div>
-                        <h4 className={`font-semibold text-sm ${!notif.read ? 'text-white' : 'text-slate-400'}`}>{notif.title}</h4>
-                        <p className="text-xs text-slate-400 mt-1 leading-relaxed">{notif.message}</p>
-                        <span className="text-[10px] text-slate-500 mt-2 block">{new Date(notif.date).toLocaleDateString()}</span>
+                        <h4 className={`font-semibold text-sm ${!notif.read ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{notif.title}</h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">{notif.message}</p>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-2 block">{new Date(notif.date).toLocaleDateString()}</span>
                       </div>
                       {!notif.read && (
                         <button
@@ -819,9 +837,9 @@ const DashboardShell = () => {
               )}
             </div>
 
-            <div className="mt-6 pt-4 border-t border-white/10 flex justify-end">
+            <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/10 flex justify-end">
               <button
-                className="text-sm text-slate-400 hover:text-white"
+                className="text-sm text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-white transition-colors"
                 onClick={() => setShowNotifications(false)}
               >
                 Cerrar

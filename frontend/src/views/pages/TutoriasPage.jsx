@@ -154,55 +154,57 @@ const TutoriasPage = ({ userRole, tutors }) => {
   }
 
   return (
-    <div className="page active space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Tutorías Disponibles</h1>
-        <p className="text-slate-500 dark:text-slate-400">Conecta con tutores expertos en cada materia.</p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {tutorsList.length ? (
-          tutorsList.map((tutor) => (
-            <div key={tutor.id} className="glass-effect-light p-6 rounded-2xl flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-lg">
-                  {(tutor.name || 'Tutor').split(' ').filter(Boolean).map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+    <>
+      <div className="page active space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Tutorías Disponibles</h1>
+          <p className="text-slate-500 dark:text-slate-400">Conecta con tutores expertos en cada materia.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {tutorsList.length ? (
+            tutorsList.map((tutor) => (
+              <div key={tutor.id} className="glass-effect-light p-6 rounded-2xl flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-lg">
+                    {(tutor.name || 'Tutor').split(' ').filter(Boolean).map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">{tutor.name}</h3>
+                    <p className="text-sm text-slate-500">{tutor.specialties}</p>
+                    {Number.isFinite(Number(tutor.rating)) ? (
+                      <p className="text-xs text-slate-500">
+                        {'★'.repeat(Math.max(0, Math.min(5, Math.round(Number(tutor.rating)))))}
+                        <span className="ml-2">({Number(tutor.rating).toFixed(1)})</span>
+                        {Number.isFinite(Number(tutor.sessions)) ? <span className="ml-2">• {Number(tutor.sessions)} sesiones</span> : null}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold">{tutor.name}</h3>
-                  <p className="text-sm text-slate-500">{tutor.specialties}</p>
-                  {Number.isFinite(Number(tutor.rating)) ? (
-                    <p className="text-xs text-slate-500">
-                      {'★'.repeat(Math.max(0, Math.min(5, Math.round(Number(tutor.rating)))))}
-                      <span className="ml-2">({Number(tutor.rating).toFixed(1)})</span>
-                      {Number.isFinite(Number(tutor.sessions)) ? <span className="ml-2">• {Number(tutor.sessions)} sesiones</span> : null}
-                    </p>
-                  ) : null}
-                </div>
+                {tutor.bio ? <p className="text-sm text-slate-500 dark:text-slate-400">{tutor.bio}</p> : null}
+                <p className="text-sm">
+                  <strong>Tarifas:</strong> ${tutor.tariff30} (30min) / ${tutor.tariff60} (60min)
+                </p>
+                <button
+                  type="button"
+                  className="w-full py-2 bg-primary/80 hover:bg-primary text-white rounded-md"
+                  onClick={() => openSchedule(tutor)}
+                >
+                  Agendar Tutoría
+                </button>
               </div>
-              {tutor.bio ? <p className="text-sm text-slate-500 dark:text-slate-400">{tutor.bio}</p> : null}
-              <p className="text-sm">
-                <strong>Tarifas:</strong> ${tutor.tariff30} (30min) / ${tutor.tariff60} (60min)
-              </p>
-              <button
-                type="button"
-                className="w-full py-2 bg-primary/80 hover:bg-primary text-white rounded-md"
-                onClick={() => openSchedule(tutor)}
-              >
-                Agendar Tutoría
-              </button>
-            </div>
-          ))
-        ) : (
-          <p className="col-span-3 text-center text-slate-500">No hay tutores disponibles por ahora.</p>
-        )}
+            ))
+          ) : (
+            <p className="col-span-3 text-center text-slate-500">No hay tutores disponibles por ahora.</p>
+          )}
+        </div>
       </div>
 
       {scheduleOpen && scheduleTutor && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
-          <div className="bg-slate-900 border border-white/10 text-slate-100 rounded-2xl w-full max-w-lg p-6 relative">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-slate-100 rounded-2xl w-full max-w-lg p-6 relative shadow-2xl">
             <button
               type="button"
-              className="absolute top-3 right-3 text-slate-400 hover:text-white"
+              className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 dark:hover:text-white"
               onClick={() => setScheduleOpen(false)}
             >
               ✕
@@ -212,11 +214,11 @@ const TutoriasPage = ({ userRole, tutors }) => {
 
             <form onSubmit={submitSchedule} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs text-slate-400">Duración</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">Duración</label>
                 <select
                   value={scheduleDuration}
                   onChange={(e) => setScheduleDuration(e.target.value)}
-                  className="w-full p-3 bg-slate-800/60 border border-white/10 rounded-xl"
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white"
                 >
                   <option value="30">30 minutos</option>
                   <option value="60">60 minutos</option>
@@ -224,13 +226,13 @@ const TutoriasPage = ({ userRole, tutors }) => {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs text-slate-400">Tema (opcional)</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">Tema (opcional)</label>
                 <input
                   type="text"
                   value={scheduleTopic}
                   onChange={(e) => setScheduleTopic(e.target.value)}
                   placeholder="Ej. Integrales por partes"
-                  className="w-full p-3 bg-slate-800/60 border border-white/10 rounded-xl"
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400"
                 />
               </div>
 
@@ -245,7 +247,7 @@ const TutoriasPage = ({ userRole, tutors }) => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

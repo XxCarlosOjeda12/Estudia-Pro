@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { resolveFileUrl } from '../../lib/url';
 
-const GestionRecursosPage = ({ resources, onDelete, onUpdate }) => {
+const GestionRecursosPage = ({ resources, onDelete, onUpdate, onCreate }) => {
     const [editingResource, setEditingResource] = useState(null);
+    const [isCreating, setIsCreating] = useState(false);
     const [formData, setFormData] = useState({ title: '', description: '', type: 'DOCUMENTO', archivo_url: '' });
     const [filter, setFilter] = useState('');
 
@@ -13,12 +15,24 @@ const GestionRecursosPage = ({ resources, onDelete, onUpdate }) => {
 
     const handleEditClick = (resource) => {
         setEditingResource(resource);
+        setIsCreating(false);
         setFormData({
             title: resource.title || resource.titulo,
             description: resource.description || resource.descripcion,
             type: resource.type || resource.tipo,
-            archivo_url: resource.url || resource.archivo_url
+            archivo_url: resource.url || resource.archivo_url || ''
         });
+    };
+
+    const handleCreateClick = () => {
+        setEditingResource(null);
+        setIsCreating(true);
+        setFormData({ title: '', description: '', type: 'DOCUMENTO', archivo_url: '' });
+    };
+
+    const handleClose = () => {
+        setEditingResource(null);
+        setIsCreating(false);
     };
 
     const handleSave = async (e) => {
@@ -37,9 +51,12 @@ const GestionRecursosPage = ({ resources, onDelete, onUpdate }) => {
             data.append('archivo_url', formData.archivo_url);
         }
 
-        if (editingResource && onUpdate) {
+        if (isCreating && onCreate) {
+            await onCreate(data);
+            handleClose();
+        } else if (editingResource && onUpdate) {
             await onUpdate(editingResource.id, data, editingResource.source);
-            setEditingResource(null);
+            handleClose();
         }
     };
 
@@ -55,21 +72,27 @@ const GestionRecursosPage = ({ resources, onDelete, onUpdate }) => {
                 <p className="text-slate-500 dark:text-slate-400">Edita o elimina recursos de la comunidad.</p>
             </div>
 
-            <div className="glass-effect-light p-4 rounded-2xl">
+            <div className="glass-effect-light p-4 rounded-2xl flex justify-between gap-4">
                 <input
                     type="text"
                     placeholder="Buscar recurso por título o autor..."
-                    className="w-full p-2 bg-transparent border-none outline-none"
+                    className="flex-1 p-2 bg-transparent border-none outline-none"
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
                 />
+                <button
+                    onClick={handleCreateClick}
+                    className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                    Subir Recurso
+                </button>
             </div>
 
-            {editingResource && (
+            {(editingResource || isCreating) && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setEditingResource(null)} />
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
                     <div className="relative bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl w-full max-w-lg border border-light-border dark:border-dark-border">
-                        <h3 className="text-xl font-bold mb-4">Editar Recurso</h3>
+                        <h3 className="text-xl font-bold mb-4">{isCreating ? 'Subir Nuevo Recurso' : 'Editar Recurso'}</h3>
                         <form onSubmit={handleSave} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium mb-1">Título</label>
@@ -123,7 +146,7 @@ const GestionRecursosPage = ({ resources, onDelete, onUpdate }) => {
                                 />
                             </div>
                             <div className="flex gap-3 pt-2">
-                                <button type="button" onClick={() => setEditingResource(null)} className="flex-1 py-2 px-4 rounded-lg bg-slate-200 dark:bg-slate-700 hover:opacity-80 transition-opacity">
+                                <button type="button" onClick={handleClose} className="flex-1 py-2 px-4 rounded-lg bg-slate-200 dark:bg-slate-700 hover:opacity-80 transition-opacity">
                                     Cancelar
                                 </button>
                                 <button type="submit" className="flex-1 py-2 px-4 rounded-lg bg-primary text-white hover:opacity-90 transition-opacity">
@@ -159,7 +182,7 @@ const GestionRecursosPage = ({ resources, onDelete, onUpdate }) => {
                                     <button className="text-blue-500 hover:underline" onClick={() => handleEditClick(resource)}>Editar</button>
                                     <button className="text-red-500 hover:underline" onClick={() => handleDelete(resource)}>Eliminar</button>
                                     {resource.archivo_url && (
-                                        <a href={resource.archivo_url} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">Ver</a>
+                                        <a href={resolveFileUrl(resource.archivo_url)} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">Ver</a>
                                     )}
                                 </td>
                             </tr>

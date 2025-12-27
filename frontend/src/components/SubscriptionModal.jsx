@@ -43,22 +43,22 @@ const SubscriptionModal = ({ onClose, onSuccess }) => {
     return (
       <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[70] p-4 animate-in fade-in duration-300">
         <div className="bg-slate-900 border border-emerald-500/30 text-slate-100 rounded-2xl w-full max-w-md p-8 text-center relative overflow-hidden">
-           <div className="absolute inset-0 bg-emerald-500/10 animate-pulse"></div>
-           <div className="relative z-10">
-             <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/40">
-               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-10 h-10 text-white">
-                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-               </svg>
-             </div>
-             <h2 className="text-3xl font-bold text-white mb-2">¡Bienvenido a Premium!</h2>
-             <p className="text-slate-400 mb-8">Ahora tienes acceso ilimitado a todos los recursos, exámenes y tutorías.</p>
-             <button 
-               onClick={onClose}
-               className="w-full py-3 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-200 transition-colors"
-             >
-               Comenzar a explorar
-             </button>
-           </div>
+          <div className="absolute inset-0 bg-emerald-500/10 animate-pulse"></div>
+          <div className="relative z-10">
+            <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/40">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-10 h-10 text-white">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+            </div>
+            <h2 className="text-3xl font-bold text-white mb-2">¡Bienvenido a Premium!</h2>
+            <p className="text-slate-400 mb-8">Ahora tienes acceso ilimitado a todos los recursos, exámenes y tutorías.</p>
+            <button
+              onClick={onClose}
+              className="w-full py-3 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+            >
+              Comenzar a explorar
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -67,25 +67,25 @@ const SubscriptionModal = ({ onClose, onSuccess }) => {
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in zoom-in-95 duration-200">
       <div className="bg-slate-900 border border-white/10 text-slate-100 rounded-2xl w-full max-w-lg p-0 relative overflow-hidden shadow-2xl">
-        
+
         {/* Header Image/Gradient */}
         <div className="h-32 bg-gradient-to-r from-primary to-secondary relative overflow-hidden">
-           <div className="absolute inset-0 bg-black/20"></div>
-           <button 
-             onClick={onClose}
-             className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white rounded-full p-2 transition-colors z-20"
-           >
-             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-             </svg>
-           </button>
-           <div className="absolute bottom-4 left-6 z-10">
-             <div className="flex items-center gap-2 mb-1">
-               <span className="text-2xl">💎</span>
-               <h3 className="text-2xl font-bold text-white">Estudia-Pro Premium</h3>
-             </div>
-             <p className="text-white/80 text-sm">Desbloquea tu potencial al máximo</p>
-           </div>
+          <div className="absolute inset-0 bg-black/20"></div>
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white rounded-full p-2 transition-colors z-20"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div className="absolute bottom-4 left-6 z-10">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-2xl">💎</span>
+              <h3 className="text-2xl font-bold text-white">Estudia-Pro Premium</h3>
+            </div>
+            <p className="text-white/80 text-sm">Desbloquea tu potencial al máximo</p>
+          </div>
         </div>
 
         <div className="p-6">
@@ -112,7 +112,7 @@ const SubscriptionModal = ({ onClose, onSuccess }) => {
                 </div>
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400">
-                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" /></svg>
                   </div>
                   <div>
                     <h4 className="font-bold text-white"> insignia Premium</h4>
@@ -122,16 +122,16 @@ const SubscriptionModal = ({ onClose, onSuccess }) => {
               </div>
 
               <div className="p-4 bg-slate-800 rounded-xl border border-white/5 flex items-center justify-between">
-                 <div>
-                   <p className="text-sm text-slate-400">Suscripción Mensual</p>
-                   <p className="text-2xl font-bold text-white">$120.00 <span className="text-sm font-normal text-slate-500">MXN</span></p>
-                 </div>
-                 <div className="text-right">
-                   <p className="text-xs text-emerald-400 font-medium">✨ Cancelación en cualquier momento</p>
-                 </div>
+                <div>
+                  <p className="text-sm text-slate-400">Suscripción Mensual</p>
+                  <p className="text-2xl font-bold text-white">$120.00 <span className="text-sm font-normal text-slate-500">MXN</span></p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-emerald-400 font-medium">✨ Cancelación en cualquier momento</p>
+                </div>
               </div>
 
-              <button 
+              <button
                 onClick={() => setStep('payment')}
                 className="w-full py-3 bg-primary hover:bg-primary-light text-white font-bold rounded-xl shadow-lg shadow-primary/20 transition-all transform active:scale-95"
               >
@@ -141,30 +141,30 @@ const SubscriptionModal = ({ onClose, onSuccess }) => {
           ) : step === 'payment' || step === 'processing' ? (
             <form onSubmit={handlePayment} className="space-y-5">
               <div className="flex items-center justify-between mb-2">
-                 <button type="button" onClick={() => setStep('offer')} className="text-sm text-slate-400 hover:text-white flex items-center gap-1">
-                   ← Volver
-                 </button>
-                 <span className="text-xs font-mono text-slate-500">SECURE PAYMENT</span>
+                <button type="button" onClick={() => setStep('offer')} className="text-sm text-slate-400 hover:text-white flex items-center gap-1">
+                  ← Volver
+                </button>
+                <span className="text-xs font-mono text-slate-500">SECURE PAYMENT</span>
               </div>
 
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs uppercase text-slate-400 mb-1 font-semibold">Nombre en la tarjeta</label>
-                  <input 
-                    type="text" 
-                    placeholder="COMO APARECE EN LA TARJETA"
+                  <input
+                    type="text"
+                    placeholder="Titular de la tarjeta"
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                     value={cardData.name}
-                    onChange={(e) => setCardData({...cardData, name: e.target.value.toUpperCase()})}
+                    onChange={(e) => setCardData({ ...cardData, name: e.target.value.toUpperCase() })}
                     required
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-xs uppercase text-slate-400 mb-1 font-semibold">Número de tarjeta</label>
                   <div className="relative">
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="0000 0000 0000 0000"
                       className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all pl-12 font-mono"
                       value={cardData.number}
@@ -181,8 +181,8 @@ const SubscriptionModal = ({ onClose, onSuccess }) => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs uppercase text-slate-400 mb-1 font-semibold">Expiración</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="MM/YY"
                       className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-center font-mono"
                       value={cardData.expiry}
@@ -194,12 +194,12 @@ const SubscriptionModal = ({ onClose, onSuccess }) => {
                   <div>
                     <label className="block text-xs uppercase text-slate-400 mb-1 font-semibold">CVV</label>
                     <div className="relative">
-                       <input 
-                        type="password" 
+                      <input
+                        type="password"
                         placeholder="123"
                         className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-center font-mono z-10 relative"
                         value={cardData.cvv}
-                        onChange={(e) => setCardData({...cardData, cvv: e.target.value.replace(/\D/g,'').substring(0,4)})}
+                        onChange={(e) => setCardData({ ...cardData, cvv: e.target.value.replace(/\D/g, '').substring(0, 4) })}
                         maxLength={4}
                         required
                       />
@@ -217,14 +217,14 @@ const SubscriptionModal = ({ onClose, onSuccess }) => {
                   Procesando pago...
                 </button>
               ) : (
-                <button 
+                <button
                   type="submit"
                   className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all"
                 >
                   Pagar $120.00 MXN
                 </button>
               )}
-              
+
               <p className="text-center text-[10px] text-slate-500 mt-2">
                 Al hacer clic en "Pagar", confirmas que esta es una simulación de compra y no se realizará ningún cargo real.
               </p>

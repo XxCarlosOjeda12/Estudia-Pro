@@ -294,56 +294,8 @@ export const HARDCODED_DATA = {
       sales: 35
     }
   ],
-  communityResources: [
-    {
-      id: 'community-001',
-      titulo: 'Formulario de Integrales (Comunidad)',
-      descripcion: 'Compendio rápido de fórmulas y ejemplos para integrales.',
-      tipo: 'DOCUMENTO',
-      archivo_url: 'demo/recurso-integrales.pdf',
-      contenido_texto: '',
-      autor: { id: 'demo-author-1', username: 'andrea', first_name: 'Andrea', last_name: 'Ríos', foto_perfil_url: null },
-      autor_id: 'demo-author-1',
-      curso_titulo: 'Cálculo Diferencial',
-      fecha_creacion: '2024-05-23T15:45:00Z',
-      descargas: 312,
-      calificacion_promedio: 4.7,
-      aprobado: true,
-      activo: true
-    },
-    {
-      id: 'community-002',
-      titulo: 'Matrices: resumen de operaciones',
-      descripcion: 'Apuntes con propiedades, determinantes y ejemplos.',
-      tipo: 'DOCUMENTO',
-      archivo_url: 'demo/recurso-matrices.pdf',
-      contenido_texto: '',
-      autor: { id: 'demo-author-2', username: 'carlos', first_name: 'Carlos', last_name: 'Trejo', foto_perfil_url: null },
-      autor_id: 'demo-author-2',
-      curso_titulo: 'Álgebra Lineal Avanzada',
-      fecha_creacion: '2024-05-20T10:20:00Z',
-      descargas: 178,
-      calificacion_promedio: 4.8,
-      aprobado: true,
-      activo: true
-    },
-    {
-      id: 'community-003',
-      titulo: 'Probabilidad: distribuciones clásicas',
-      descripcion: 'Guía rápida de binomial, geométrica, Poisson y normal.',
-      tipo: 'DOCUMENTO',
-      archivo_url: 'demo/recurso-probabilidad.pdf',
-      contenido_texto: '',
-      autor: { id: 'demo-author-3', username: 'ian', first_name: 'Ian', last_name: 'Salazar', foto_perfil_url: null },
-      autor_id: 'demo-author-3',
-      curso_titulo: 'Probabilidad y Estadística',
-      fecha_creacion: '2024-05-19T09:10:00Z',
-      descargas: 245,
-      calificacion_promedio: 4.6,
-      aprobado: true,
-      activo: true
-    }
-  ],
+  // Community resources are now loaded from /public/data/community-resources.json
+  communityResources: [],
   purchasedResourceIds: ['res-001', 'res-003'],
   exams: [
     {
@@ -523,11 +475,8 @@ export const HARDCODED_DATA = {
       ]
     }
   ],
-  formularies: [
-    { id: 'form-1', title: 'Tabla de Derivadas', subject: 'Cálculo', type: 'PDF', url: 'demo/formulario-derivadas.pdf' },
-    { id: 'form-2', title: 'Identidades Trigonométricas', subject: 'Álgebra', type: 'PDF', url: 'demo/formulario-trigonometria.pdf' },
-    { id: 'form-3', title: 'Formulario de Laplace', subject: 'Ecuaciones Diferenciales', type: 'PDF', url: 'demo/formulario-laplace.pdf' }
-  ],
+  // Formularies are now loaded from /public/data/formularies.json
+  formularies: [],
   tutors: [
     {
       id: 'tutor-ale',

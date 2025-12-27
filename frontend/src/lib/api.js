@@ -9,7 +9,11 @@ const DEMO_EXTRA_USERS_KEY = 'estudia-pro-demo-extra-users';
 const DEMO_ADMIN_USERS_KEY = 'estudia-pro-demo-admin-users';
 const DEMO_SUBJECTS_KEY = 'estudia-pro-demo-subjects';
 const DEMO_COMMUNITY_RESOURCES_KEY = 'estudia-pro-demo-community-resources';
+const DEMO_COMMUNITY_RESOURCES_VERSION_KEY = 'estudia-pro-demo-community-resources-version';
+const DEMO_COMMUNITY_RESOURCES_VERSION = '3.0'; // Force reload from JSON files
 const DEMO_FORMULARIES_KEY = 'estudia-pro-demo-formularies';
+const DEMO_FORMULARIES_VERSION_KEY = 'estudia-pro-demo-formularies-version';
+const DEMO_FORMULARIES_VERSION = '2.0';
 const DEMO_FORUMS_KEY = 'estudia-pro-demo-forums';
 const DEMO_USER_STATE_KEY = 'estudia-pro-demo-user-state';
 const DEMO_LATENCY = 350;
@@ -169,58 +173,109 @@ const DemoAPI = {
     if (!this.adminUsers) return;
     writeJsonToStorage(DEMO_ADMIN_USERS_KEY, this.adminUsers);
   },
-  ensureSubjectsLoaded() {
+  async ensureSubjectsLoaded() {
     if (this.subjectsCatalog) return;
+    // Try to load from JSON file first
+    try {
+      const response = await fetch('/data/subjects.json');
+      if (response.ok) {
+        this.subjectsCatalog = await response.json();
+        this.saveSubjects();
+        return;
+      }
+    } catch (e) {
+      console.warn('Could not load subjects.json, using localStorage/defaults:', e);
+    }
+    // Fallback to localStorage or defaults
     this.subjectsCatalog = readJsonFromStorage(DEMO_SUBJECTS_KEY, deepClone(HARDCODED_DATA.subjectsCatalog || []));
   },
   saveSubjects() {
     if (!this.subjectsCatalog) return;
     writeJsonToStorage(DEMO_SUBJECTS_KEY, this.subjectsCatalog);
   },
-  ensureCommunityResourcesLoaded() {
+  async ensureCommunityResourcesLoaded() {
     if (this.communityResources) return;
+
+    // Check version to force reload when data changes
+    const storedVersion = localStorage.getItem(DEMO_COMMUNITY_RESOURCES_VERSION_KEY);
+    const needsReset = storedVersion !== DEMO_COMMUNITY_RESOURCES_VERSION;
+
+    if (needsReset) {
+      localStorage.removeItem(DEMO_COMMUNITY_RESOURCES_KEY);
+      localStorage.setItem(DEMO_COMMUNITY_RESOURCES_VERSION_KEY, DEMO_COMMUNITY_RESOURCES_VERSION);
+    }
+
+    // Try to load from JSON file first (source of truth for Git-synced data)
+    try {
+      const response = await fetch('/data/community-resources.json');
+      if (response.ok) {
+        const jsonData = await response.json();
+        // Merge with localStorage data (user-created resources)
+        const storedUserData = readJsonFromStorage(DEMO_COMMUNITY_RESOURCES_KEY, []);
+        const jsonIds = new Set(jsonData.map(r => r.id));
+        const userCreated = storedUserData.filter(r => !jsonIds.has(r.id));
+        this.communityResources = [...jsonData, ...userCreated];
+        this.saveCommunityResources();
+        return;
+      }
+    } catch (e) {
+      console.warn('Could not load community-resources.json, using localStorage:', e);
+    }
+
+    // Fallback to localStorage
     const stored = readJsonFromStorage(DEMO_COMMUNITY_RESOURCES_KEY, null);
-    const defaults = deepClone(HARDCODED_DATA.communityResources || []);
     if (Array.isArray(stored) && stored.length) {
       this.communityResources = stored;
       return;
     }
-    this.communityResources = Array.isArray(stored) ? stored : defaults;
-    if ((!Array.isArray(stored) || stored.length === 0) && defaults.length) {
-      this.communityResources = defaults;
-      this.saveCommunityResources();
-    }
+
+    // Final fallback to empty array (no more hardcoded data)
+    this.communityResources = [];
+    this.saveCommunityResources();
   },
   saveCommunityResources() {
     if (!this.communityResources) return;
     writeJsonToStorage(DEMO_COMMUNITY_RESOURCES_KEY, this.communityResources);
   },
-  ensureFormulariesLoaded() {
+  async ensureFormulariesLoaded() {
     if (this.formularies) return;
-    const stored = readJsonFromStorage(DEMO_FORMULARIES_KEY, null);
-    const defaults = deepClone(HARDCODED_DATA.formularies || []);
-    const defaultsById = new Map(defaults.map((item) => [item.id, item]));
 
-    let list = Array.isArray(stored) ? stored : defaults;
-    if (Array.isArray(stored) && stored.length === 0 && defaults.length) {
-      list = defaults;
+    // Check version to force reload when data changes
+    const storedVersion = localStorage.getItem(DEMO_FORMULARIES_VERSION_KEY);
+    const needsReset = storedVersion !== DEMO_FORMULARIES_VERSION;
+
+    if (needsReset) {
+      localStorage.removeItem(DEMO_FORMULARIES_KEY);
+      localStorage.setItem(DEMO_FORMULARIES_VERSION_KEY, DEMO_FORMULARIES_VERSION);
     }
 
-    let changed = false;
-    this.formularies = (Array.isArray(list) ? list : []).map((item) => {
-      const fallback = defaultsById.get(item?.id);
-      if (!fallback) return item;
-      if ((!item?.url || item.url === '#') && fallback.url && fallback.url !== '#') {
-        changed = true;
-        return { ...item, url: fallback.url };
+    // Try to load from JSON file first
+    try {
+      const response = await fetch('/data/formularios.json');
+      if (response.ok) {
+        const jsonData = await response.json();
+        // Merge with localStorage data (user-created formularies)
+        const storedUserData = readJsonFromStorage(DEMO_FORMULARIES_KEY, []);
+        const jsonIds = new Set(jsonData.map(f => f.id));
+        const userCreated = storedUserData.filter(f => !jsonIds.has(f.id));
+        this.formularies = [...jsonData, ...userCreated];
+        this.saveFormularies();
+        return;
       }
-      return item;
-    });
-
-    if ((!Array.isArray(stored) || (Array.isArray(stored) && stored.length === 0 && defaults.length)) && !changed) {
-      changed = true;
+    } catch (e) {
+      console.warn('Could not load formularies.json, using localStorage:', e);
     }
-    if (changed) this.saveFormularies();
+
+    // Fallback to localStorage
+    const stored = readJsonFromStorage(DEMO_FORMULARIES_KEY, null);
+    if (Array.isArray(stored) && stored.length) {
+      this.formularies = stored;
+      return;
+    }
+
+    // Final fallback to empty array
+    this.formularies = [];
+    this.saveFormularies();
   },
   saveFormularies() {
     if (!this.formularies) return;
@@ -592,7 +647,7 @@ const DemoAPI = {
     }
 
     if (endpoint === API_CONFIG.ENDPOINTS.SUBJECTS.GET_ALL) {
-      this.ensureSubjectsLoaded();
+      await this.ensureSubjectsLoaded();
       return deepClone(this.subjectsCatalog);
     }
 
@@ -609,7 +664,7 @@ const DemoAPI = {
       const parts = endpoint.split('/');
       const subjectId = parts[parts.length - 3] || parts[parts.length - 2];
 
-      this.ensureSubjectsLoaded();
+      await this.ensureSubjectsLoaded();
       const subject = this.subjectsCatalog.find((s) => s.id === subjectId);
       if (subject && !(loggedUser.subjects || []).some((s) => s.id === subject.id)) {
         loggedUser.subjects = loggedUser.subjects || [];
@@ -834,7 +889,7 @@ const DemoAPI = {
     }
 
     if (endpoint.startsWith(API_CONFIG.ENDPOINTS.FORMULARIES.GET_ALL)) {
-      this.ensureFormulariesLoaded();
+      await this.ensureFormulariesLoaded();
 
       if (endpoint === API_CONFIG.ENDPOINTS.FORMULARIES.GET_ALL) {
         if (method === 'POST') {
@@ -1041,7 +1096,7 @@ const DemoAPI = {
     }
 
     if (endpoint === API_CONFIG.ENDPOINTS.FORUMS.CREATE_TOPIC && method === 'POST') {
-      this.ensureSubjectsLoaded();
+      await this.ensureSubjectsLoaded();
       this.ensureForumsLoaded();
       const subject = this.subjectsCatalog.find((s) => s.id === data?.curso);
       const newTopic = {
@@ -1183,7 +1238,7 @@ const DemoAPI = {
     }
 
     if (endpoint === API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS && method === 'POST') {
-      this.ensureSubjectsLoaded();
+      await this.ensureSubjectsLoaded();
       const newSubject = {
         id: this.nextId('subject'),
         title: data?.title || 'Materia sin título',
@@ -1201,7 +1256,7 @@ const DemoAPI = {
     }
 
     if (endpoint.startsWith(API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS) && endpoint !== API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS) {
-      this.ensureSubjectsLoaded();
+      await this.ensureSubjectsLoaded();
       const subjectId = endpoint.split('/').filter(Boolean).pop();
       const index = this.subjectsCatalog.findIndex((subject) => subject.id === subjectId);
       if (index === -1) {
@@ -1239,7 +1294,7 @@ const DemoAPI = {
 
     // Community resources (demo persistence + sync)
     if (endpoint.startsWith(API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.BASE)) {
-      this.ensureCommunityResourcesLoaded();
+      await this.ensureCommunityResourcesLoaded();
 
       if (endpoint === API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.BASE) {
         if (method === 'POST') {
@@ -1410,7 +1465,7 @@ const DemoAPI = {
       // Let's parse it.
       const query = endpoint.split('q=')[1]?.split('&')[0] || '';
       const term = this.normalize(decodeURIComponent(query));
-      this.ensureSubjectsLoaded();
+      await this.ensureSubjectsLoaded();
       if (!term) return deepClone(this.subjectsCatalog);
 
       return deepClone(this.subjectsCatalog.filter(s =>

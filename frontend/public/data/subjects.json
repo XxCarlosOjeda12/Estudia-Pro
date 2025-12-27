@@ -1,0 +1,91 @@
+[
+    {
+        "id": "calc-1",
+        "title": "Cálculo Diferencial",
+        "description": "Domina límites, derivadas y aplicaciones esenciales para ingeniería.",
+        "professor": "Dra. Sofía Reyes",
+        "school": "ESCOM",
+        "progress": 0,
+        "level": "Intermedio",
+        "temario": [
+            {
+                "title": "Límites y continuidad"
+            },
+            {
+                "title": "Derivadas y reglas principales"
+            },
+            {
+                "title": "Aplicaciones de la derivada"
+            },
+            {
+                "title": "Optimización y máximos relativos"
+            }
+        ]
+    },
+    {
+        "id": "alg-2",
+        "title": "Álgebra Lineal Avanzada",
+        "description": "Matrices, espacios vectoriales y diagonalización con casos reales.",
+        "professor": "Mtro. Armando Flores",
+        "school": "ESCOM",
+        "progress": 0,
+        "level": "Avanzado",
+        "temario": [
+            {
+                "title": "Matrices y determinantes"
+            },
+            {
+                "title": "Sistemas de ecuaciones"
+            },
+            {
+                "title": "Espacios vectoriales"
+            },
+            {
+                "title": "Transformaciones lineales"
+            }
+        ]
+    },
+    {
+        "id": "ecu-1",
+        "title": "Ecuaciones Diferenciales",
+        "description": "Aprende a modelar sistemas dinámicos con ecuaciones reales.",
+        "professor": "Dra. Julieta Morales",
+        "school": "IPN",
+        "progress": 0,
+        "level": "Intermedio",
+        "temario": [
+            {
+                "title": "Ecuaciones de primer orden"
+            },
+            {
+                "title": "Método de coeficientes indeterminados"
+            },
+            {
+                "title": "Transformada de Laplace"
+            }
+        ]
+    },
+    {
+        "id": "prob-1",
+        "title": "Probabilidad y Estadística",
+        "description": "Distribuciones, inferencia y visualización de datos aplicada.",
+        "professor": "Mtra. Paula Navarro",
+        "school": "ESCOM",
+        "progress": 0,
+        "level": "Básico",
+        "temario": [
+            {
+                "title": "Combinatoria y conteo"
+            },
+            {
+                "title": "Variables aleatorias"
+            },
+            {
+                "title": "Distribuciones clásicas"
+            },
+            {
+                "title": "Intervalos de confianza"
+            }
+        ]
+    }
+]
