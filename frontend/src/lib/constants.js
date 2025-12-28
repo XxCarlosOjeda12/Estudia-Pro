@@ -49,7 +49,9 @@ export const API_CONFIG = {
     },
     NOTIFICATIONS: {
       GET_USER_NOTIFICATIONS: '/notificaciones/',
-      MARK_READ: '/notificaciones/leer/'
+      MARK_READ: '/notificaciones/leer/',
+      DELETE: '/notificaciones/eliminar/',
+      DELETE_ALL: '/notificaciones/eliminar-todas/'
     },
     ACTIVITIES: {
       UPCOMING: '/proximas-actividades/'
@@ -567,6 +569,9 @@ export const HARDCODED_DATA = {
   adminUsers: [
     { id: 'demo-1', name: 'Daniela Yáñez', email: 'daniela@estudiapro.com', role: 'ESTUDIANTE', verified: true },
     { id: 'demo-creator', name: 'Ana García', email: 'ana@estudiapro.com', role: 'CREADOR', verified: true },
+    { id: 'demo-ale', name: 'Alejandra Ruiz', email: 'alejandra@estudiapro.com', role: 'CREADOR', verified: true },
+    { id: 'demo-ian', name: 'Ian Salazar', email: 'ian@estudiapro.com', role: 'CREADOR', verified: true },
+    { id: 'demo-rosa', name: 'Rosa Vera', email: 'rosa@estudiapro.com', role: 'CREADOR', verified: true },
     { id: 'usr-003', name: 'Luis Hernández', email: 'luis@estudiapro.com', role: 'ESTUDIANTE', verified: false },
     { id: 'usr-004', name: 'María Torres', email: 'maria@estudiapro.com', role: 'ADMINISTRADOR', verified: true }
   ]
@@ -641,6 +646,91 @@ export const DEMO_PROFILES = {
       users: HARDCODED_DATA.adminUsers.length,
       subjects: HARDCODED_DATA.subjectsCatalog.length,
       resources: HARDCODED_DATA.resources.length
+    }
+  },
+  // New Real Tutor Profiles
+  alejandra: {
+    id: 'demo-ale',
+    username: 'alejandra',
+    email: 'alejandra@estudiapro.com',
+    password: 'demo123',
+    first_name: 'Alejandra',
+    last_name: 'Ruiz',
+    name: 'Alejandra Ruiz',
+    rol: 'CREADOR',
+    foto_perfil_url: '',
+    nivel: 8,
+    puntos_gamificacion: 3400,
+    streak: 45,
+    notifications: [],
+    dashboard: {
+      published: 12,
+      rating: 4.9,
+      studentsHelped: 128,
+      tutoring: []
+    },
+    tutorProfile: {
+      specialties: 'Cálculo, Álgebra',
+      bio: 'Coach académica con 6 años ayudando a pasar extraordinarios.',
+      active: true,
+      tariff30: 180,
+      tariff60: 320
+    }
+  },
+  ian: {
+    id: 'demo-ian',
+    username: 'ian',
+    email: 'ian@estudiapro.com',
+    password: 'demo123',
+    first_name: 'Ian',
+    last_name: 'Salazar',
+    name: 'Ian Salazar',
+    rol: 'CREADOR',
+    foto_perfil_url: '',
+    nivel: 6,
+    puntos_gamificacion: 2100,
+    streak: 20,
+    notifications: [],
+    dashboard: {
+      published: 8,
+      rating: 4.7,
+      studentsHelped: 86,
+      tutoring: []
+    },
+    tutorProfile: {
+      specialties: 'Probabilidad, Estadística',
+      bio: 'Te ayudo a traducir problemas de datos a pasos simples.',
+      active: true,
+      tariff30: 160,
+      tariff60: 290
+    }
+  },
+  rosa: {
+    id: 'demo-rosa',
+    username: 'rosa',
+    email: 'rosa@estudiapro.com',
+    password: 'demo123',
+    first_name: 'Rosa',
+    last_name: 'Vera',
+    name: 'Rosa Vera',
+    rol: 'CREADOR',
+    foto_perfil_url: '',
+    nivel: 7,
+    puntos_gamificacion: 2800,
+    streak: 32,
+    notifications: [],
+    dashboard: {
+      published: 15,
+      rating: 4.8,
+      studentsHelped: 102,
+      tutoring: []
+    },
+    tutorProfile: {
+      specialties: 'Ecuaciones Diferenciales',
+      bio: 'Explico con gráficas interactivas y ejemplos reales.',
+      active: true,
+      tariff30: 200,
+      tariff60: 340
     }
   }
 };

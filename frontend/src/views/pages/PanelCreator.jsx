@@ -1,7 +1,7 @@
-const PanelCreator = ({ user, resources, navigateTo }) => {
+const PanelCreator = ({ user, resources, tutoringRequests = [], navigateTo, onDeleteUpcomingActivity }) => {
   const creatorResources = resources.filter((res) => res.author === user?.name);
   const creatorProfile = user?.raw?.perfil_creador || {};
-  const stats = user?.raw?.dashboard || { tutoring: [] };
+  const stats = user?.raw?.dashboard || {};
 
   return (
     <div className="page active space-y-8">
@@ -47,20 +47,36 @@ const PanelCreator = ({ user, resources, navigateTo }) => {
         </div>
         <div className="glass-effect-light p-6 rounded-2xl">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold">Tus Tutorías</h2>
+            <h2 className="text-xl font-bold">Solicitudes de Tutorías</h2>
             <button className="text-sm text-primary hover:underline" onClick={() => navigateTo('tutorias')}>
               Gestionar
             </button>
           </div>
-          {stats.tutoring?.length ? (
-            <ul className="space-y-3">
-              {stats.tutoring.map((item) => (
-                <li key={item.id} className="flex items-center justify-between text-sm">
-                  <div>
-                    <p className="font-semibold">{item.student}</p>
-                    <p className="text-slate-500">{item.subject} • {item.date}</p>
+          {tutoringRequests?.length ? (
+            <ul className="space-y-4">
+              {tutoringRequests.slice(0, 3).map((item) => (
+                <li key={item.id} className="p-3 bg-white/50 dark:bg-slate-800/30 border border-slate-200 dark:border-white/10 rounded-xl">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <p className="font-semibold text-sm">{item.student}</p>
+                      <p className="text-xs text-slate-500">@{item.studentUsername || 'usuario'}</p>
+                      <p className="text-xs text-slate-400">{item.studentEmail || 'email no disponible'}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full shrink-0">{item.duration}</span>
+                      <button
+                        type="button"
+                        className="text-[10px] text-slate-400 hover:text-red-500 underline"
+                        onClick={() => onDeleteUpcomingActivity(`tut-${item.id}`)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </div>
-                  <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">{item.duration}</span>
+                  <div className="text-xs text-slate-500 mt-2">
+                    <p><strong>Tema:</strong> {item.subject}</p>
+                    <p><strong>Fecha:</strong> {item.date}</p>
+                  </div>
                 </li>
               ))}
             </ul>

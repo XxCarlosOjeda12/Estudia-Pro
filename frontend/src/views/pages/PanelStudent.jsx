@@ -170,8 +170,8 @@ const PanelStudent = ({ user, subjects, upcomingActivities, onCreateUpcomingActi
           )}
 
           <div className="space-y-4">
-            {sortedActivities.length ? (
-              sortedActivities.map((activity) => (
+            {sortedActivities.filter(a => a.type !== 'TUTORIA').length ? (
+              sortedActivities.filter(a => a.type !== 'TUTORIA').map((activity) => (
                 <div
                   key={activity.id}
                   className="flex items-center justify-between gap-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50"
@@ -188,16 +188,14 @@ const PanelStudent = ({ user, subjects, upcomingActivities, onCreateUpcomingActi
                       {formatUpcomingDate(activity.date)}
                       {activity.time ? ` • ${activity.time}` : ''}
                     </span>
-                    {activity.origin === 'MANUAL' ? (
-                      <button
-                        type="button"
-                        className="text-xs text-slate-500 hover:text-red-500"
-                        onClick={() => onDeleteUpcomingActivity(activity.id)}
-                        title="Eliminar"
-                      >
-                        Eliminar
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      className="text-xs text-slate-500 hover:text-red-500"
+                      onClick={() => onDeleteUpcomingActivity(activity.id)}
+                      title="Eliminar"
+                    >
+                      Eliminar
+                    </button>
                   </div>
                 </div>
               ))
@@ -210,11 +208,48 @@ const PanelStudent = ({ user, subjects, upcomingActivities, onCreateUpcomingActi
         </div>
         <div className="glass-effect-light p-6 rounded-2xl">
           <h3 className="text-xl font-bold mb-4">Tutorías Agendadas</h3>
-          <div className="text-center py-8 text-slate-500">
-            <p className="mb-4">No tienes tutorías agendadas.</p>
-            <button className="text-primary hover:underline text-sm" onClick={() => navigateTo('tutorias')}>
-              Buscar tutorías disponibles
-            </button>
+          <div className="space-y-4">
+            {upcomingActivities.some(a => a.type === 'TUTORIA') ? (
+              sortedActivities.filter(a => a.type === 'TUTORIA').map((tutoria) => (
+                <div key={tutoria.id} className="flex items-center justify-between gap-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold truncate">
+                      {tutoria.tutorName ? `Tutoría con ${tutoria.tutorName}` : tutoria.title}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {tutoria.curso_titulo || tutoria.subjectName || 'Tema: Tutoría General'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right mr-1">
+                      <span className="block text-sm font-medium text-slate-500">
+                        {formatUpcomingDate(tutoria.date)}
+                      </span>
+                      <span className="block text-xs text-slate-400">{tutoria.time}</span>
+                    </div>
+                    <div className="flex flex-col gap-1 items-end">
+                      <span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-0.5 rounded-full">
+                        {tutoria.status || 'Confirmada'}
+                      </span>
+                      <button
+                        type="button"
+                        className="text-[10px] text-slate-400 hover:text-red-500 underline"
+                        onClick={() => onDeleteUpcomingActivity(tutoria.id)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-slate-500">
+                <p className="mb-4">No tienes tutorías agendadas.</p>
+                <button className="text-primary hover:underline text-sm" onClick={() => navigateTo('tutorias')}>
+                  Buscar tutorías disponibles
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </section>

@@ -36,6 +36,7 @@ const DashboardShell = () => {
   const [currentSubject, setCurrentSubject] = useState(null);
   const [currentExam, setCurrentExam] = useState(null);
   const [adminUsers, setAdminUsers] = useState([]);
+  const [tutoringRequests, setTutoringRequests] = useState([]);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -43,6 +44,17 @@ const DashboardShell = () => {
 
   const handleMarkRead = async (id) => {
     await apiService.markNotificationAsRead(id);
+    await refreshNotifications();
+  };
+
+  const handleDeleteNotification = async (id) => {
+    await apiService.deleteNotification(id);
+    await refreshNotifications();
+  };
+
+  const handleDeleteAllNotifications = async () => {
+    if (!window.confirm('¿Estás seguro de que quieres borrar todas las notificaciones?')) return;
+    await apiService.deleteAllNotifications();
     await refreshNotifications();
   };
 
@@ -74,7 +86,8 @@ const DashboardShell = () => {
       apiService.getAllExams(),
       apiService.getAllForums(),
       apiService.getAllFormularies(),
-      apiService.getAllTutors()
+      apiService.getAllTutors(),
+      apiService.getDashboard()
     ]);
 
     const subjectsData = results[0].status === 'fulfilled' ? results[0].value : [];
@@ -84,6 +97,7 @@ const DashboardShell = () => {
     const forumsData = results[4].status === 'fulfilled' ? results[4].value : [];
     const formulariesData = results[5].status === 'fulfilled' ? results[5].value : [];
     const tutorsData = results[6].status === 'fulfilled' ? results[6].value : [];
+    const dashboardData = results[7].status === 'fulfilled' ? results[7].value : {};
 
     if (results[2].status === 'rejected') console.error('Community Resources Error:', results[2].reason);
     if (results[6].status === 'rejected') console.error('Tutors Error:', results[6].reason);
@@ -139,6 +153,7 @@ const DashboardShell = () => {
     setForums(forumsData);
     setFormularies(formulariesData);
     setTutors(tutorsData);
+    setTutoringRequests(dashboardData?.tutoring || []);
 
     if (user?.role === 'estudiante') {
       const [studentSubjects, purchased, upcoming] = await Promise.all([
@@ -266,8 +281,9 @@ const DashboardShell = () => {
     if (user?.role === 'creador') {
       return [
         { id: 'panel', name: 'Mi Panel', icon: Icons.Dashboard },
+        { id: 'solicitudes', name: 'Solicitudes', icon: Icons.Users },
+        { id: 'perfil-tutor', name: 'Perfil de Tutor', icon: Icons.Tutor },
         { id: 'mis-recursos', name: 'Mis Recursos', icon: Icons.Document },
-        { id: 'tutorias', name: 'Mis Tutorías', icon: Icons.Tutor },
         { id: 'foro', name: 'Foro de Ayuda', icon: Icons.Chat }
       ];
     }
@@ -542,7 +558,7 @@ const DashboardShell = () => {
     switch (currentPage) {
       case 'panel':
         if (user?.role === 'creador') {
-          return <PanelCreator resources={resources} user={user} navigateTo={navigateTo} />;
+          return <PanelCreator resources={resources} user={user} tutoringRequests={tutoringRequests} navigateTo={navigateTo} onDeleteUpcomingActivity={handleDeleteUpcomingActivity} />;
         }
         if (user?.role === 'administrador') {
           return <PanelAdmin user={user} subjects={subjects} resources={resources} users={adminUsers} navigateTo={navigateTo} />;
@@ -613,8 +629,12 @@ const DashboardShell = () => {
         );
       case 'mis-recursos':
         return <MisRecursosPage user={user} resources={resources} />;
-      case 'tutorias':
-        return <TutoriasPage userRole={user?.role} tutors={tutors} />;
+      case 'tutorias': // For students
+        return <TutoriasPage userRole={user?.role} tutors={tutors} view="list" />;
+      case 'solicitudes': // For creators - Requests view
+        return <TutoriasPage userRole={user?.role} view="requests" onDeleteUpcomingActivity={handleDeleteUpcomingActivity} />;
+      case 'perfil-tutor': // For creators - Profile view
+        return <TutoriasPage userRole={user?.role} view="profile" />;
       case 'gestion-usuarios':
         return <GestionUsuariosPage users={adminUsers} onDelete={handleDeleteUser} onUpdate={handleUpdateUser} />;
       case 'gestion-materias':
@@ -791,17 +811,27 @@ const DashboardShell = () => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-slate-100 rounded-2xl w-full max-w-lg p-6 relative shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                </svg>
-                Notificaciones
-                {notifications?.some(n => !n.read) && (
-                  <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full ml-auto">
-                    {notifications.filter(n => !n.read).length} nuevas
-                  </span>
+              <div className="flex flex-col">
+                <h3 className="text-xl font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                  </svg>
+                  Notificaciones
+                  {notifications?.some(n => !n.read) && (
+                    <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                      {notifications.filter(n => !n.read).length} NUEVAS
+                    </span>
+                  )}
+                </h3>
+                {notifications?.length > 0 && (
+                  <button
+                    onClick={handleDeleteAllNotifications}
+                    className="text-[10px] text-red-500 hover:underline text-left mt-1 font-semibold"
+                  >
+                    Borrar todas
+                  </button>
                 )}
-              </h3>
+              </div>
               <button className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors" onClick={() => setShowNotifications(false)}>✕</button>
             </div>
 
@@ -818,20 +848,28 @@ const DashboardShell = () => {
                         <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">{notif.message}</p>
                         <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-2 block">{new Date(notif.date).toLocaleDateString()}</span>
                       </div>
-                      {!notif.read && (
+                      <div className="flex flex-col gap-1.5 shrink-0">
+                        {!notif.read && (
+                          <button
+                            onClick={() => handleMarkRead(notif.id)}
+                            className="text-[10px] bg-primary/10 text-primary hover:bg-primary/20 whitespace-nowrap px-2 py-1 rounded transition font-bold"
+                          >
+                            Leída
+                          </button>
+                        )}
                         <button
-                          onClick={() => handleMarkRead(notif.id)}
-                          className="text-xs text-primary hover:text-primary-light whitespace-nowrap px-2 py-1 rounded hover:bg-white/5 transition"
+                          onClick={() => handleDeleteNotification(notif.id)}
+                          className="text-[10px] text-slate-400 hover:text-red-500 whitespace-nowrap px-2 py-1 rounded hover:bg-red-500/10 transition font-medium"
                         >
-                          Marcar leída
+                          Eliminar
                         </button>
-                      )}
+                      </div>
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="text-center py-12 text-slate-500">
-                  <span className="text-4xl block mb-2">🔕</span>
+                  <span className="text-4xl block mb-2"></span>
                   <p>No tienes notificaciones nuevas</p>
                 </div>
               )}

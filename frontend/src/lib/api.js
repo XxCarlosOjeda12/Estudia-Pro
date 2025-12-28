@@ -1,5 +1,5 @@
 import { API_CONFIG, HARDCODED_DATA, DEMO_PROFILES } from './constants.js';
-import { putDemoFile } from './demoFileStore.js';
+import { putDemoFile, getDemoFile } from './demoFileStore.js';
 
 const DEMO_STORAGE_KEY = 'estudia-pro-demo-mode';
 const DEMO_TUTOR_PROFILES_KEY = 'estudia-pro-demo-tutor-profiles';
@@ -16,6 +16,7 @@ const DEMO_FORMULARIES_VERSION_KEY = 'estudia-pro-demo-formularies-version';
 const DEMO_FORMULARIES_VERSION = '2.0';
 const DEMO_FORUMS_KEY = 'estudia-pro-demo-forums';
 const DEMO_USER_STATE_KEY = 'estudia-pro-demo-user-state';
+const DEMO_TUTORING_SESSIONS_KEY = 'estudia-pro-demo-tutoring-sessions';
 const DEMO_LATENCY = 350;
 
 const deepClone = (value) => JSON.parse(JSON.stringify(value));
@@ -65,6 +66,8 @@ const DemoModeController = (() => {
     const stored = localStorage.getItem(DEMO_STORAGE_KEY);
     if (stored !== null) {
       enabled = stored === 'true';
+    } else {
+      enabled = false; // Default to real backend
     }
   } catch {
     enabled = false;
@@ -215,22 +218,34 @@ const DemoAPI = {
         const jsonIds = new Set(jsonData.map(r => r.id));
         const userCreated = storedUserData.filter(r => !jsonIds.has(r.id));
         this.communityResources = [...jsonData, ...userCreated];
-        this.saveCommunityResources();
-        return;
+      } else {
+        throw new Error('JSON fetch failed');
       }
     } catch (e) {
       console.warn('Could not load community-resources.json, using localStorage:', e);
+      // Fallback to localStorage
+      const stored = readJsonFromStorage(DEMO_COMMUNITY_RESOURCES_KEY, null);
+      if (Array.isArray(stored) && stored.length) {
+        this.communityResources = stored;
+      } else {
+        this.communityResources = [];
+      }
     }
 
-    // Fallback to localStorage
-    const stored = readJsonFromStorage(DEMO_COMMUNITY_RESOURCES_KEY, null);
-    if (Array.isArray(stored) && stored.length) {
-      this.communityResources = stored;
-      return;
+    // CRITICAL: Regenerate blob URLs from IndexedDB for user-uploaded files
+    for (const resource of this.communityResources) {
+      if (resource.fileId && (!resource.archivo_url || resource.archivo_url.startsWith('blob:'))) {
+        try {
+          const fileRecord = await getDemoFile(resource.fileId);
+          if (fileRecord && fileRecord.blob) {
+            resource.archivo_url = URL.createObjectURL(fileRecord.blob);
+          }
+        } catch (err) {
+          console.warn(`Could not regenerate blob URL for resource ${resource.id}:`, err);
+        }
+      }
     }
 
-    // Final fallback to empty array (no more hardcoded data)
-    this.communityResources = [];
     this.saveCommunityResources();
   },
   saveCommunityResources() {
@@ -259,22 +274,34 @@ const DemoAPI = {
         const jsonIds = new Set(jsonData.map(f => f.id));
         const userCreated = storedUserData.filter(f => !jsonIds.has(f.id));
         this.formularies = [...jsonData, ...userCreated];
-        this.saveFormularies();
-        return;
+      } else {
+        throw new Error('Formularies JSON fetch failed');
       }
     } catch (e) {
       console.warn('Could not load formularies.json, using localStorage:', e);
+      // Fallback to localStorage
+      const stored = readJsonFromStorage(DEMO_FORMULARIES_KEY, null);
+      if (Array.isArray(stored) && stored.length) {
+        this.formularies = stored;
+      } else {
+        this.formularies = [];
+      }
     }
 
-    // Fallback to localStorage
-    const stored = readJsonFromStorage(DEMO_FORMULARIES_KEY, null);
-    if (Array.isArray(stored) && stored.length) {
-      this.formularies = stored;
-      return;
+    // Regenerate blob URLs from IndexedDB for user-uploaded files
+    for (const form of this.formularies) {
+      if (form.fileId && (!form.archivo_url || form.archivo_url.startsWith('blob:'))) {
+        try {
+          const fileRecord = await getDemoFile(form.fileId);
+          if (fileRecord && fileRecord.blob) {
+            form.archivo_url = URL.createObjectURL(fileRecord.blob);
+          }
+        } catch (err) {
+          console.warn(`Could not regenerate blob URL for formulary ${form.id}:`, err);
+        }
+      }
     }
 
-    // Final fallback to empty array
-    this.formularies = [];
     this.saveFormularies();
   },
   saveFormularies() {
@@ -426,23 +453,22 @@ const DemoAPI = {
   },
   getAllTutors() {
     this.ensureTutorProfilesLoaded();
-    const baseTutors = Array.isArray(HARDCODED_DATA.tutors) ? deepClone(HARDCODED_DATA.tutors) : [];
+    // Source of truth: All demo users with role CREADOR + active profile
+    const allUsers = this.getAllDemoUsers();
+    const creators = allUsers.filter((u) => u?.rol === 'CREADOR');
 
-    const creators = this.getAllDemoUsers().filter((u) => u?.rol === 'CREADOR');
+    // Convert them to tutor format
+    const activeTutors = [];
     for (const creatorUser of creators) {
       const profile = this.getTutorProfile(creatorUser);
-      if (!profile.active) continue;
-      baseTutors.push(this.buildTutorEntryFromCreatorProfile(creatorUser));
-    }
+      // Also check internal boolean from DEMO_PROFILES if available (fallback)
+      const isActive = profile.active !== undefined ? profile.active : true;
 
-    const seen = new Set();
-    return baseTutors.filter((tutor) => {
-      const id = tutor?.id;
-      if (!id) return false;
-      if (seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    });
+      if (isActive) {
+        activeTutors.push(this.buildTutorEntryFromCreatorProfile(creatorUser));
+      }
+    }
+    return activeTutors;
   },
   getCurrentUser() {
     if (!this.currentUser) {
@@ -574,7 +600,36 @@ const DemoAPI = {
     }
 
     if (endpoint === API_CONFIG.ENDPOINTS.USERS.GET_DASHBOARD) {
-      // Simulate dashboard data
+      // Load tutoring sessions from localStorage
+      const allSessions = readJsonFromStorage(DEMO_TUTORING_SESSIONS_KEY, []);
+
+      // Filter sessions based on user role
+      let userTutoringSessions = [];
+      console.log('[DEBUG] GET_DASHBOARD filtering for user:', loggedUser.id, '| role:', loggedUser.rol);
+      console.log('[DEBUG] All tutoring sessions:', allSessions);
+      if (loggedUser.rol === 'ESTUDIANTE') {
+        // Students see their own scheduled sessions
+        userTutoringSessions = allSessions.filter(s => s.studentId === loggedUser.id);
+      } else if (loggedUser.rol === 'CREADOR') {
+        // Creators see sessions where they are the tutor
+        userTutoringSessions = allSessions.filter(s => s.tutorId === loggedUser.id);
+        console.log('[DEBUG] Creator filtered sessions:', userTutoringSessions);
+      }
+
+      // Format tutoring for display
+      const tutoring = userTutoringSessions.map(s => ({
+        id: s.id,
+        student: s.studentName,
+        studentUsername: s.studentUsername || 'usuario',
+        studentEmail: s.studentEmail || 'No disponible',
+        tutor: s.tutorName,
+        subject: s.topic || s.subjectName || 'Tutoría General',
+        date: new Date(s.scheduledAt).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+        duration: `${s.duration} min`,
+        status: s.status
+      }));
+
+      // Return dashboard data with tutoring
       return {
         usuario: formatUserForFrontend(loggedUser),
         mis_cursos: (loggedUser.subjects || []).slice(0, 3).map(s => ({
@@ -592,7 +647,13 @@ const DemoAPI = {
         pendientes_count: 5,
         racha_dias: loggedUser.streak || 0,
         puntos_totales: loggedUser.puntos_gamificacion || 0,
-        nivel_actual: loggedUser.nivel || 1
+        nivel_actual: loggedUser.nivel || 1,
+        // Add tutoring data for both students and creators
+        tutoring: tutoring,
+        // For creators: stats
+        published: loggedUser.rol === 'CREADOR' ? (loggedUser.publishedResources || 0) : undefined,
+        rating: loggedUser.rol === 'CREADOR' ? (loggedUser.rating || 4.5) : undefined,
+        studentsHelped: loggedUser.rol === 'CREADOR' ? tutoring.length : undefined
       };
     }
 
@@ -780,11 +841,7 @@ const DemoAPI = {
       }
     }
 
-    if (endpoint === API_CONFIG.ENDPOINTS.TUTORS.SCHEDULE && method === 'POST') {
-      const { tutorId, duration, topic } = data;
-      // Simulate success
-      return { success: true, tutoriaId: 'demo-tut-' + Date.now() };
-    }
+
 
     // Handle unenrollment (new dynamic URL: /cursos/{id}/desinscribirse/)
     if (endpoint.includes('/desinscribirse/') && method === 'POST') {
@@ -840,7 +897,45 @@ const DemoAPI = {
     }
 
     if (endpoint === API_CONFIG.ENDPOINTS.ACTIVITIES.UPCOMING && method === 'GET') {
-      return deepClone(loggedUser.upcomingActivities || []);
+      // Get regular activities
+      const regularActivities = deepClone(loggedUser.upcomingActivities || []);
+
+      // Load tutoring sessions and convert to activity format
+      const allSessions = readJsonFromStorage(DEMO_TUTORING_SESSIONS_KEY, []);
+      const myTutoringSessions = allSessions.filter(s =>
+        s.studentId === loggedUser.id || s.tutorId === loggedUser.id
+      );
+
+      const tutoringActivities = myTutoringSessions.map(s => {
+        const sessionDate = new Date(s.scheduledAt);
+        return {
+          id: `tut-${s.id}`,
+          titulo: loggedUser.id === s.studentId
+            ? `Tutoría con ${s.tutorName}`
+            : `Tutoría con ${s.studentName}`,
+          tipo: 'TUTORIA',
+          fecha: sessionDate.toISOString().split('T')[0],
+          hora: sessionDate.toTimeString().slice(0, 5),
+          origen: 'AUTOMATICO',
+          curso_id: null,
+          curso_titulo: s.topic || 'Tutoría General',
+          // Extra fields for display
+          tutorName: s.tutorName,
+          studentName: s.studentName,
+          duration: s.duration,
+          status: s.status
+        };
+      });
+
+      // Merge and sort by date
+      const allActivities = [...regularActivities, ...tutoringActivities];
+      allActivities.sort((a, b) => {
+        const dateA = new Date(`${a.fecha}T${a.hora || '00:00'}`);
+        const dateB = new Date(`${b.fecha}T${b.hora || '00:00'}`);
+        return dateA - dateB;
+      });
+
+      return allActivities;
     }
 
     if (endpoint === API_CONFIG.ENDPOINTS.ACTIVITIES.UPCOMING && method === 'POST') {
@@ -863,8 +958,18 @@ const DemoAPI = {
 
     if (endpoint.startsWith(API_CONFIG.ENDPOINTS.ACTIVITIES.UPCOMING) && method === 'DELETE') {
       const id = endpoint.split('/').filter(Boolean).pop();
-      loggedUser.upcomingActivities = (loggedUser.upcomingActivities || []).filter((activity) => activity.id !== id);
-      this.touchUserState(loggedUser);
+
+      if (id.startsWith('tut-')) {
+        const realId = id.replace('tut-', '');
+        const sessions = readJsonFromStorage(DEMO_TUTORING_SESSIONS_KEY, []);
+        const updatedSessions = sessions.filter(s => s.id.toString() !== realId);
+        writeJsonToStorage(DEMO_TUTORING_SESSIONS_KEY, updatedSessions);
+        this.broadcastChange('tutoring');
+      } else {
+        loggedUser.upcomingActivities = (loggedUser.upcomingActivities || []).filter((activity) => activity.id !== id);
+        this.touchUserState(loggedUser);
+      }
+
       this.broadcastChange('activities');
       return { success: true };
     }
@@ -1156,13 +1261,68 @@ const DemoAPI = {
       const tutorId = data?.tutorId || data?.tutor || data?.id;
       const duration = data?.duration || 30;
       const topic = (data?.topic || '').toString().trim();
+      const subjectId = data?.subjectId || null;
 
+      // Load existing tutoring sessions
+      const sessions = readJsonFromStorage(DEMO_TUTORING_SESSIONS_KEY, []);
+
+      // Find the tutor's user info - robust lookup
+      const tutorCreatorId = typeof tutorId === 'string' && tutorId.startsWith('tutor-') ? tutorId.slice('tutor-'.length) : tutorId;
+      const allUsers = this.getAllDemoUsers();
+
+      // Try multiple matching strategies
+      let creatorUser = allUsers.find((u) => u?.id === tutorCreatorId);
+      if (!creatorUser) {
+        creatorUser = allUsers.find((u) => u?.username === tutorCreatorId);
+      }
+      if (!creatorUser) {
+        // Try partial match (e.g., 'ale' matches 'demo-ale' or 'alejandra')
+        creatorUser = allUsers.find((u) =>
+          u?.id?.includes(tutorCreatorId) ||
+          u?.username?.includes(tutorCreatorId) ||
+          tutorCreatorId?.includes(u?.id) ||
+          tutorCreatorId?.includes(u?.username)
+        );
+      }
+
+      // Use the creator's actual ID for storage, not the tutor-prefixed one
+      const actualCreatorId = creatorUser?.id || tutorCreatorId;
+      console.log('[DEBUG] tutorCreatorId:', tutorCreatorId, '| Found creator:', creatorUser?.name, '| Actual ID:', actualCreatorId);
+
+      // Create a new tutoring session record
+      const sessionDate = new Date();
+      sessionDate.setDate(sessionDate.getDate() + 2); // Schedule 2 days from now
+      sessionDate.setHours(14, 0, 0, 0); // 2:00 PM
+
+      const newSession = {
+        id: this.nextId('tutoring'),
+        studentId: loggedUser.id,
+        studentName: loggedUser.name || 'Estudiante',
+        studentUsername: loggedUser.username || loggedUser.email || 'usuario',
+        studentEmail: loggedUser.email || 'No disponible',
+        tutorId: actualCreatorId,
+        tutorName: creatorUser?.name || 'Tutor',
+        duration: duration,
+        topic: topic || 'Tutoría General',
+        subjectId: subjectId,
+        subjectName: data?.subjectName || 'General',
+        status: 'PROGRAMADA',
+        scheduledAt: sessionDate.toISOString(),
+        createdAt: new Date().toISOString()
+      };
+
+      sessions.push(newSession);
+      writeJsonToStorage(DEMO_TUTORING_SESSIONS_KEY, sessions);
+      console.log('[DEBUG] Tutoring session saved:', newSession);
+      console.log('[DEBUG] Saved tutorId:', newSession.tutorId, '| StudentId:', newSession.studentId);
+
+      // Add notification for student
       if (loggedUser.rol === 'ESTUDIANTE') {
         loggedUser.notifications = loggedUser.notifications || deepClone(HARDCODED_DATA.notifications);
         loggedUser.notifications.unshift({
           id: this.nextId('notif'),
-          title: 'Tutoría solicitada',
-          message: `Tu solicitud fue enviada.${topic ? ` Tema: ${topic}` : ''}`,
+          title: 'Tutoría agendada',
+          message: `Tu tutoría con ${creatorUser?.name || 'el tutor'} fue programada.${topic ? ` Tema: ${topic}` : ''}`,
           type: 'success',
           read: false,
           date: new Date().toISOString()
@@ -1170,25 +1330,24 @@ const DemoAPI = {
         this.touchUserState(loggedUser);
       }
 
-      const tutorCreatorId = typeof tutorId === 'string' && tutorId.startsWith('tutor-') ? tutorId.slice('tutor-'.length) : null;
-      if (tutorCreatorId) {
-        const creatorUser = this.getAllDemoUsers().find((u) => u?.id === tutorCreatorId);
-        if (creatorUser) {
-          const state = this.getOrCreateUserState(creatorUser);
-          state.notifications = state.notifications || [];
-          state.notifications.unshift({
-            id: this.nextId('notif'),
-            title: 'Solicitud de tutoría',
-            message: `${loggedUser?.name || 'Un estudiante'} solicitó una tutoría de ${duration} min.${topic ? ` Tema: ${topic}` : ''}`,
-            type: 'alert',
-            read: false,
-            date: new Date().toISOString()
-          });
-          this.saveUserState();
-        }
+      // Add notification for creator/tutor
+      if (creatorUser) {
+        const state = this.getOrCreateUserState(creatorUser);
+        state.notifications = state.notifications || [];
+        state.notifications.unshift({
+          id: this.nextId('notif'),
+          title: 'Nueva solicitud de tutoría',
+          message: `${loggedUser?.name || 'Un estudiante'} agendó una tutoría de ${duration} min.${topic ? ` Tema: ${topic}` : ''}`,
+          type: 'alert',
+          read: false,
+          date: new Date().toISOString()
+        });
+        this.saveUserState();
       }
+
+      this.broadcastChange('tutoring');
       this.broadcastChange('notifications');
-      return { success: true, message: 'Tutoría agendada (demo)' };
+      return { success: true, message: 'Tutoría agendada', session: deepClone(newSession) };
     }
 
     if (endpoint === API_CONFIG.ENDPOINTS.FORUMS.GET_ALL && method === 'GET') {
@@ -1292,6 +1451,21 @@ const DemoAPI = {
       const notifications = loggedUser.notifications || (loggedUser.notifications = deepClone(HARDCODED_DATA.notifications));
       const notification = notifications.find((n) => n.id === data?.notificationId);
       if (notification) notification.read = true;
+      this.touchUserState(loggedUser);
+      this.broadcastChange('notifications');
+      return { success: true };
+    }
+
+    if (endpoint === API_CONFIG.ENDPOINTS.NOTIFICATIONS.DELETE && method === 'POST') {
+      loggedUser.notifications = (loggedUser.notifications || deepClone(HARDCODED_DATA.notifications))
+        .filter(n => n.id !== data?.notificationId);
+      this.touchUserState(loggedUser);
+      this.broadcastChange('notifications');
+      return { success: true };
+    }
+
+    if (endpoint === API_CONFIG.ENDPOINTS.NOTIFICATIONS.DELETE_ALL && method === 'POST') {
+      loggedUser.notifications = [];
       this.touchUserState(loggedUser);
       this.broadcastChange('notifications');
       return { success: true };
@@ -1410,7 +1584,7 @@ const DemoAPI = {
           const title = (data?.titulo || data?.title || '').toString().trim();
           const description = (data?.descripcion || data?.description || '').toString().trim();
           const type = (data?.tipo || data?.type || 'DOCUMENTO').toString().toUpperCase();
-          const url = (data?.archivo_url || data?.archivoUrl || '').toString().trim();
+          let url = (data?.archivo_url || data?.archivoUrl || '').toString().trim();
           const text = (data?.contenido_texto || data?.contenidoTexto || '').toString();
           const file = data?.file || data?.archivo || null;
 
@@ -1423,6 +1597,10 @@ const DemoAPI = {
             fileId = await putDemoFile(file);
             fileName = file?.name || 'recurso';
             fileType = file?.type || null;
+            // Generate blob URL for immediate preview in demo mode
+            if (!url) {
+              url = URL.createObjectURL(file);
+            }
           }
 
           const authorSnapshot = {
@@ -1544,6 +1722,8 @@ const DemoAPI = {
           fileId = await putDemoFile(file);
           fileName = file?.name || 'recurso_actualizado';
           fileType = file?.type || null;
+          // Generate new blob URL for preview
+          url = URL.createObjectURL(file);
         }
 
         this.communityResources[index] = {
@@ -1604,38 +1784,44 @@ const request = async (endpoint, method = 'GET', data = null, requiresAuth = tru
     const token = localStorage.getItem('authToken');
     if (token) headers.Authorization = `Token ${token}`;
   }
-  const options = { method, headers, credentials: 'include' };
-  if (data && ['POST', 'PUT', 'PATCH'].includes(method)) {
+
+  const options = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers
+    }
+  };
+
+  if (data) {
     if (isFormData(data)) {
+      delete options.headers['Content-Type'];
       options.body = data;
-      // When sending FormData, browser sets Content-Type header automatically
-      // with the correct boundary. Do not set 'Content-Type': 'application/json'.
-      delete headers['Content-Type'];
     } else {
-      headers['Content-Type'] = 'application/json';
       options.body = JSON.stringify(data);
     }
   }
-  const response = await fetch(url, options);
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    let errorMessage = errorData.message || errorData.detail;
 
-    if (!errorMessage && typeof errorData === 'object') {
-      const values = Object.values(errorData).flat();
-      if (values.length > 0) {
-        errorMessage = values.join(', ');
-      }
+  try {
+    const response = await fetch(url, options);
+
+    if (response.status === 401) {
+      // Token inválido o expirado
+      localStorage.removeItem('authToken');
+      window.location.href = '/login';
+      throw new Error('Sesión expirada');
     }
 
-    throw new Error(errorMessage || `Error ${response.status}`);
-  }
-  const text = await response.text();
-  if (!text) return {};
-  try {
-    return JSON.parse(text);
-  } catch {
-    return {};
+    const responseData = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(responseData.detail || responseData.message || responseData.error || 'Error en la petición');
+    }
+
+    return responseData;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
   }
 };
 
@@ -1845,18 +2031,6 @@ export const apiService = {
   getAllAchievements() {
     return request(API_CONFIG.ENDPOINTS.ACHIEVEMENTS.GET_ALL);
   },
-  getAllTutors() {
-    return request(API_CONFIG.ENDPOINTS.TUTORS.GET_ALL);
-  },
-  getMyTutorProfile() {
-    return request(API_CONFIG.ENDPOINTS.TUTORS.ME);
-  },
-  updateMyTutorProfile(data) {
-    return request(API_CONFIG.ENDPOINTS.TUTORS.ME, 'PUT', data);
-  },
-  scheduleTutoring(tutorId, subjectId, duration, topic) {
-    return request(API_CONFIG.ENDPOINTS.TUTORS.SCHEDULE, 'POST', { tutorId, subjectId, duration, topic });
-  },
   getAllExams() {
     return request(API_CONFIG.ENDPOINTS.EXAMS.GET_ALL);
   },
@@ -1932,11 +2106,11 @@ export const apiService = {
   markNotificationAsRead(notificationId) {
     return request(API_CONFIG.ENDPOINTS.NOTIFICATIONS.MARK_READ, 'POST', { notificationId });
   },
-  getAllUsers() {
-    return request(API_CONFIG.ENDPOINTS.ADMIN.USERS);
+  deleteNotification(notificationId) {
+    return request(API_CONFIG.ENDPOINTS.NOTIFICATIONS.DELETE, 'POST', { notificationId });
   },
-  manageUser(userId, action, data = {}) {
-    return request(`${API_CONFIG.ENDPOINTS.ADMIN.USERS}${userId}`, 'PUT', { action, ...data });
+  deleteAllNotifications() {
+    return request(API_CONFIG.ENDPOINTS.NOTIFICATIONS.DELETE_ALL, 'POST');
   },
   createSubject(subjectData) {
     return request(API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS, 'POST', subjectData);
@@ -1957,11 +2131,27 @@ export const apiService = {
   getMyCommunityResources() {
     return request(API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.MY_RESOURCES);
   },
-  getCommunityResources(query = '', type = '') {
+  async getCommunityResources(query = '', type = '') {
     const params = new URLSearchParams();
     if (query) params.append('q', query);
     if (type) params.append('tipo', type);
-    return request(`${API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.SEARCH}?${params.toString()}`);
+    const response = await request(`${API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.SEARCH}?${params.toString()}`);
+
+    // Map backend fields to frontend expected fields
+    return response.map(res => ({
+      id: res.id,
+      title: res.titulo,
+      description: res.descripcion,
+      type: res.tipo === 'DOCUMENTO' ? 'pdf' : (res.tipo === 'EXAMEN' ? 'exam' : 'pdf'), // Normalize types
+      archivo_url: res.archivo_url,
+      contenido_url: res.archivo_url, // For fallback
+      author: typeof res.autor === 'object' ? (res.autor.name || res.autor.username || 'Anónimo') : (res.autor || 'Anónimo'),
+      subjectName: res.curso_titulo || 'General',
+      rating: res.calificacion_promedio,
+      downloads: res.descargas,
+      active: res.activo,
+      free: true // Community resources are seemingly free or handled via access logic? user said free.
+    }));
   },
   updateCommunityResource(resourceId, resourceData) {
     return request(`${API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.BASE}${resourceId}/`, 'PUT', resourceData);

@@ -9,6 +9,7 @@ const LoginPage = ({ onNavigate }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
+  const [showQuickAccess, setShowQuickAccess] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('savedIdentifier');
@@ -71,19 +72,54 @@ const LoginPage = ({ onNavigate }) => {
           </div>
 
           <div className={`${demoEnabled ? 'block' : 'hidden'} mb-6`}>
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2 font-semibold">Accesos Rápidos (Demo)</p>
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              {Object.keys(DEMO_PROFILES).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => handleDemoProfile(key)}
-                  className="px-2 py-2 rounded-lg border border-slate-700 hover:border-primary hover:text-primary transition-colors bg-slate-800/50"
-                >
-                  {key.charAt(0).toUpperCase() + key.slice(1)}
-                </button>
-              ))}
-            </div>
+            {/* Botón de usuario estilo Sidebar */}
+            <button
+              type="button"
+              onClick={() => setShowQuickAccess(!showQuickAccess)}
+              className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-primary text-white shadow-lg shadow-primary/30 group-hover:scale-110 transition-transform">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-white tracking-wide">Accesos Rápidos</p>
+                  <p className="text-[10px] text-primary-light uppercase tracking-widest font-bold opacity-80"></p>
+                </div>
+              </div>
+              <div className={`transition-transform duration-300 ${showQuickAccess ? 'rotate-180' : ''}`}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-3.5 h-3.5 text-primary">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                </svg>
+              </div>
+            </button>
+
+            {/* Cuadrícula de perfiles estilo Sidebar */}
+            {showQuickAccess && (
+              <div className="mt-4 grid grid-cols-2 gap-2.5 animate-in fade-in slide-in-from-top-4 duration-500">
+                {Object.keys(DEMO_PROFILES).map((key) => {
+                  const profile = DEMO_PROFILES[key];
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => handleDemoProfile(key)}
+                      className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-800/40 border border-white/5 hover:bg-primary/10 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all group text-left h-full"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-slate-700/50 flex items-center justify-center text-xs font-bold text-slate-300 group-hover:bg-primary/20 group-hover:text-primary transition-all shrink-0">
+                        {profile.name?.charAt(0) || key.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold text-slate-200 group-hover:text-white truncate capitalize leading-tight">{key}</p>
+                        <p className="text-[9px] text-slate-500 group-hover:text-primary/70 truncate uppercase font-semibold tracking-tighter">{profile.rol}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
