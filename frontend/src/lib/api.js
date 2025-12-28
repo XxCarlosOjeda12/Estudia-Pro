@@ -311,6 +311,7 @@ const DemoAPI = {
         purchasedResources: deepClone(user?.purchasedResources || []),
         upcomingActivities: [],
         is_premium: Boolean(user?.is_premium || user?.premium),
+        examResults: deepClone(user?.examResults || []),
         updatedAt: Date.now()
       };
       this.saveUserState();
@@ -326,6 +327,7 @@ const DemoAPI = {
     user.upcomingActivities = state.upcomingActivities;
     user.is_premium = state.is_premium || false;
     user.premium = state.is_premium || false;
+    user.examResults = state.examResults || [];
     return user;
   },
   touchUserState(user) {
@@ -595,30 +597,90 @@ const DemoAPI = {
     }
 
     if (endpoint === API_CONFIG.ENDPOINTS.USERS.GET_PROGRESS) {
-      // Simulate progress data matching backend structure
-      return {
-        progreso_cursos: (loggedUser.subjects || []).map(s => ({
+      if (loggedUser.id === 'demo-1') {
+        // Return original hardcoded data for the demo user
+        return {
+          progreso_cursos: (loggedUser.subjects || []).map(s => ({
+            curso_id: s.id,
+            curso_titulo: s.title,
+            imagen_portada: null,
+            progreso_porcentaje: s.progress || 0,
+            recursos_completados: Math.round((s.progress / 100) * 20),
+            total_recursos: 20,
+            total_examenes: 2,
+            promedio_examenes: 85.5,
+            completado: s.progress === 100,
+            fecha_inscripcion: '2024-01-15'
+          })),
+          logros_desbloqueados: HARDCODED_DATA.achievements.slice(0, 3),
+          logros_en_progreso: HARDCODED_DATA.achievements.slice(3, 5).map(a => ({ ...a, progreso_actual: 50, porcentaje_progreso: 50 })),
+          estadisticas: {
+            total_puntos: loggedUser.puntos_gamificacion || 0,
+            nivel: loggedUser.nivel || 1,
+            total_cursos: (loggedUser.subjects || []).length,
+            cursos_completados: (loggedUser.subjects || []).filter(s => s.progress === 100).length,
+            actividades_semana: 12,
+            tiempo_total_minutos: loggedUser.stats?.studyTime || 450,
+            tiempo_total_horas: ((loggedUser.stats?.studyTime || 450) / 60).toFixed(1)
+          },
+          actividades_recientes: []
+        };
+      }
+
+      // Calculate dynamic progress data for regular users
+      const subjects = loggedUser.subjects || [];
+      const examResults = loggedUser.examResults || [];
+      const stats = loggedUser.stats || {};
+
+      // Calculate aggregates
+      const totalPoints = loggedUser.puntos_gamificacion || 0;
+      const level = loggedUser.nivel || 1;
+      const totalSubjects = subjects.length;
+
+      // Calculate average progress
+      const totalProgress = subjects.reduce((sum, s) => sum + (s.progress || 0), 0);
+      const averageProgress = totalSubjects > 0 ? Math.round(totalProgress / totalSubjects) : 0;
+
+      // Calculate study time
+      const totalStudyMinutes = stats.studyTime || 0;
+      const totalStudyHours = (totalStudyMinutes / 60).toFixed(1);
+
+      // Process detailed subject progress
+      const progresoCursos = subjects.map(s => {
+        // Filter exams for this subject
+        const subjectExams = examResults.filter(e => e.subjectId === s.id);
+        const totalExams = subjectExams.length;
+
+        // Calculate average exam score for this subject
+        const sumScores = subjectExams.reduce((sum, e) => sum + (e.calificacion || 0), 0);
+        const averageExamScore = totalExams > 0 ? Math.round(sumScores / totalExams) : 0;
+
+        return {
           curso_id: s.id,
           curso_titulo: s.title,
-          imagen_portada: null,
+          imagen_portada: null, // Could add if available
           progreso_porcentaje: s.progress || 0,
-          recursos_completados: Math.round((s.progress / 100) * 20),
-          total_recursos: 20,
-          total_examenes: 2,
-          promedio_examenes: 85.5,
-          completado: s.progress === 100,
-          fecha_inscripcion: '2024-01-15'
-        })),
-        logros_desbloqueados: HARDCODED_DATA.achievements.slice(0, 3),
-        logros_en_progreso: HARDCODED_DATA.achievements.slice(3, 5).map(a => ({ ...a, progreso_actual: 50, porcentaje_progreso: 50 })),
+          recursos_completados: 0, // Placeholder, tracked elsewhere if needed
+          total_recursos: 0,      // Placeholder
+          total_examenes: totalExams,
+          promedio_examenes: averageExamScore,
+          completado: (s.progress || 0) >= 100,
+          fecha_inscripcion: '2024-01-15' // Could format s.enrolledAt if tracked
+        };
+      });
+
+      return {
+        progreso_cursos: progresoCursos,
+        logros_desbloqueados: [],
+        logros_en_progreso: [],
         estadisticas: {
-          total_puntos: loggedUser.puntos_gamificacion || 0,
-          nivel: loggedUser.nivel || 1,
-          total_cursos: (loggedUser.subjects || []).length,
-          cursos_completados: (loggedUser.subjects || []).filter(s => s.progress === 100).length,
-          actividades_semana: 12,
-          tiempo_total_minutos: loggedUser.stats?.studyTime || 450,
-          tiempo_total_horas: ((loggedUser.stats?.studyTime || 450) / 60).toFixed(1)
+          total_puntos: totalPoints,
+          nivel: level,
+          total_cursos: totalSubjects,
+          cursos_completados: subjects.filter(s => (s.progress || 0) >= 100).length,
+          actividades_semana: stats.activitiesCount || 0, // Could incr on activity completion
+          tiempo_total_minutos: totalStudyMinutes,
+          tiempo_total_horas: totalStudyHours
         },
         actividades_recientes: []
       };
@@ -1016,8 +1078,55 @@ const DemoAPI = {
       const correct = exam.questions.filter(
         (q) => (answers[q.id] || '').replace(/\s+/g, '').toLowerCase() === q.answer.replace(/\s+/g, '').toLowerCase()
       ).length;
+
       const total = exam.questions.length;
-      return { calificacion: Math.round((correct / total) * 100), correctas: correct, total };
+      const score = Math.round((correct / total) * 100);
+
+      // Persist exam result
+      if (!loggedUser.examResults) loggedUser.examResults = [];
+
+      // Check if this exam was already taken to avoid duplicates or to update best score?
+      // For now, let's append to history
+      loggedUser.examResults.unshift({
+        id: this.nextId('result'),
+        examId: examId,
+        subjectId: exam.courseId, // Assuming exam object has courseId, otherwise logic needed
+        examTitle: exam.title,
+        calificacion: score,
+        correctas: correct,
+        total: total,
+        fecha: new Date().toISOString()
+      });
+
+      // Update Subject Progress
+      // Logic: If passed (>60), increment progress maybe? 
+      // Simplified Logic: Progress = (Distinct exams passed / Total exams in subject) * 100
+      // We need to know total exams in subject. For demo, let's say 2 exams per subject = 100%.
+      // This is dynamic estimation.
+
+      const subject = (loggedUser.subjects || []).find(s => s.id === exam.courseId);
+      if (subject) {
+        // Simple progress increment for demo feel
+        // Each passed exam adds 20% progress up to 100%?
+        // Or recalculate based on unique exams passed
+        const passedUniqueExams = new Set(
+          loggedUser.examResults
+            .filter(r => r.subjectId === subject.id && r.calificacion >= 60)
+            .map(r => r.examId)
+        ).size;
+
+        // Let's assume 3 exams makes 100% for the demo dynamism
+        const newProgress = Math.min(100, passedUniqueExams * 34);
+        subject.progress = newProgress;
+      }
+
+      // Add points for gamification
+      loggedUser.puntos_gamificacion = (loggedUser.puntos_gamificacion || 0) + (score > 60 ? 50 : 10);
+
+      this.touchUserState(loggedUser);
+      this.broadcastChange('progress');
+
+      return { calificacion: score, correctas: correct, total };
     }
 
     if (endpoint === API_CONFIG.ENDPOINTS.TUTORS.GET_ALL) {

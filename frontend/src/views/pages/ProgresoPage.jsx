@@ -57,13 +57,12 @@ const ProgresoPage = () => {
 
   const subjects = data?.progreso_cursos || [];
   const stats = data?.estadisticas || {};
-  const bestSubjects = [...subjects].sort((a, b) => b.progreso_porcentaje - a.progreso_porcentaje).slice(0, 3);
   const totalExamAttempts = subjects.reduce((sum, subject) => sum + (Number(subject.total_examenes) || 0), 0);
   const subjectsWithExams = subjects.filter((subject) => (Number(subject.total_examenes) || 0) > 0);
 
-  // Calculate average from course progresses if overall average not provided, or use stats.promedio_general if available (backend doesn't send it explicit, but we can compute)
-  const average = subjects.length
-    ? Math.round(subjects.reduce((sum, s) => sum + s.progreso_porcentaje, 0) / subjects.length)
+  // Calculate average from stats
+  const average = stats.cursos_completados !== undefined ?
+    Math.round(subjects.reduce((sum, s) => sum + s.progreso_porcentaje, 0) / (subjects.length || 1))
     : 0;
 
   const textColor = isDark ? '#e2e8f0' : '#334155';
@@ -140,8 +139,7 @@ const ProgresoPage = () => {
         </div>
         <div className="lg:col-span-2 glass-effect-light p-6 rounded-2xl h-80 dark:border-white/5 border border-slate-200">
           <h3 className="font-bold mb-4">
-            Tiempo de Estudio (Total: {stats.tiempo_total_horas || 0}h • Últimos 7 días: {stats.actividades_semana || 0}{' '}
-            actividades)
+            Tiempo de Estudio (Total: {stats.tiempo_total_horas || 0}h)
           </h3>
           <div className="h-64">
             <Bar data={barChartData} options={barChartOptions} />
