@@ -840,28 +840,7 @@ def mi_progreso_detallado(request):
     
     return Response(progreso_cursos)
 
-class RecursoComunidadViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet para Recursos de la Comunidad (con soporte para subida de archivos)
-    """
-    queryset = RecursoComunidad.objects.filter(activo=True).order_by('-fecha_creacion')
-    serializer_class = RecursoComunidadSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    parser_classes = (MultiPartParser, FormParser, JSONParser)
 
-    def perform_create(self, serializer):
-        # Asignar autor
-        serializer.save(autor=self.request.user)
-
-    def perform_update(self, serializer):
-        if self.request.user.rol != 'ADMINISTRADOR' and serializer.instance.autor != self.request.user:
-             raise PermissionDenied('No tienes permiso para editar este recurso')
-        serializer.save()
-
-    def perform_destroy(self, instance):
-        if self.request.user.rol != 'ADMINISTRADOR' and instance.autor != self.request.user:
-             raise PermissionDenied('No tienes permiso para eliminar este recurso')
-        instance.delete()
 
 class FormularioEstudioViewSet(viewsets.ModelViewSet):
     """
@@ -1156,8 +1135,9 @@ class RecursoComunidadViewSet(viewsets.ModelViewSet):
     """
     ViewSet para recursos de comunidad
     """
-    queryset = RecursoComunidad.objects.filter(activo=True, aprobado=True)
+    queryset = RecursoComunidad.objects.filter(activo=True).order_by('-fecha_creacion')
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -1167,8 +1147,17 @@ class RecursoComunidadViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Crear recurso (asignar autor automáticamente)"""
         # En esta versión, se aprueba automáticamente para reflejarse "en tiempo real".
-        # Nota: DRF trata BooleanField faltante en multipart como False, por eso forzamos activo=True.
         serializer.save(autor=self.request.user, aprobado=True, activo=True)
+
+    def perform_update(self, serializer):
+        if self.request.user.rol != 'ADMINISTRADOR' and serializer.instance.autor != self.request.user:
+             raise PermissionDenied('No tienes permiso para editar este recurso')
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if self.request.user.rol != 'ADMINISTRADOR' and instance.autor != self.request.user:
+             raise PermissionDenied('No tienes permiso para eliminar este recurso')
+        instance.delete()
     
     @action(detail=True, methods=['post'])
     def descargar(self, request, pk=None):
