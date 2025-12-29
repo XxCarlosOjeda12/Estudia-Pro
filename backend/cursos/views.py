@@ -396,8 +396,49 @@ from datetime import date, time
 @permission_classes([IsAuthenticated])
 def mi_panel(request):
     """
-    Dashboard principal del estudiante
+    Dashboard principal
     """
+    user = request.user
+
+    # === PANEL DE CREADOR ===
+    if user.rol == 'CREADOR':
+        if not hasattr(user, 'perfil_creador'):
+             return Response({'error': 'Perfil de creador no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        
+        creador = user.perfil_creador
+        
+        # Estadísticas
+        published_resources = RecursoComunidad.objects.filter(autor=user, activo=True).count()
+        # Nota: Podríamos sumar cursos también si los tuviera
+        
+        rating = creador.calificacion_promedio
+        students_helped = creador.tutorias.exclude(estado='CANCELADA').count() # Aproximación
+        
+        # Tutorías solicitadas / próximas
+        tutorias = Tutoria.objects.filter(tutor=creador).exclude(estado='CANCELADA').order_by('fecha_hora')
+        tutoring_list = []
+        for t in tutorias:
+            student_name = "Estudiante"
+            if t.estudiante and t.estudiante.id_usuario:
+                student_name = f"{t.estudiante.id_usuario.first_name} {t.estudiante.id_usuario.last_name}".strip() or t.estudiante.id_usuario.username
+                
+            tutoring_list.append({
+                'id': t.id,
+                'student': student_name,
+                'subject': t.curso.titulo if t.curso else (t.tema or 'Tutoría'),
+                'date': t.fecha_hora.strftime('%d %b - %H:%M') if t.fecha_hora else 'Por definir',
+                'duration': f"{t.duracion_minutos} min",
+                'status': t.estado
+            })
+
+        return Response({
+             'published': published_resources,
+             'rating': float(rating),
+             'studentsHelped': students_helped,
+             'tutoring': tutoring_list
+        })
+
+    # === PANEL DE ESTUDIANTE ===
     if not hasattr(request.user, 'perfil_estudiante'):
         return Response(
             {'error': 'Solo disponible para estudiantes'},
@@ -438,7 +479,26 @@ def mi_panel(request):
             'fecha_inicio': intento.fecha_inicio,
         })
     
-    # 3. Actividad reciente
+    # 3. Tutorias próximas (Estudiante)
+    tutorias_proximas = Tutoria.objects.filter(
+        estudiante=estudiante
+    ).exclude(estado='CANCELADA').order_by('fecha_hora')[:3]
+    
+    tutorias_list = []
+    for t in tutorias_proximas:
+        tutor_name = "Tutor"
+        if t.tutor and t.tutor.id_usuario:
+             tutor_name = f"{t.tutor.id_usuario.first_name} {t.tutor.id_usuario.last_name}".strip() or t.tutor.id_usuario.username
+        
+        tutorias_list.append({
+            'id': t.id,
+            'tutor': tutor_name,
+            'subject': t.curso.titulo if t.curso else (t.tema or 'General'),
+            'date': t.fecha_hora.strftime('%d %b - %H:%M') if t.fecha_hora else 'Pendiente',
+            'status': t.estado
+        })
+
+    # 4. Actividad reciente
     actividades_recientes = []
     
     # Últimos recursos completados
@@ -477,7 +537,7 @@ def mi_panel(request):
         reverse=True
     )
     
-    # 4. Estadísticas generales
+    # 5. Estadísticas generales
     total_cursos_inscritos = Inscripcion.objects.filter(
         estudiante=estudiante
     ).count()
@@ -670,7 +730,32 @@ class ProximaActividadViewSet(viewsets.ModelViewSet):
         today = timezone.localdate()
         queryset = self.get_queryset().filter(fecha__gte=today).order_by('fecha', 'hora', 'id')
         serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+        data = list(serializer.data)
+        
+        # Incorporar Tutorías Próximas
+        if hasattr(request.user, 'perfil_estudiante'):
+            tutorias = Tutoria.objects.filter(
+                estudiante=request.user.perfil_estudiante,
+                fecha_hora__gt=timezone.now()
+            ).exclude(estado='CANCELADA')
+            
+            for t in tutorias:
+                 local_dt = timezone.localtime(t.fecha_hora)
+                 data.append({
+                     'id': f"tut-{t.id}",
+                     'title': f"Tutoría: {t.curso.titulo if t.curso else (t.tema or 'General')}",
+                     'type': 'TUTORIA',
+                     'date': local_dt.date().isoformat(),
+                     'time': local_dt.time().strftime('%H:%M'),
+                     'origin': 'AUTOMATICO',
+                     'curso_id': t.curso.id if t.curso else None,
+                     'curso_titulo': t.curso.titulo if t.curso else None
+                 })
+        
+        # Ordenar mezclado
+        data.sort(key=lambda x: f"{x['date']}T{x.get('time') or '00:00'}")
+        
+        return Response(data)
 
     def perform_create(self, serializer):
         if not hasattr(self.request.user, 'perfil_estudiante'):
@@ -863,77 +948,10 @@ class FormularioEstudioViewSet(viewsets.ModelViewSet):
         if self.request.user.rol != 'ADMINISTRADOR':
              raise PermissionDenied('Solo administradores pueden eliminar formularios')
         instance.delete()
-            'curso_id': inscripcion.curso.id,
-            'curso_titulo': inscripcion.curso.titulo,
-            'imagen_portada': inscripcion.curso.imagen_portada,
-            'progreso_porcentaje': float(inscripcion.progreso_porcentaje),
-            'recursos_completados': recursos_completados,
-            'total_recursos': total_recursos,
-            'total_examenes': examenes_curso.count(),
-            'promedio_examenes': round(float(promedio_examenes), 2),
-            'completado': inscripcion.completado,
-            'fecha_inscripcion': inscripcion.fecha_inscripcion,
-        })
+
     
 
-    logros_estudiante = LogroEstudiante.objects.filter(
-        estudiante=estudiante
-    ).select_related('logro')
-    
-    logros_desbloqueados = []
-    logros_en_progreso = []
-    
-    for logro_est in logros_estudiante:
-        serializer = LogroEstudianteSerializer(logro_est)
-        if logro_est.desbloqueado:
-            logros_desbloqueados.append(serializer.data)
-        else:
-            logros_en_progreso.append(serializer.data)
-    
-    # 3. Estadísticas generales
-    total_puntos = request.user.puntos_gamificacion
-    nivel = request.user.nivel
-    
-    # Actividad por semana (últimos 7 días)
-    from datetime import timedelta
-    hace_7_dias = timezone.now() - timedelta(days=7)
-    
-    actividades_semana = ActividadEstudiante.objects.filter(
-        estudiante=estudiante,
-        fecha__gte=hace_7_dias
-    ).count()
-    
-    # Tiempo total dedicado (aproximado por recursos completados)
-    tiempo_total = ProgresoRecurso.objects.filter(
-        inscripcion__estudiante=estudiante,
-        completado=True
-    ).aggregate(total=models.Sum('tiempo_dedicado'))['total'] or 0
-    
-    # 4. Historial reciente
-    actividades_recientes = ActividadEstudiante.objects.filter(
-        estudiante=estudiante
-    ).order_by('-fecha')[:20]
-    
-    actividades_serializer = ActividadEstudianteSerializer(
-        actividades_recientes,
-        many=True
-    )
-    
-    return Response({
-        'progreso_cursos': progreso_cursos,
-        'logros_desbloqueados': logros_desbloqueados,
-        'logros_en_progreso': logros_en_progreso,
-        'estadisticas': {
-            'total_puntos': total_puntos,
-            'nivel': nivel,
-            'total_cursos': len(progreso_cursos),
-            'cursos_completados': sum(1 for c in progreso_cursos if c['completado']),
-            'actividades_semana': actividades_semana,
-            'tiempo_total_minutos': tiempo_total,
-            'tiempo_total_horas': round(tiempo_total / 60, 1),
-        },
-        'actividades_recientes': actividades_serializer.data
-    })
+
 
 
 @api_view(['GET'])
