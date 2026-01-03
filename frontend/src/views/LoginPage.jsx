@@ -10,6 +10,11 @@ const LoginPage = ({ onNavigate }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [showQuickAccess, setShowQuickAccess] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetIdentifier, setResetIdentifier] = useState('');
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('savedIdentifier');
@@ -18,6 +23,63 @@ const LoginPage = ({ onNavigate }) => {
       setRemember(true);
     }
   }, []);
+
+  const closeResetModal = () => {
+    setResetOpen(false);
+    setResetLoading(false);
+    setResetPassword('');
+    setResetPasswordConfirm('');
+  };
+
+  const handleForgotPassword = async () => {
+    if (!demoEnabled) {
+      pushToast({
+        title: 'Recuperación de contraseña',
+        message: 'En modo real no se puede ver tu contraseña (se guarda cifrada). Pide un reset o crea una nueva cuenta.',
+        type: 'info'
+      });
+      return;
+    }
+
+    const target = (identifier || '').trim();
+    setResetIdentifier(target);
+    setResetOpen(true);
+  };
+
+  const submitResetPassword = async (event) => {
+    event.preventDefault();
+    if (!demoEnabled) return;
+
+    const target = (resetIdentifier || '').trim();
+    if (!target) {
+      pushToast({ title: 'Modo demo', message: 'Escribe tu usuario o correo.', type: 'alert' });
+      return;
+    }
+    if (!resetPassword) {
+      pushToast({ title: 'Modo demo', message: 'Escribe una nueva contraseña.', type: 'alert' });
+      return;
+    }
+    if (resetPassword !== resetPasswordConfirm) {
+      pushToast({ title: 'Modo demo', message: 'Las contraseñas no coinciden.', type: 'alert' });
+      return;
+    }
+
+    setResetLoading(true);
+    const result = await apiService.resetDemoPassword(target, resetPassword);
+    setResetLoading(false);
+
+    pushToast({
+      title: 'Modo demo',
+      message: result?.message || (result?.success ? 'Contraseña actualizada.' : 'No se pudo actualizar la contraseña.'),
+      type: result?.success ? 'success' : 'alert'
+    });
+
+    if (result?.success) {
+      setIdentifier(target);
+      setPassword(resetPassword);
+      closeResetModal();
+    }
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -180,7 +242,11 @@ const LoginPage = ({ onNavigate }) => {
                 />
                 Recordarme
               </label>
-              <button type="button" className="text-primary text-sm hover:text-primary-focus transition-colors">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-primary text-sm hover:text-primary-focus transition-colors"
+              >
                 ¿Olvidaste tu contraseña?
               </button>
             </div>
@@ -206,6 +272,80 @@ const LoginPage = ({ onNavigate }) => {
           </p>
         </div>
       </div>
+
+      {resetOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
+          <div className="absolute inset-0" onClick={closeResetModal} />
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-slate-100 rounded-2xl w-full max-w-md p-6 relative shadow-2xl animate-fade-in-up">
+            <button
+              type="button"
+              className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+              onClick={closeResetModal}
+              aria-label="Cerrar"
+            >
+              ✕
+            </button>
+
+            <div className="mb-5">
+              <h3 className="text-xl font-bold">Restablecer contraseña</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Disponible solo en modo demo. Actualiza la contraseña de una cuenta creada en demo.
+              </p>
+            </div>
+
+            <form onSubmit={submitResetPassword} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs text-slate-500 dark:text-slate-400">Usuario o correo</label>
+                <input
+                  type="text"
+                  value={resetIdentifier}
+                  onChange={(e) => setResetIdentifier(e.target.value)}
+                  placeholder="Ej. estudiante2 o correo@ejemplo.com"
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-slate-500 dark:text-slate-400">Nueva contraseña</label>
+                <input
+                  type="password"
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-slate-500 dark:text-slate-400">Confirmar contraseña</label>
+                <input
+                  type="password"
+                  value={resetPasswordConfirm}
+                  onChange={(e) => setResetPasswordConfirm(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={resetLoading}
+                className="w-full py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl disabled:opacity-60 transition-all shadow-lg shadow-primary/20"
+              >
+                {resetLoading ? 'Actualizando...' : 'Actualizar contraseña'}
+              </button>
+
+              <button
+                type="button"
+                onClick={closeResetModal}
+                className="w-full py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold rounded-xl transition-all"
+              >
+                Cancelar
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

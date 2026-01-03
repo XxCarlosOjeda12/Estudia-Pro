@@ -60,6 +60,16 @@ const coerceNumberOrNull = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const normalizeIdentifier = (identifier) => (identifier || '').toString().toLowerCase().trim();
+
+const matchUserByIdentifier = (user, identifier) => {
+  const target = normalizeIdentifier(identifier);
+  if (!target) return false;
+  const username = normalizeIdentifier(user?.username);
+  const email = normalizeIdentifier(user?.email);
+  return username === target || (email && email === target);
+};
+
 const DemoModeController = (() => {
   let enabled = false;
   try {
@@ -67,10 +77,10 @@ const DemoModeController = (() => {
     if (stored !== null) {
       enabled = stored === 'true';
     } else {
-      enabled = false; // Default to real backend
+      enabled = true; // Default to demo to avoid needing backend during development
     }
   } catch {
-    enabled = false;
+    enabled = true;
   }
   return {
     isEnabled: () => enabled,
@@ -437,7 +447,7 @@ const DemoAPI = {
     const profile = this.getTutorProfile(creatorUser);
     const userId = creatorUser?.id || creatorUser?.username || creatorUser?.email || 'creator';
     const fullName = creatorUser?.name || `${creatorUser?.first_name || ''} ${creatorUser?.last_name || ''}`.trim() || creatorUser?.username || 'Creador';
-    const rating = creatorUser?.dashboard?.rating ?? creatorUser?.calificacion_promedio ?? 4.7;
+    const rating = coerceNumberOrNull(creatorUser?.dashboard?.rating ?? creatorUser?.calificacion_promedio);
     const sessions = creatorUser?.dashboard?.studentsHelped ?? creatorUser?.dashboard?.students_helped ?? 0;
 
     return {
@@ -565,7 +575,7 @@ const DemoAPI = {
       if (rol === 'CREADOR') {
         newUser.dashboard = {
           published: 0,
-          rating: 4.7,
+          rating: null,
           studentsHelped: 0,
           tutoring: []
         };
@@ -630,6 +640,8 @@ const DemoAPI = {
       }));
 
       // Return dashboard data with tutoring
+      const creatorPublished = loggedUser?.dashboard?.published ?? loggedUser?.publishedResources ?? 0;
+      const creatorRating = coerceNumberOrNull(loggedUser?.dashboard?.rating ?? loggedUser?.calificacion_promedio);
       return {
         usuario: formatUserForFrontend(loggedUser),
         mis_cursos: (loggedUser.subjects || []).slice(0, 3).map(s => ({
@@ -651,8 +663,8 @@ const DemoAPI = {
         // Add tutoring data for both students and creators
         tutoring: tutoring,
         // For creators: stats
-        published: loggedUser.rol === 'CREADOR' ? (loggedUser.publishedResources || 0) : undefined,
-        rating: loggedUser.rol === 'CREADOR' ? (loggedUser.rating || 4.5) : undefined,
+        published: loggedUser.rol === 'CREADOR' ? creatorPublished : undefined,
+        rating: loggedUser.rol === 'CREADOR' ? creatorRating : undefined,
         studentsHelped: loggedUser.rol === 'CREADOR' ? tutoring.length : undefined
       };
     }
@@ -826,8 +838,8 @@ const DemoAPI = {
             tariff30: profile.tariff30,
             tariff60: profile.tariff60,
             bio: profile.bio,
-            rating: Number(profile.rating) || 5.0,
-            sessions: Number(profile.sessions) || 0
+            rating: coerceNumberOrNull(profile.rating),
+            sessions: coerceNumberOrNull(profile.sessions) ?? 0
           };
           if (idx >= 0) this.tutors[idx] = { ...this.tutors[idx], ...publicProfile };
           else this.tutors.push(publicProfile);
@@ -1711,7 +1723,7 @@ const DemoAPI = {
         const title = (data?.titulo || data?.title || resource.titulo).toString().trim();
         const description = (data?.descripcion || data?.description || resource.descripcion).toString().trim();
         const type = (data?.tipo || data?.type || resource.tipo).toString().toUpperCase();
-        const url = (data?.archivo_url || data?.archivoUrl || data?.url || resource.archivo_url).toString().trim();
+        let url = (data?.archivo_url || data?.archivoUrl || data?.url || resource.archivo_url).toString().trim();
         const file = data?.file || data?.archivo || null;
 
         let fileId = resource.fileId;
@@ -1852,6 +1864,31 @@ export const apiService = {
     } catch (error) {
       return { success: false, message: error.message };
     }
+  },
+  async resetDemoPassword(identifier, newPassword) {
+    if (!isDemoMode()) {
+      return { success: false, message: 'Solo disponible en modo demo' };
+    }
+    const target = normalizeIdentifier(identifier);
+    const nextPassword = (newPassword || '').toString();
+    if (!target || !nextPassword) {
+      return { success: false, message: 'Usuario/correo y nueva contraseña son requeridos' };
+    }
+
+    DemoAPI.ensureExtraUsersLoaded();
+    const index = (DemoAPI.extraUsers || []).findIndex((u) => matchUserByIdentifier(u, target));
+    if (index < 0) {
+      return { success: false, message: 'Usuario no encontrado (solo cuentas creadas en demo)' };
+    }
+
+    DemoAPI.extraUsers[index] = { ...DemoAPI.extraUsers[index], password: nextPassword };
+    DemoAPI.saveExtraUsers();
+
+    if (matchUserByIdentifier(DemoAPI.currentUser, target)) {
+      DemoAPI.currentUser = { ...DemoAPI.currentUser, password: nextPassword };
+    }
+
+    return { success: true, message: 'Contraseña actualizada (demo)' };
   },
   logout() {
     return request(API_CONFIG.ENDPOINTS.AUTH.LOGOUT, 'POST');
