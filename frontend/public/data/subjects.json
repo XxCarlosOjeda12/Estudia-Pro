@@ -46,6 +46,29 @@
         ]
     },
     {
+        "id": "calc-2",
+        "title": "Cálculo Integral",
+        "description": "Integra funciones con sustitución, partes y aplicaciones de área.",
+        "professor": "Mtro. Luis Cabrera",
+        "school": "ESCOM",
+        "progress": 0,
+        "level": "Intermedio",
+        "temario": [
+            {
+                "title": "Antiderivadas básicas"
+            },
+            {
+                "title": "Métodos de integración"
+            },
+            {
+                "title": "Integrales definidas"
+            },
+            {
+                "title": "Aplicaciones de la integral"
+            }
+        ]
+    },
+    {
         "id": "ecu-1",
         "title": "Ecuaciones Diferenciales",
         "description": "Aprende a modelar sistemas dinámicos con ecuaciones reales.",

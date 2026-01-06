@@ -5,6 +5,24 @@ from rest_framework.authtoken.models import Token
 from .serializers import RegisterSerializer, LoginSerializer, UsuarioSerializer
 from .models import Usuario
 
+def build_user_payload(usuario: Usuario) -> dict:
+    """Normaliza la respuesta de usuario al formato esperado por el frontend."""
+    serializer = UsuarioSerializer(usuario)
+    data = serializer.data
+    return {
+        'id': data.get('id'),
+        'username': data.get('username'),
+        'email': data.get('email'),
+        'first_name': data.get('first_name'),
+        'last_name': data.get('last_name'),
+        'rol': data.get('rol'),
+        'foto_perfil_url': data.get('foto_perfil_url'),
+        'nivel': data.get('nivel'),
+        'puntos_gamificacion': data.get('puntos_gamificacion'),
+        'streak': data.get('streak', 0),
+        'is_premium': data.get('is_premium', False),
+    }
+
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
 def register(request):
@@ -22,12 +40,13 @@ def register(request):
         token, created = Token.objects.get_or_create(user=usuario)
         
         return Response({
+            'success': True,
+            'message': 'Registro exitoso',
             'token': token.key,
-            'usuario': UsuarioSerializer(usuario).data,
-            'message': 'Usuario creado exitosamente'
+            'user': build_user_payload(usuario)
         }, status=status.HTTP_201_CREATED)
     
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
@@ -46,12 +65,15 @@ def login(request):
         token, created = Token.objects.get_or_create(user=usuario)
         
         return Response({
+            'success': True,
             'token': token.key,
-            'usuario': UsuarioSerializer(usuario).data,
-            'message': 'Login exitoso'
+            'user': build_user_payload(usuario)
         }, status=status.HTTP_200_OK)
     
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response({
+        'success': False,
+        'message': 'Credenciales inválidas'
+    }, status=status.HTTP_401_UNAUTHORIZED)
 
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
@@ -64,8 +86,7 @@ def user_profile(request):
     Output:
       - Response: Datos del usuario incluyendo perfil según su rol (200)
     """
-    serializer = UsuarioSerializer(request.user)
-    return Response(serializer.data)
+    return Response(build_user_payload(request.user))
 
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
@@ -80,12 +101,11 @@ def logout(request):
     """
     try:
         request.user.auth_token.delete()
-        return Response({
-            'message': 'Sesión cerrada exitosamente'
-        }, status=status.HTTP_200_OK)
+        return Response({'success': True}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({
-            'error': str(e)
+            'success': False,
+            'message': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
@@ -129,9 +149,9 @@ def activate_premium(request):
     usuario.save()
     
     return Response({
-        'message': 'Premium activado exitosamente',
+        'success': True,
         'is_premium': True,
-        'usuario': UsuarioSerializer(usuario).data
+        'user': build_user_payload(usuario)
     }, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
@@ -149,11 +169,13 @@ def track_time(request):
         minutes = 1
         
     usuario = request.user
+    total = 0
     if usuario.rol == 'ESTUDIANTE' and hasattr(usuario, 'perfil_estudiante'):
         estudiante = usuario.perfil_estudiante
-        estudiante.tiempo_estudio_minutos += minutes
-        estudiante.save()
-        return Response({'success': True, 'total_minutes': estudiante.tiempo_estudio_minutos}, status=status.HTTP_200_OK)
+        estudiante.tiempo_estudio_minutos += max(minutes, 0)
+        estudiante.save(update_fields=['tiempo_estudio_minutos'])
+        total = estudiante.tiempo_estudio_minutos
+    return Response({'success': True, 'total_minutes': total}, status=status.HTTP_200_OK)
     
 
 @api_view(['GET'])

@@ -8,6 +8,9 @@ const DEMO_SYNC_CHANNEL = 'estudia-pro-demo-sync';
 const DEMO_EXTRA_USERS_KEY = 'estudia-pro-demo-extra-users';
 const DEMO_ADMIN_USERS_KEY = 'estudia-pro-demo-admin-users';
 const DEMO_SUBJECTS_KEY = 'estudia-pro-demo-subjects';
+const DEMO_EXAMS_KEY = 'estudia-pro-demo-exams';
+const DEMO_EXAMS_VERSION_KEY = 'estudia-pro-demo-exams-version';
+const DEMO_EXAMS_VERSION = '2.0';
 const DEMO_COMMUNITY_RESOURCES_KEY = 'estudia-pro-demo-community-resources';
 const DEMO_COMMUNITY_RESOURCES_VERSION_KEY = 'estudia-pro-demo-community-resources-version';
 const DEMO_COMMUNITY_RESOURCES_VERSION = '3.0'; // Force reload from JSON files
@@ -77,10 +80,10 @@ const DemoModeController = (() => {
     if (stored !== null) {
       enabled = stored === 'true';
     } else {
-      enabled = true; // Default to demo to avoid needing backend during development
+      enabled = false; // Default to backend (real mode)
     }
   } catch {
-    enabled = true;
+    enabled = false;
   }
   return {
     isEnabled: () => enabled,
@@ -135,6 +138,7 @@ const DemoAPI = {
   extraUsers: null,
   adminUsers: null,
   subjectsCatalog: null,
+  exams: null,
   communityResources: null,
   formularies: null,
   forums: null,
@@ -205,6 +209,28 @@ const DemoAPI = {
   saveSubjects() {
     if (!this.subjectsCatalog) return;
     writeJsonToStorage(DEMO_SUBJECTS_KEY, this.subjectsCatalog);
+  },
+  async ensureExamsLoaded() {
+    if (this.exams) return;
+    const storedVersion = localStorage.getItem(DEMO_EXAMS_VERSION_KEY);
+    const needsReset = storedVersion !== DEMO_EXAMS_VERSION;
+
+    if (needsReset) {
+      localStorage.removeItem(DEMO_EXAMS_KEY);
+      localStorage.setItem(DEMO_EXAMS_VERSION_KEY, DEMO_EXAMS_VERSION);
+    }
+
+    const stored = readJsonFromStorage(DEMO_EXAMS_KEY, null);
+    if (Array.isArray(stored) && stored.length) {
+      this.exams = stored;
+    } else {
+      this.exams = deepClone(HARDCODED_DATA.exams || []);
+    }
+    this.saveExams();
+  },
+  saveExams() {
+    if (!this.exams) return;
+    writeJsonToStorage(DEMO_EXAMS_KEY, this.exams);
   },
   async ensureCommunityResourcesLoaded() {
     if (this.communityResources) return;
@@ -1169,7 +1195,60 @@ const DemoAPI = {
     }
 
     if (endpoint === API_CONFIG.ENDPOINTS.EXAMS.GET_ALL) {
-      return deepClone(HARDCODED_DATA.exams);
+      await this.ensureExamsLoaded();
+      return deepClone(this.exams);
+    }
+
+    if (endpoint === API_CONFIG.ENDPOINTS.EXAMS.GENERATE && method === 'POST') {
+      await this.ensureSubjectsLoaded();
+      await this.ensureExamsLoaded();
+
+      const courseId = data?.courseId || data?.subjectId || data?.cursoId || data?.curso || null;
+      const baseDifficulty = (data?.difficulty || data?.templateDifficulty || 'FACIL').toString().toUpperCase();
+      const subject = this.subjectsCatalog?.find((s) => s.id === courseId);
+      const subjectName = subject?.title || subject?.nombre || 'Materia';
+      const title = data?.title || data?.titulo || `Simulador ${subjectName}`;
+      const durationValue = Number(data?.duration) || 0;
+      const duration = durationValue > 0 && durationValue < 10000 ? Math.round(durationValue * 60) : durationValue;
+      const questionsArray = Array.isArray(data?.questions) ? data.questions : [];
+      const examId = data?.id || `sim-${courseId || 'curso'}-${baseDifficulty.toLowerCase()}`;
+
+      const normalizedQuestions = questionsArray.map((q, index) => {
+        const options = Array.isArray(q.options) ? q.options : ['', '', '', ''];
+        const answerLetter = (q.answer || '').toString().toUpperCase();
+        const answerIndex = ['A', 'B', 'C', 'D'].indexOf(answerLetter);
+        const answerValue = answerIndex >= 0 && options[answerIndex] ? options[answerIndex] : q.answer || '';
+        return {
+          id: q.id || `${examId}-q${index + 1}`,
+          text: q.text || '',
+          options,
+          answer: answerValue,
+          difficulty: (q.difficulty || baseDifficulty).toString().toUpperCase(),
+          explanation: q.explanation || ''
+        };
+      });
+
+      const exam = {
+        id: examId,
+        subjectId: courseId,
+        subjectName,
+        title,
+        difficulty: baseDifficulty,
+        duration,
+        passingScore: Number(data?.passingScore) || 0,
+        questionsCount: data?.questionsCount || normalizedQuestions.length,
+        questions: normalizedQuestions
+      };
+
+      const existingIndex = this.exams.findIndex(
+        (ex) => ex.id === examId || (ex.subjectId === courseId && ex.difficulty === baseDifficulty)
+      );
+      if (existingIndex >= 0) this.exams[existingIndex] = exam;
+      else this.exams.unshift(exam);
+
+      this.saveExams();
+      this.broadcastChange('exams');
+      return deepClone(exam);
     }
 
     // Handle start exam (new dynamic URL: /examenes/{id}/iniciar/)
@@ -1178,7 +1257,8 @@ const DemoAPI = {
       const parts = endpoint.split('/');
       const examId = parts[parts.length - 3] || parts[parts.length - 2];
 
-      const exam = HARDCODED_DATA.exams.find((e) => e.id === examId);
+      await this.ensureExamsLoaded();
+      const exam = this.exams.find((e) => e.id === examId);
       if (!exam) throw new Error('Examen no encontrado (demo)');
       return deepClone(exam);
     }
@@ -1189,7 +1269,8 @@ const DemoAPI = {
       const parts = endpoint.split('/');
       const examId = parts[parts.length - 3] || parts[parts.length - 2];
 
-      const exam = HARDCODED_DATA.exams.find((e) => e.id === examId);
+      await this.ensureExamsLoaded();
+      const exam = this.exams.find((e) => e.id === examId);
       if (!exam) throw new Error('Examen no encontrado (demo)');
       const answers = data?.answers || {};
       const correct = exam.questions.filter(
@@ -1207,7 +1288,7 @@ const DemoAPI = {
       loggedUser.examResults.unshift({
         id: this.nextId('result'),
         examId: examId,
-        subjectId: exam.courseId, // Assuming exam object has courseId, otherwise logic needed
+        subjectId: exam.subjectId || exam.courseId,
         examTitle: exam.title,
         calificacion: score,
         correctas: correct,
@@ -1221,7 +1302,7 @@ const DemoAPI = {
       // We need to know total exams in subject. For demo, let's say 2 exams per subject = 100%.
       // This is dynamic estimation.
 
-      const subject = (loggedUser.subjects || []).find(s => s.id === exam.courseId);
+      const subject = (loggedUser.subjects || []).find(s => s.id === (exam.subjectId || exam.courseId));
       if (subject) {
         // Simple progress increment for demo feel
         // Each passed exam adds 20% progress up to 100%?
@@ -1232,8 +1313,8 @@ const DemoAPI = {
             .map(r => r.examId)
         ).size;
 
-        // Let's assume 3 exams makes 100% for the demo dynamism
-        const newProgress = Math.min(100, passedUniqueExams * 34);
+        const totalSubjectExams = Math.max(1, (this.exams || []).filter((ex) => ex.subjectId === subject.id).length || 3);
+        const newProgress = Math.min(100, Math.round((passedUniqueExams / totalSubjectExams) * 100));
         subject.progress = newProgress;
       }
 
@@ -1534,15 +1615,20 @@ const DemoAPI = {
 
     if (endpoint === API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS && method === 'POST') {
       await this.ensureSubjectsLoaded();
+      const temarioPayload = Array.isArray(data?.temario) ? data.temario : (Array.isArray(data?.modules) ? data.modules : []);
+      const parsedTemario = temarioPayload.map((item, idx) => {
+        if (typeof item === 'string') return { title: item, description: '', order: idx };
+        return { title: item?.title || item?.titulo || `Unidad ${idx + 1}`, description: item?.description || item?.descripcion || '', order: idx };
+      });
       const newSubject = {
         id: this.nextId('subject'),
-        title: data?.title || 'Materia sin título',
-        description: data?.description || 'Descripción pendiente',
-        professor: data?.professor || 'Profesor asignado',
-        school: data?.school || 'General',
+        title: data?.title || 'Materia sin t?tulo',
+        description: data?.description || 'Descripci?n pendiente',
+        professor: data?.professor || data?.profesor || 'Profesor asignado',
+        school: data?.school || data?.escuela || 'General',
         progress: 0,
-        level: data?.level || 'General',
-        temario: []
+        level: data?.level || data?.nivel || 'General',
+        temario: parsedTemario
       };
       this.subjectsCatalog.push(newSubject);
       this.saveSubjects();
@@ -1558,9 +1644,17 @@ const DemoAPI = {
         return { success: false, message: 'Materia no encontrada' };
       }
       if (method === 'PUT') {
+        const temarioPayload = Array.isArray(data?.temario) ? data.temario : (Array.isArray(data?.modules) ? data.modules : undefined);
+        const parsedTemario = Array.isArray(temarioPayload)
+          ? temarioPayload.map((item, idx) => {
+              if (typeof item === 'string') return { title: item, description: '', order: idx };
+              return { title: item?.title || item?.titulo || `Unidad ${idx + 1}`, description: item?.description || item?.descripcion || '', order: idx };
+            })
+          : undefined;
         this.subjectsCatalog[index] = {
           ...this.subjectsCatalog[index],
-          ...data
+          ...data,
+          ...(parsedTemario ? { temario: parsedTemario } : {})
         };
         this.saveSubjects();
         this.broadcastChange('subjects');
@@ -1569,19 +1663,6 @@ const DemoAPI = {
       if (method === 'DELETE') {
         this.subjectsCatalog.splice(index, 1);
         this.saveSubjects();
-        this.ensureUserStateLoaded();
-        const subjectIdToRemove = subjectId;
-        if (this.userStateByUserId && subjectIdToRemove) {
-          Object.values(this.userStateByUserId).forEach((state) => {
-            if (!state?.subjects) return;
-            state.subjects = state.subjects.filter((s) => s?.id !== subjectIdToRemove);
-            if (Array.isArray(state.upcomingActivities)) {
-              state.upcomingActivities = state.upcomingActivities.filter((a) => a?.curso_id !== subjectIdToRemove);
-            }
-            state.updatedAt = Date.now();
-          });
-          this.saveUserState();
-        }
         this.broadcastChange('subjects');
         return { success: true };
       }
@@ -2046,8 +2127,14 @@ export const apiService = {
   getAllResources() {
     return request(API_CONFIG.ENDPOINTS.RESOURCES.GET_ALL);
   },
-  getPurchasedResources() {
-    return request(API_CONFIG.ENDPOINTS.RESOURCES.GET_PURCHASED);
+  async getPurchasedResources() {
+    try {
+      return await request(API_CONFIG.ENDPOINTS.RESOURCES.GET_PURCHASED);
+    } catch (error) {
+      // Endpoint aún no implementa compras reales; devolvemos lista vacía para no romper el flujo.
+      console.warn('Purchased resources not available, returning empty list:', error.message);
+      return [];
+    }
   },
   purchaseResource(resourceId) {
     return request(API_CONFIG.ENDPOINTS.RESOURCES.PURCHASE, 'POST', { resourceId });
@@ -2071,6 +2158,11 @@ export const apiService = {
   getAllExams() {
     return request(API_CONFIG.ENDPOINTS.EXAMS.GET_ALL);
   },
+  getExamTemplates(courseId) {
+    const params = new URLSearchParams();
+    if (courseId) params.append('courseId', courseId);
+    return request(`${API_CONFIG.ENDPOINTS.EXAMS.TEMPLATES}?${params.toString()}`);
+  },
   startExam(examId) {
     // Backend expects: POST /api/examenes/{id}/iniciar/
     return request(`${API_CONFIG.ENDPOINTS.EXAMS.GET_ALL}${examId}/iniciar/`, 'POST');
@@ -2078,6 +2170,9 @@ export const apiService = {
   submitExam(examId, answers) {
     // Backend expects: POST /api/examenes/{id}/enviar_respuestas/
     return request(`${API_CONFIG.ENDPOINTS.EXAMS.GET_ALL}${examId}/enviar_respuestas/`, 'POST', { answers });
+  },
+  generateSimulatorExam(payload) {
+    return request(API_CONFIG.ENDPOINTS.EXAMS.GENERATE, 'POST', payload);
   },
   getAllTutors() {
     return request(API_CONFIG.ENDPOINTS.TUTORS.GET_ALL).then((raw) => {
@@ -2105,6 +2200,25 @@ export const apiService = {
   },
   updateMyTutorProfile(profile) {
     return request(API_CONFIG.ENDPOINTS.TUTORS.ME, 'PUT', profile);
+  },
+  async updateTutoringStatus(tutoringId, status) {
+    if (isDemoMode()) {
+      const sessions = JSON.parse(localStorage.getItem(DEMO_TUTORING_SESSIONS_KEY) || '[]');
+      const updatedSessions = sessions.map((s) => (s.id.toString() === tutoringId.toString() ? { ...s, status } : s));
+      writeJsonToStorage(DEMO_TUTORING_SESSIONS_KEY, updatedSessions);
+      return { id: tutoringId, status };
+    }
+    const response = await request(`${API_CONFIG.ENDPOINTS.TUTORING.REQUESTS}${tutoringId}/estado/`, 'PUT', { estado: status });
+    return { id: response?.id || tutoringId, status: response?.estado || response?.status || status };
+  },
+  async deleteTutoringRequest(tutoringId) {
+    if (isDemoMode()) {
+      const sessions = JSON.parse(localStorage.getItem(DEMO_TUTORING_SESSIONS_KEY) || '[]');
+      const filtered = sessions.filter((s) => s.id.toString() !== tutoringId.toString());
+      writeJsonToStorage(DEMO_TUTORING_SESSIONS_KEY, filtered);
+      return { success: true };
+    }
+    return request(`${API_CONFIG.ENDPOINTS.TUTORING.REQUESTS}${tutoringId}/estado/`, 'DELETE');
   },
   scheduleTutoring(tutorId, subjectId, duration, topic) {
     return request(API_CONFIG.ENDPOINTS.TUTORS.SCHEDULE, 'POST', { tutorId, subjectId, duration, topic });
@@ -2149,11 +2263,19 @@ export const apiService = {
   deleteAllNotifications() {
     return request(API_CONFIG.ENDPOINTS.NOTIFICATIONS.DELETE_ALL, 'POST');
   },
-  createSubject(subjectData) {
-    return request(API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS, 'POST', subjectData);
+  async createSubject(subjectData) {
+    const res = await request(API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS, 'POST', subjectData);
+    if (res?.subject || res?.course) {
+      return { success: true, subject: res.subject || res.course };
+    }
+    return res;
   },
-  updateSubject(subjectId, subjectData) {
-    return request(`${API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS}${subjectId}`, 'PUT', subjectData);
+  async updateSubject(subjectId, subjectData) {
+    const res = await request(`${API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS}${subjectId}`, 'PUT', subjectData);
+    if (res?.subject || res?.course) {
+      return { success: true, subject: res.subject || res.course };
+    }
+    return res;
   },
   deleteSubject(subjectId) {
     return request(`${API_CONFIG.ENDPOINTS.ADMIN.SUBJECTS}${subjectId}`, 'DELETE');
@@ -2195,5 +2317,9 @@ export const apiService = {
   },
   deleteCommunityResource(resourceId) {
     return request(`${API_CONFIG.ENDPOINTS.COMMUNITY_RESOURCES.BASE}${resourceId}/`, 'DELETE');
+  },
+  broadcastChange(kind) {
+    if (isDemoMode()) return DemoAPI.broadcastChange(kind);
+    return null;
   }
 };

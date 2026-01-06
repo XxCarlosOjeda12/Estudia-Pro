@@ -1,194 +1,29 @@
 # Estudia-Pro · Frontend React
 
-Migramos la maqueta original (`frontend-v2`) a un proyecto **React + Vite** que replica el comportamiento del archivo `demo-frontend-luis/fepipro (1).html`. Toda la interfaz ahora es declarativa, con componentes reutilizables y estilos construidos únicamente con Tailwind CSS.
+Plataforma educativa para estudiantes de matemáticas e ingeniería, desarrollada con **React 19 + Vite**. Cuenta con **modo demo completo** que permite explorar todas las funcionalidades sin necesidad de un backend activo.
 
-## Características principales
-- **Modos estudiante, creador y administrador** con paneles dedicados, acciones y métricas propias.
-- **Modo Demo** activable desde el login para probar toda la app sin backend. Al desactivarlo, `apiService` consume la API real definida en `src/lib/constants.js`.
-- **Datos pre-cargados** (materias, recursos, exámenes, foros, etc.) en `src/lib/constants.js` que alimentan todas las vistas y soportan autocompletado en buscadores.
-- **Shell del dashboard** con navegación responsive, colapsado móvil, notificaciones y cierre de sesión.
-- **Exámenes, simulador, foros, IA diagnóstica y tutorías SOS** listos para integrarse con servicios reales.
-- **Contexto global (`AppContext`)** que maneja sesión, token, modo demo, cachés básicos y stack de notificaciones.
-
-## Requisitos
-- Node.js >= 18
-- npm >= 8 (el proyecto usa dependencias modernas; aún no se ejecutó `npm install` en este entorno).
-
-## Scripts disponibles
-
-```bash
-npm install         # instala dependencias
-npm run dev         # levanta Vite con HMR (http://localhost:5173)
-npm run build       # genera artefactos optimizados en dist/
-npm run preview     # sirve dist/ para QA
-npm run lint        # ejecuta ESLint con la configuración base de Vite
-```
-
-## Estructura relevante (`frontend/src`)
-
-```
-components/NotificationStack.jsx   // banner flotante para toasts
-context/AppContext.jsx             // estado global: auth, demo mode, cachés
-lib/constants.js                   // API endpoints y datos demo
-lib/api.js                         // cliente API + simulador demo
-views/LoginPage.jsx                // login con toggle de demo y perfiles rápidos
-views/DashboardShell.jsx           // layout + routing simple
-views/pages/*                      // pantallas por sección/rol (paneles, foros, exámenes, etc.)
-index.css                          // tailwind + utilidades compartidas
-```
-
-## Modo Demo y datos hardcodeados
-- El flag se guarda en `localStorage` (`estudia-pro-demo-mode`) y también se puede alternar con el botón “Activado/Desactivado” del login.
-- Mientras esté en `true`, cada llamada de `apiService` delega en el simulador (`DemoAPI`) que usa `HARDCODED_DATA`. Al cambiar a `false`, el cliente usa `fetch` real contra `API_CONFIG.BASE_URL`.
-- Los “Perfiles rápidos” (estudiante, creador, administrador) rellenan usuario y contraseña automáticamente para validar cada flujo.
-- Si necesitas ajustar la información demo, modifica `HARDCODED_DATA` y `DEMO_PROFILES`; todos los componentes reaccionan automáticamente sin tocar JSX.
-
-## Conectar con el backend real
-1. Actualiza `API_CONFIG.BASE_URL` si tu API no vive en `http://127.0.0.1:8000/api`.
-2. Desactiva el modo demo desde el login o manualmente ejecutando en consola `localStorage.setItem('estudia-pro-demo-mode', 'false')`.
-3. Inicia sesión con credenciales reales; `AppContext` guardará el `authToken` y llamará a `apiService.getProfile()` para poblar la interfaz.
-4. Si una ruta de backend aún no existe, puedes dejar el modo demo activo hasta que esté lista sin cambiar componentes.
-
-## Estilos y temas
-- Tailwind está configurado en `tailwind.config.js` con colores personalizados (`primary`, `secondary`, `light-bg`, `dark-bg`, etc.).
-- `src/index.css` importa la fuente Inter y define utilidades como `glass-effect-light`, animaciones y helpers de modo examen.
-- No se cargan hojas de estilo externas; cualquier ajuste visual debe realizarse vía clases Tailwind o `@apply`.
-
-## Próximos pasos sugeridos
-1. Ejecutar `npm install` y probar `npm run dev` para validar el build (no se pudo correr dentro de este entorno).
-2. Completar los endpoints reales del backend y mapear las respuestas al formato utilizado en `formatUserForFrontend`.
-3. Reforzar pruebas/UI para teclado matemático u otras integraciones (MathLive, charts) si se requieren en producción.
-
-Este repositorio incluye un prototipo de frontend ubicado en:
-
-`frontend/demo-frontend-luis/`
-
-El frontend está diseñado para consumir la API del backend, pero también cuenta con un **modo demostración**, lo que permite usar la aplicación aunque el backend real no esté activo.
+> **Importante:** Este frontend opera 100% con datos locales (localStorage + IndexedDB + archivos JSON) cuando el modo demo está activo. No requiere backend para funcionar.
 
 ---
 
-### Credenciales de prueba
+## Índice
 
-- **Correo:** `demo@demo.com`  
-- **Contraseña:** `demo123`
-
----
-
-### Activar o desactivar el modo demostración
-
-Dentro del archivo `demo-frontend-luis/script.js` se puede cambiar entre modo demostración y modo real:
-
----
-
-## Cambios recientes
-
-### Modo de demostración y uso del sistema real
-
-La plataforma ahora permite trabajar en **modo demostración** o conectarse al **sistema real**, lo que facilita explorar y probar la aplicación sin depender de que todo el sistema esté activo.
-
-Desde la pantalla de inicio de sesión es posible identificar claramente si se están usando datos de prueba o datos reales.  
-Cuando el modo demostración está activo, la aplicación muestra información simulada como usuarios, materias, notificaciones, recursos y exámenes, permitiendo recorrer la plataforma de forma completa.
-
-El proceso de registro fue ajustado para manejar correctamente la información según el tipo de usuario (estudiante, docente o administrador), asegurando que los datos se envíen de manera correcta al sistema principal.
+1. [Inicio Rápido](#inicio-rápido)
+2. [Estructura del Proyecto](#estructura-del-proyecto)
+3. [Arquitectura y Flujo de Datos](#arquitectura-y-flujo-de-datos)
+4. [Modo Demo vs Modo Real](#modo-demo-vs-modo-real)
+5. [Roles de Usuario](#roles-de-usuario)
+6. [Páginas y Funcionalidades](#páginas-y-funcionalidades)
+7. [Sistema de Almacenamiento Local](#sistema-de-almacenamiento-local)
+8. [Componentes Principales](#componentes-principales)
+9. [Estilos y Temas](#estilos-y-temas)
+10. [Dependencias](#dependencias)
+11. [Scripts Disponibles](#scripts-disponibles)
+12. [Credenciales de Prueba](#credenciales-de-prueba)
 
 ---
 
-### Dashboard y navegación simplificada
-
-Se mejoró la estructura de navegación para que la experiencia sea más clara y directa.  
-Algunas secciones que ya no eran necesarias fueron retiradas del menú, como la sección de logros.
-
-Las notificaciones se actualizan automáticamente y se muestran con un indicador visual cuando hay mensajes nuevos.  
-Estas pueden abrirse, leerse y marcarse como vistas desde la misma plataforma.
-
----
-
-### Exploración de materias y recursos
-
-Se incorporó una barra de búsqueda que permite encontrar materias y contenidos de forma rápida.  
-Las materias y recursos se organizan mediante etiquetas visuales que facilitan el filtrado y la exploración de información.
-
----
-
-### Exámenes y escritura matemática
-
-La sección de exámenes fue mejorada para facilitar la resolución de ejercicios matemáticos.  
-Ahora se cuenta con un teclado matemático integrado que puede mostrarse u ocultarse según sea necesario y que se adapta correctamente a distintos tamaños de pantalla.
-
-Esto permite una experiencia más fluida y ordenada al escribir fórmulas y resolver evaluaciones dentro de la plataforma.
-
----
-
-### Cómo probar la plataforma
-
-1. Mantén activo el modo demostración para recorrer el sistema con datos de ejemplo.
-2. Desactívalo cuando quieras conectarte al sistema real y validar funciones como el inicio de sesión, el registro y las notificaciones.
-
----
-
-### Foro, búsquedas y práctica de exámenes
-
-Se completó la vista de los temas del foro, permitiendo entrar a cada discusión y responder directamente desde el mismo espacio.  
-Ahora cada tema muestra todo el historial de mensajes y cuenta con su propio formulario para agregar nuevas respuestas, haciendo la conversación más clara y ordenada.
-
-Los buscadores de materias y recursos fueron mejorados para que realmente ayuden al usuario.  
-Al escribir, el sistema sugiere resultados de forma más inteligente, reconoce palabras aunque tengan acentos y utiliza la misma lógica tanto para materias como para recursos, logrando una experiencia de búsqueda consistente.
-
-El flujo de exámenes ya funciona de forma completa.  
-El teclado matemático puede mostrarse u ocultarse fácilmente, las respuestas se guardan mientras el usuario escribe y, al finalizar, el sistema valida automáticamente las respuestas contra las preguntas del examen.  
-Al salir de esta vista, todo se limpia para evitar errores o información acumulada.
-
-También se agregó un simulador de práctica que permite generar preguntas según la materia y el nivel de dificultad, sin necesidad de cambiar de pantalla.  
-Desde ahí mismo se puede pasar directamente al modo examen para continuar con la evaluación formal.
-
-Por último, los botones de **“Diagnóstico con IA”** ahora funcionan de manera real, conectándose a **Perplexity**.  
-Además, se prepararon utilidades internas que permitirán reutilizar esta lógica en futuras funciones relacionadas con búsquedas y análisis.
-
----
-
-### Estilos, modo demo y mejoras por rol
-
-La aplicación ahora utiliza **Tailwind como única fuente de estilos**, eliminando hojas de estilo separadas y logrando un diseño más consistente y fácil de mantener.  
-Los efectos visuales, animaciones, el teclado matemático, el foro y las notificaciones están completamente estilizados con utilidades nativas de Tailwind.
-
-El modo demostración fue mejorado para reflejar mejor el comportamiento real según el rol del usuario.  
-Ahora incluye datos diferenciados por tipo de usuario y permite realizar acciones de administración y creación de contenido
-
----
-
-### Uso real de React y paso a una arquitectura por componentes
-
-En esta etapa el frontend dejó de manejarse como páginas estáticas con JavaScript suelto y pasó a trabajar **realmente con React**.
-
-Todo lo que antes estaba separado en archivos HTML, CSS y JS dentro de `frontend-v2` ahora se implementa mediante **componentes React (JSX)**, lo que permite reutilizar código y controlar mejor el comportamiento de la aplicación.
-
-Los cambios más importantes fueron:
-
-- Las pantallas principales ahora son componentes de React y ya no vistas estáticas:
-  - Login y registro
-  - Dashboard general
-  - Panel de estudiante, creador y administrador
-  - Materias, exámenes, foro, progreso y recursos
-- La navegación ya no depende de recargar páginas ni de redirecciones manuales, sino del **estado de la aplicación** y del **rol del usuario**.
-- El manejo de sesión, rol, modo demostración y notificaciones se centralizó en `AppContext`, evitando repetir lógica en cada pantalla.
-- Se eliminó la manipulación directa del DOM y los scripts independientes; ahora la interfaz responde automáticamente a los cambios de estado.
-- Al cambiar de sección, los componentes se montan y desmontan correctamente, evitando que queden datos o estados “arrastrados” entre vistas.
-
-Con estos cambios, el proyecto deja de ser una maqueta estática y pasa a ser una **aplicación React bien estructurada**, lista para crecer, integrarse con el backend real y mantener una separación clara entre interfaz, lógica y estado.
-
----
-
-## Mejoras recientes
-
-Esta sección resume ajustes que ya quedaron aplicados para acercar la experiencia a la versión final y corregir varios puntos que se estaban rompiendo durante la migración a React.
-
-La idea es que la plataforma se sienta completa en uso real (examen, progreso, recursos, foro)
-
----
-
-## Cómo ejecutar y probar el frontend (importante para evitar confusiones)
-
-Para trabajar **siempre** sobre la versión real (React + Vite):
+## Inicio Rápido
 
 ```bash
 cd frontend
@@ -196,233 +31,517 @@ npm install
 npm run dev
 ```
 
-Después abre únicamente:
+Abre `http://localhost:5173` en tu navegador.
 
-* `http://localhost:5173`
-
-> Nota: Si abres directamente archivos HTML del prototipo (`frontend-v2/` o `demo-frontend-luis/`) puedes ver comportamientos raros en roles, navegación, sesión o UI. Esas carpetas sirven como referencia/histórico, pero no representan el flujo real de la SPA en React.
+> ⚠️ **No abras los archivos HTML de `demo-frontend-luis/` o `frontend-v2/`** directamente. Esas carpetas son prototipos históricos y no representan la aplicación actual.
 
 ---
 
-## Render de LaTeX y escritura matemática
+## Estructura del Proyecto
 
-Se corrigió el render de **LaTeX** para que las expresiones se vean como se espera dentro de la plataforma (preguntas, simulacros y vistas relacionadas), evitando el típico problema de texto “escapado” o fórmulas mostradas como string.
-
-Además, el **teclado matemático** volvió a ser parte natural del flujo de examen (no un extra que estorba):
-
-* Se puede **mostrar/ocultar** cuando el usuario lo necesita.
-* Se **oculta automáticamente** si el usuario cambia de pestaña o sale de la vista de examen, para evitar que se quede “pegado” entre pantallas.
-
-Puntos típicos donde vive esta lógica:
-
-* Vista de examen: `frontend/src/views/pages/ExamenPage.jsx`
-* Render de fórmulas (KaTeX / renderer): `frontend/src/components/MathRenderer.jsx`
-* Integración del teclado (según implementación): `frontend/src/components/*` o handlers dentro de `ExamenPage.jsx`
-
----
-
-## Exámenes: temporizador, pausa y reanudación
-
-El modo examen ya contempla un caso real: el usuario no siempre termina de un jalón.
-
-Ahora, si el cronómetro ya está corriendo y el usuario intenta salir a otra sección:
-
-* Se muestra una confirmación.
-* Puede **pausar** el examen y salir sin perder el intento.
-* Al volver, el examen se **reanuda exactamente donde se quedó** (tiempo consumido + respuestas capturadas + estado general).
-
-Esto evita el comportamiento típico de “salí tantito y se reinició todo”.
-
-Archivo principal:
-
-* `frontend/src/views/pages/ExamenPage.jsx`
-
----
-
-## Exámenes: revisión por ejercicio + apoyo externo
-
-Además de calificar al final, se habilitó la **revisión por pregunta** para que el flujo sea más guiado:
-
-* Cada ejercicio puede revisarse individualmente.
-* Se marca como correcto/incorrecto y se notifica con toast.
-* Si está mal, se habilita el acceso a **Wolfram Alpha** con la consulta preparada, para que el usuario vea referencia directa sin armar el query a mano.
-
-Archivo principal:
-
-* `frontend/src/views/pages/ExamenPage.jsx`
-
----
-
-## Progreso: gráficas más útiles y más “realistas”
-
-La sección **Mi progreso** se ajustó para que sí comunique avance real del estudiante, no solo listas o números sueltos.
-
-En concreto:
-
-* Gráficas más claras (más “de progreso” y menos “de tabla”).
-* Indicadores que reflejan mejor:
-
-  * Evolución en simulacros.
-  * Tendencia general del rendimiento.
-  * Progreso por materia.
-* La intención es que el estudiante pueda ver rápido:
-
-  * si va mejorando,
-  * en qué materias sube,
-  * y en cuáles se estanca.
-
-Archivo principal:
-
-* `frontend/src/views/pages/ProgresoPage.jsx`
+```
+frontend/
+├── index.html                    # Entry point HTML
+├── package.json                  # Dependencias y scripts
+├── vite.config.js                # Configuración de Vite
+├── tailwind.config.js            # Configuración de Tailwind CSS
+├── postcss.config.js             # PostCSS para Tailwind
+├── eslint.config.js              # Reglas de ESLint
+│
+├── public/
+│   ├── data/
+│   │   ├── subjects.json         # Catálogo de materias (fuente de verdad)
+│   │   ├── community-resources.json  # Recursos de la comunidad
+│   │   └── formularios.json      # Formularios de estudio
+│   ├── formularios/              # PDFs de formularios
+│   └── recursos_comunidad/       # PDFs de recursos compartidos
+│
+├── src/
+│   ├── main.jsx                  # Punto de entrada React
+│   ├── App.jsx                   # Componente raíz + enrutamiento
+│   ├── index.css                 # Estilos globales + Tailwind
+│   │
+│   ├── context/
+│   │   └── AppContext.jsx        # Estado global (auth, demo, cache, toasts)
+│   │
+│   ├── lib/
+│   │   ├── api.js                # Cliente API + Simulador Demo (DemoAPI)
+│   │   ├── constants.js          # Endpoints + datos hardcodeados + perfiles demo
+│   │   ├── demoFileStore.js      # Almacenamiento de archivos en IndexedDB
+│   │   └── url.js                # Utilidades para resolución de URLs
+│   │
+│   ├── components/
+│   │   ├── MathRenderer.jsx      # Renderizado de LaTeX con KaTeX
+│   │   ├── NotificationStack.jsx # Stack de toasts flotantes
+│   │   └── SubscriptionModal.jsx # Modal de suscripción premium
+│   │
+│   └── views/
+│       ├── LoginPage.jsx         # Página de login + toggle demo
+│       ├── RegisterPage.jsx      # Página de registro
+│       ├── DashboardShell.jsx    # Layout principal + navegación + routing
+│       │
+│       └── pages/
+│           ├── PanelStudent.jsx      # Panel del estudiante
+│           ├── PanelCreator.jsx      # Panel del creador/tutor
+│           ├── PanelAdmin.jsx        # Panel del administrador
+│           ├── ExplorePage.jsx       # Explorar catálogo de materias
+│           ├── MateriaPage.jsx       # Detalle de una materia
+│           ├── RecursosPage.jsx      # Recursos de la comunidad
+│           ├── ForoPage.jsx          # Listado de temas del foro
+│           ├── ForoTemaPage.jsx      # Detalle de un tema del foro
+│           ├── FormulariosPage.jsx   # Formularios de estudio (PDFs)
+│           ├── ProgresoPage.jsx      # Gráficas de progreso del estudiante
+│           ├── ExamenPage.jsx        # Vista de examen con MathLive
+│           ├── SimuladorPage.jsx     # Generador de simulacros
+│           ├── TutoriasPage.jsx      # Tutorías SOS
+│           ├── MisRecursosPage.jsx   # Recursos del creador
+│           ├── GestionUsuariosPage.jsx   # Admin: gestión de usuarios
+│           ├── GestionMateriasPage.jsx   # Admin: gestión de materias
+│           ├── GestionRecursosPage.jsx   # Admin: gestión de recursos
+│           └── GestionFormulariosPage.jsx # Admin: gestión de formularios
+│
+├── demo-frontend-luis/           # [HISTÓRICO] Prototipo HTML original
+└── frontend-v2/                  # [HISTÓRICO] Segunda iteración HTML
+```
 
 ---
 
-## Recursos de la comunidad: experiencia más limpia
+## Arquitectura y Flujo de Datos
 
-Se ajustó la sección para corregir temas visuales y de UX que se sentían pesados:
+### Diagrama de Componentes
 
-* Mejor proporción entre **barra de búsqueda** y **filtros**.
-* Filtros menos invasivos (evitar que “se traguen” la pantalla).
-* Botones con comportamiento más consistente:
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                           App.jsx                                │
+│  ┌─────────────────────┐    ┌─────────────────────────────────┐ │
+│  │  LoginPage.jsx      │    │     DashboardShell.jsx          │ │
+│  │  RegisterPage.jsx   │ OR │  (Sidebar + Routing interno)    │ │
+│  └─────────────────────┘    └─────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      AppContext.jsx                              │
+│  - user, token, demoEnabled                                      │
+│  - login(), logout(), loadProfile()                              │
+│  - notifications, cache, toasts                                  │
+│  - toggleDemoMode(), enableDemoMode()                            │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                         api.js                                   │
+│  ┌─────────────────┐         ┌─────────────────────────────┐   │
+│  │   apiService    │ ──────► │  DemoAPI (modo demo)        │   │
+│  │  (facade)       │         │  o fetch real (modo real)   │   │
+│  └─────────────────┘         └─────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              Almacenamiento Local                                │
+│  ┌──────────────┐  ┌──────────────┐  ┌─────────────────────┐   │
+│  │ localStorage │  │  IndexedDB   │  │  /public/data/*.json │   │
+│  │  (estados)   │  │  (archivos)  │  │  (datos iniciales)   │   │
+│  └──────────────┘  └──────────────┘  └─────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-  * Vista previa
-  * Acciones tipo “añadir a biblioteca” / “descargar” / “comprar” (dependiendo del modo demo)
+### Flujo de Autenticación
 
-Archivo principal:
-
-* `frontend/src/views/pages/RecursosPage.jsx`
-
----
-
-## Formularios: descarga sin romper sesión (bug crítico resuelto)
-
-Se corrigió el bug donde abrir/descargar un formulario hacía un flujo raro:
-
-* enviaba al login,
-* y luego regresaba al panel,
-* rompiendo el estado en medio.
-
-Ahora:
-
-* La descarga/acción se ejecuta sin perder sesión.
-* El usuario se queda en su vista actual.
-* Se notifica la acción correctamente (toast) en lugar de “teletransportar” pantallas.
-
-Archivos típicos:
-
-* `frontend/src/views/pages/FormulariosPage.jsx`
-* Manejo de sesión/toasts: `frontend/src/context/AppContext.jsx`
-
----
-
-## Diagnóstico con IA: redirección a Perplexity “sin fricción”
-
-Se mejoró el flujo de “Explicación” / “Diagnóstico con IA” para que sea directo:
-
-* Se abre Perplexity con la petición ya preparada.
-* El usuario no tiene que copiar/pegar ni escribir prompts.
-* La experiencia se reduce a: clic → respuesta.
-
-Dónde suele vivir:
-
-* Vista de materia o acciones rápidas: `frontend/src/views/pages/MateriaPage.jsx`
-* Helpers de construcción de URL/query: `frontend/src/lib/*` o helper local
-
----
-
-## Responsividad (móvil y pantallas grandes)
-
-Se aplicaron ajustes para que la UI se adapte mejor al tamaño de pantalla:
-
-* En celular: menús colapsables, componentes apilados, padding correcto.
-* En desktop: columnas y anchos máximos para que nada se vea “estirado” de más.
-* Se evitaron casos donde filtros/tablas/tarjetas se salen del contenedor o se rompen.
-
-Puntos donde suele ajustarse:
-
-* Layout principal: `frontend/src/views/DashboardShell.jsx`
-* Estilos globales: `frontend/src/index.css` + clases Tailwind en vistas
+1. Usuario llega a `LoginPage.jsx`
+2. Puede activar/desactivar **modo demo** con el toggle
+3. Al hacer login:
+   - **Modo Demo:** `DemoAPI.login()` valida contra `DEMO_PROFILES` en `constants.js`
+   - **Modo Real:** `fetch` a `/api/auth/login/`
+4. Si es exitoso, se guarda `authToken` en `localStorage`
+5. `AppContext` carga el perfil y renderiza `DashboardShell.jsx`
 
 ---
 
-## Búsquedas con coincidencias en tiempo real
+## Modo Demo vs Modo Real
 
-Los buscadores ahora se sienten más útiles porque filtran mientras el usuario escribe:
+| Aspecto | Modo Demo | Modo Real |
+|---------|-----------|-----------|
+| **Activación** | Toggle en login o `localStorage` | Desactivar toggle |
+| **Datos** | `HARDCODED_DATA` + JSON locales + localStorage | API REST del backend |
+| **Persistencia** | localStorage + IndexedDB | Base de datos del servidor |
+| **Latencia** | 350ms simulada | Real |
+| **Archivos** | IndexedDB (`demoFileStore.js`) | Backend + storage |
 
-* A medida que se teclea, se muestran coincidencias.
-* Se contempla normalización de acentos (por ejemplo, `al` puede coincidir con `Álgebra`).
-* Se aplica tanto en materias como en recursos (dependiendo de la vista).
+### Claves de localStorage (Modo Demo)
 
-Archivos típicos:
+| Clave | Descripción |
+|-------|-------------|
+| `estudia-pro-demo-mode` | `true`/`false` - Activa modo demo |
+| `authToken` | Token de sesión |
+| `estudia-pro-demo-subjects` | Materias del catálogo |
+| `estudia-pro-demo-community-resources` | Recursos de la comunidad |
+| `estudia-pro-demo-formularies` | Formularios de estudio |
+| `estudia-pro-demo-forums` | Temas del foro |
+| `estudia-pro-demo-user-state` | Estado por usuario (materias, compras, progreso) |
+| `estudia-pro-demo-extra-users` | Usuarios registrados en demo |
+| `estudia-pro-demo-admin-users` | Lista de usuarios para panel admin |
+| `estudia-pro-demo-tutor-profiles` | Perfiles de tutores |
+| `estudia-pro-demo-tutoring-sessions` | Sesiones de tutoría agendadas |
 
-* Materias/exploración: `frontend/src/views/pages/ExplorePage.jsx`
-* Recursos: `frontend/src/views/pages/RecursosPage.jsx`
+### Sincronización entre pestañas
 
-Ejemplo rápido: escribir `al` puede mostrar `Álgebra lineal`, `Álgebra básica`, etc., si existen en los datos.
-
----
-
-## Modo oscuro/claro: intercambio estable
-
-Se estabilizó el toggle entre:
-
-* modo oscuro
-* modo claro
-
-Objetivo:
-
-* Permitir alternar el tema sin romper contraste, fondos ni tarjetas.
-
-Dónde suele configurarse:
-
-* Base visual: `frontend/src/index.css`
-* Config de Tailwind: `tailwind.config.js`
-* Toggle/persistencia (si aplica): `frontend/src/views/DashboardShell.jsx` o `AppContext.jsx`
+El modo demo usa `BroadcastChannel` y eventos `storage` para sincronizar cambios entre pestañas del navegador en tiempo real.
 
 ---
 
-## Foro: temas + respuestas en tiempo real
+## Roles de Usuario
 
-El foro ya funciona en el flujo normal:
+### Estudiante (`ESTUDIANTE`)
 
-* Se ven temas de discusión.
-* Se puede responder dentro de un tema.
-* Se puede crear un tema nuevo.
-* Los cambios se reflejan al instante (modo demo / estado local).
+- **Panel:** Resumen de materias, actividades próximas, progreso
+- **Acciones:** 
+  - Explorar y añadir materias
+  - Ver recursos de la comunidad (requiere premium)
+  - Descargar formularios
+  - Realizar exámenes y simulacros
+  - Participar en el foro
+  - Agendar tutorías SOS
+  - Ver gráficas de progreso
 
-Archivos típicos:
+### Creador (`CREADOR`)
 
-* `frontend/src/views/pages/ForoPage.jsx`
-* `frontend/src/views/pages/ForoTemaPage.jsx`
+- **Panel:** Métricas de recursos publicados, solicitudes de tutorías
+- **Acciones:**
+  - Gestionar recursos propios
+  - Configurar perfil de tutor
+  - Atender solicitudes de tutoría
+  - Participar como mentor en el foro
+
+### Administrador (`ADMINISTRADOR`)
+
+- **Panel:** Métricas globales (usuarios, materias, recursos)
+- **Acciones:**
+  - Gestionar usuarios (crear, editar, eliminar)
+  - Gestionar catálogo de materias
+  - Gestionar recursos de la comunidad
+  - Gestionar formularios
 
 ---
 
-## Resumen de lo que ya quedó
+## Páginas y Funcionalidades
 
-* LaTeX renderiza correctamente.
-* Teclado matemático funcional y se oculta al cambiar de pestaña/vista.
-* Examen: pausar al salir y reanudar donde se quedó.
-* Examen: revisión por ejercicio y redirección a Wolfram Alpha si está mal.
-* Progreso con gráficas más atractivas y representativas.
-* Recursos de la comunidad con diseño ajustado.
-* Formularios ya no mandan al login al descargar.
-* Diagnóstico/explicación con IA abre Perplexity con query lista.
-* Responsividad mejorada.
-* Modo oscuro/claro estable.
-* Foro funcional (crear temas, responder, reflejo inmediato).
-* Búsquedas con coincidencias conforme se teclea.
+### Login (`LoginPage.jsx`)
+
+- Toggle de modo demo prominente
+- Accesos rápidos a perfiles demo (estudiante, creador, admin)
+- Recuperación de contraseña (solo en demo)
+- Opción "Recordarme"
+
+### Dashboard (`DashboardShell.jsx`)
+
+- **Sidebar responsive** con navegación por rol
+- **Modo oscuro/claro** (toggle en header)
+- **Notificaciones** con badge y panel desplegable
+- **Perfil de usuario** con stats (nivel, puntos, racha)
+- Routing interno sin recargas de página
+
+### Explorar Materias (`ExplorePage.jsx`)
+
+- Búsqueda en tiempo real con normalización de acentos
+- Chips de búsqueda rápida (Derivadas, Matrices, Probabilidad)
+- Tarjetas con nivel, escuela, descripción y temario
+- Botón para añadir materia al panel del estudiante
+
+### Detalle de Materia (`MateriaPage.jsx`)
+
+- Información completa de la materia
+- **Ruta de Estudio:** Temario con enlaces externos:
+  - 🔍 Google Search
+  - ▶️ YouTube Tutorial
+  - ✨ Perplexity AI (diagnóstico)
+- **Fecha de examen** editable (fecha + hora)
+- **Diagnóstico con IA:** Genera quiz por nivel
+- **Simulacro de Examen:** Acceso directo al examen
+- **Tutoría SOS:** Agendar asesoría
+- Opción para dar de baja la materia
+
+### Exámenes (`ExamenPage.jsx`)
+
+- **Cronómetro** con pausa/reanudación
+- **MathLive** para escritura de fórmulas matemáticas
+- **KaTeX** para renderizado de preguntas LaTeX
+- Revisión por pregunta (correcto/incorrecto)
+- Enlace a **Wolfram Alpha** si la respuesta es incorrecta
+- Confirmación al salir con examen en progreso
+
+### Simulador (`SimuladorPage.jsx`)
+
+- Selección de número de preguntas (1-20)
+- Filtro por dificultad (Fácil, Intermedio, Avanzado)
+- Vista previa de preguntas seleccionadas
+- Botón para iniciar examen formal
+
+### Recursos de la Comunidad (`RecursosPage.jsx`)
+
+- **Filtros:** Búsqueda, materia, tipo (pdf, exam, formula)
+- **Restricción Premium:** Modal de suscripción para no-premium
+- Vista previa y descarga de archivos
+- Paginación progresiva (cargar más)
+
+### Formularios (`FormulariosPage.jsx`)
+
+- Grid de formularios disponibles
+- Modal con vista previa (iframe PDF)
+- Descarga directa sin perder sesión
+
+### Foro (`ForoPage.jsx` + `ForoTemaPage.jsx`)
+
+- Listado de temas con conteo de respuestas
+- Creación de nuevos temas
+- Vista de tema individual con todos los posts
+- Responder a temas existentes
+- Sistema de votos
+
+### Progreso (`ProgresoPage.jsx`)
+
+- **Gráfica de barras:** Promedio en exámenes por materia
+- **Tiempo de estudio:** Total acumulado
+- **Estadísticas:** Nivel, puntos, materias completadas
+- Actualización en tiempo real
+
+### Tutorías SOS (`TutoriasPage.jsx`)
+
+- **Estudiantes:** Lista de tutores disponibles, agendar sesión
+- **Creadores:** Gestionar perfil de tutor, ver solicitudes
+- Configuración de tarifas (30min, 60min)
+- Aceptar/rechazar solicitudes
+
+### Paneles de Administración
+
+- **Gestión de Usuarios:** CRUD completo, cambio de rol
+- **Gestión de Materias:** Crear, editar, eliminar del catálogo
+- **Gestión de Recursos:** Aprobar, eliminar recursos de comunidad
+- **Gestión de Formularios:** Subir, editar, eliminar PDFs
 
 ---
 
-## Ubicaciones
+## Sistema de Almacenamiento Local
 
-* Menú, roles, layout y responsividad: `frontend/src/views/DashboardShell.jsx`
-* Tema (oscuro/claro), tipografía, base visual: `frontend/src/index.css` y `tailwind.config.js`
-* Exámenes (teclado, LaTeX, timer, revisión): `frontend/src/views/pages/ExamenPage.jsx`
-* Render de LaTeX: `frontend/src/components/MathRenderer.jsx`
-* Progreso (gráficas): `frontend/src/views/pages/ProgresoPage.jsx`
-* Recursos comunidad (filtros, preview, UX): `frontend/src/views/pages/RecursosPage.jsx`
-* Formularios (descarga y flujo): `frontend/src/views/pages/FormulariosPage.jsx`
-* Foro (temas/respuestas): `frontend/src/views/pages/ForoPage.jsx` y `ForoTemaPage.jsx`
-* Sesión / notificaciones / modo demo: `frontend/src/context/AppContext.jsx` + `frontend/src/lib/api.js`
+### IndexedDB (`demoFileStore.js`)
+
+Almacena archivos binarios (PDFs, imágenes) para el modo demo:
+
+```javascript
+// Guardar archivo
+const fileId = await putDemoFile(fileBlob);
+
+// Recuperar archivo
+const { blob, name, type } = await getDemoFile(fileId);
+
+// Eliminar archivo
+await deleteDemoFile(fileId);
+```
+
+**Base de datos:** `estudia-pro-demo-files`  
+**Object Store:** `files` (keyPath: `id`)
+
+### Carga de Datos Iniciales
+
+1. **Materias:** `/public/data/subjects.json` → `localStorage` → `DemoAPI.subjectsCatalog`
+2. **Recursos:** `/public/data/community-resources.json` → merge con localStorage
+3. **Formularios:** `/public/data/formularios.json` → merge con localStorage
+
+El sistema mantiene un versionado (`DEMO_COMMUNITY_RESOURCES_VERSION`) para forzar recarga cuando cambian los JSON.
+
+---
+
+## Componentes Principales
+
+### `MathRenderer.jsx`
+
+Renderiza texto con fórmulas LaTeX usando KaTeX:
+
+```jsx
+<MathRenderer text="La derivada de $x^2$ es $2x$" />
+```
+
+Delimitadores soportados: `$...$`, `$$...$$`, `\(...\)`, `\[...\]`
+
+### `NotificationStack.jsx`
+
+Stack de toasts flotantes con tipos: `info`, `success`, `alert`
+
+```jsx
+const { pushToast } = useAppContext();
+pushToast({ title: 'Éxito', message: 'Operación completada', type: 'success' });
+```
+
+Auto-dismiss después de 5 segundos.
+
+### `SubscriptionModal.jsx`
+
+Modal de suscripción premium con simulación de pago:
+
+1. **Oferta:** Beneficios de premium
+2. **Pago:** Formulario de tarjeta (simulado)
+3. **Procesando:** Animación de carga
+4. **Éxito:** Confirmación
+
+---
+
+## Estilos y Temas
+
+### Tailwind Config (`tailwind.config.js`)
+
+```javascript
+colors: {
+  primary: '#8b5cf6',      // Violeta
+  'primary-focus': '#7c3aed',
+  secondary: '#10b981',    // Esmeralda
+  accent: '#f59e0b',       // Ámbar
+  'dark-bg': '#0f172a',    // Slate 900
+  'dark-card': '#1e293b',  // Slate 800
+  'light-bg': '#f1f5f9',   // Slate 100
+  'light-card': '#ffffff',
+}
+```
+
+### Clases Personalizadas (`index.css`)
+
+- `.glass-effect-light`: Efecto glassmorphism adaptativo
+- `.page.active`: Control de visibilidad de páginas
+- `.animate-modal-in`: Animación de entrada de modales
+- `.math-block` / `.math-inline`: Estilos para KaTeX
+
+### Modo Oscuro/Claro
+
+- Toggle en el header del dashboard
+- Clase `dark` en `<html>` para Tailwind
+- Clase `light` en `<body>` para estilos base
+
+---
+
+## Dependencias
+
+### Producción
+
+| Paquete | Versión | Uso |
+|---------|---------|-----|
+| `react` | 19.2.0 | Framework UI |
+| `react-dom` | 19.2.0 | Renderizado DOM |
+| `katex` | 0.16.27 | Renderizado LaTeX |
+| `mathlive` | 0.108.2 | Input matemático con teclado virtual |
+| `chart.js` | 4.5.1 | Gráficas de progreso |
+| `react-chartjs-2` | 5.3.1 | Wrapper React para Chart.js |
+
+### Desarrollo
+
+| Paquete | Uso |
+|---------|-----|
+| `vite` (rolldown-vite) | Bundler y dev server |
+| `tailwindcss` | Framework CSS |
+| `eslint` | Linter |
+| `autoprefixer` | PostCSS plugin |
+
+---
+
+## Scripts Disponibles
+
+```bash
+npm install         # Instala dependencias
+npm run dev         # Inicia servidor de desarrollo (http://localhost:5173)
+npm run build       # Genera build de producción en dist/
+npm run preview     # Sirve el build para QA
+npm run lint        # Ejecuta ESLint
+npm run sync-resources  # Sincroniza recursos (si existe el script)
+```
+
+---
+
+## Credenciales de Prueba
+
+### Perfiles Rápidos (Modo Demo)
+
+| Rol | Usuario | Contraseña |
+|-----|---------|------------|
+| Estudiante | `demo@estudiapro.com` | `demo123` |
+| Creador | `creador@estudiapro.com` | `demo123` |
+| Administrador | `admin@estudiapro.com` | `demo123` |
+
+### Tutores Demo
+
+| Tutor | Email | Especialidad |
+|-------|-------|--------------|
+| Alejandra Ruiz | `alejandra@estudiapro.com` | Cálculo, Álgebra |
+| Ian Salazar | `ian@estudiapro.com` | Probabilidad, Estadística |
+| Rosa Vera | `rosa@estudiapro.com` | Ecuaciones Diferenciales |
+
+---
+
+## Flujo de Trabajo Típico
+
+### Estudiante
+
+1. Login con perfil estudiante
+2. Explorar y añadir materias
+3. Configurar fecha de examen
+4. Estudiar con los enlaces externos (Google, YouTube, Perplexity)
+5. Practicar con simulacros
+6. Consultar formularios
+7. Preguntar en el foro si hay dudas
+8. Agendar tutoría SOS si se atora
+9. Ver progreso en gráficas
+
+### Creador
+
+1. Login con perfil creador
+2. Configurar perfil de tutor (especialidades, tarifas)
+3. Publicar recursos en "Mis Recursos"
+4. Atender solicitudes de tutorías
+5. Participar como mentor en el foro
+
+### Administrador
+
+1. Login con perfil admin
+2. Revisar métricas globales
+3. Gestionar usuarios (verificar, cambiar rol)
+4. Administrar catálogo de materias
+5. Aprobar/rechazar recursos de la comunidad
+6. Gestionar formularios de estudio
+
+---
+
+## Notas Técnicas
+
+### ¿Por qué modo demo por defecto?
+
+El frontend está diseñado para funcionar de manera independiente durante desarrollo y demos. Cuando el backend esté listo:
+
+1. Desactiva el modo demo desde el login
+2. Actualiza `API_CONFIG.BASE_URL` en `constants.js` si es necesario
+3. Las llamadas irán automáticamente al backend real
+
+### Sincronización de Datos
+
+Los archivos JSON en `/public/data/` son la **fuente de verdad** para datos iniciales. Al cargar la app:
+
+1. Se intenta `fetch` del JSON
+2. Se hace merge con datos en localStorage (preserva creaciones del usuario)
+3. Se guarda el resultado en localStorage
+
+### Archivos de Usuario
+
+Los archivos subidos en modo demo se almacenan en IndexedDB con un `fileId` único. Las referencias se guardan en localStorage junto con los metadatos del recurso/formulario.
+
+---
+
+## Próximos Pasos
+
+1. [ ] Integrar con backend Django cuando esté listo
+2. [ ] Implementar WebSockets para notificaciones en tiempo real
+3. [ ] Añadir tests unitarios y de integración
+4. [ ] Optimizar bundle size para producción
+5. [ ] Implementar PWA para uso offline
+6. [ ] Añadir internacionalización (i18n)
+
+---
+
+*Última actualización: Enero 2026*
 

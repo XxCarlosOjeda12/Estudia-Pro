@@ -23,9 +23,13 @@ urlpatterns = [
     path('mis-cursos/', views.mis_cursos_inscritos, name='mis-cursos'),
     path('mis-cursos/fecha-examen/', views.actualizar_fecha_examen, name='actualizar-fecha-examen'),
     path('buscar-cursos/', views.buscar_cursos, name='buscar-cursos'),
+    path('recursos/mis-compras/', views.recursos_mis_compras, name='recursos-mis-compras'),
+    path('recursos/comprar/', views.recursos_comprar, name='recursos-comprar'),
+    path('recursos/descargar/', views.recursos_descargar, name='recursos-descargar'),
     
     # Endpoints para Mi Progreso
     path('mi-progreso/', views.mi_progreso_detallado, name='mi-progreso-detallado'),
+    path('logros/', views.lista_logros, name='logros'),
     path('mis-logros/', views.mis_logros, name='mis-logros'),
     
     # Endpoints para Foro

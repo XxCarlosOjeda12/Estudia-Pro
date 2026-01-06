@@ -19,7 +19,6 @@ const RegisterPage = ({ onNavigate }) => {
         setLoading(true);
         setError(null);
 
-        // Basic validation
         if (!formData.name || !formData.username || !formData.email || !formData.password) {
             setError('Todos los campos son obligatorios');
             setLoading(false);
@@ -27,7 +26,6 @@ const RegisterPage = ({ onNavigate }) => {
         }
 
         try {
-            // Transform data to match Backend Serializer requirements
             const nameParts = formData.name.trim().split(' ');
             const firstName = nameParts[0];
             const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Usuario';
@@ -36,11 +34,10 @@ const RegisterPage = ({ onNavigate }) => {
                 username: formData.username,
                 email: formData.email,
                 password: formData.password,
-                password_confirm: formData.password, // Backend requires this field
+                password_confirm: formData.password,  
                 first_name: firstName,
                 last_name: lastName,
                 rol: formData.role,
-                // Default values to satisfy backend validation without extra UI steps
                 nivel_escolar: 'Universidad',
                 especialidad: 'General',
                 id_institucion: 1
@@ -49,20 +46,17 @@ const RegisterPage = ({ onNavigate }) => {
             const response = await apiService.register(payload);
 
             if (response && response.success) {
-                // Achievement Unlocked: Account Created
                 pushToast({
                     title: 'Cuenta Creada',
                     message: 'Tu perfil ha sido registrado correctamente.',
                     type: 'success'
                 });
-                // Redirect to login after slight delay for effect
                 setTimeout(() => {
                     onNavigate('login');
                 }, 1500);
             } else {
                 console.error("Registration Error Response:", response);
                 let msg = response?.message || 'Error al registrar usuario';
-                // Try to extract specific validation error
                 if (response && typeof response === 'object' && !response.success && !response.message) {
                     const values = Object.values(response).flat();
                     if (values.length > 0) msg = values[0];

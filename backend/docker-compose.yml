@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: estudiapro-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persistir base de datos SQLite
+      - ./db.sqlite3:/app/db.sqlite3
+      # Persistir archivos media (uploads)
+      - ./media:/app/media
+      # Persistir archivos estáticos
+      - static_volume:/app/staticfiles
+    env_file:
+      - .env
+    environment:
+      - DJANGO_DEBUG=False
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/cursos/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  nginx:
+    image: nginx:alpine
+    container_name: estudiapro-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx-docker.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_volume:/app/staticfiles:ro
+      - ./media:/app/media:ro
+      # Para SSL (descomentar cuando tengas certificados)
+      # - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+
+volumes:
+  static_volume:

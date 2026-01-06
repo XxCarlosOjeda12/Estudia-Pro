@@ -24,6 +24,8 @@ class Curso(models.Model):
     
     titulo = models.CharField(max_length=200)
     descripcion = models.TextField()
+    profesor = models.CharField(max_length=200, blank=True, default='')
+    escuela = models.CharField(max_length=120, blank=True, default='ESCOM')
     categoria = models.CharField(max_length=50, choices=CATEGORIAS, default='MATEMATICAS')  # NUEVO
     nivel = models.CharField(max_length=20, choices=NIVELES, default='BASICO')  # NUEVO
     imagen_portada = models.URLField(blank=True, null=True)

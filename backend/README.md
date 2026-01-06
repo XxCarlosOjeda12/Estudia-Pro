@@ -1,80 +1,83 @@
-## Estudia Pro - Backend API
-Backend del proyecto Estudia Pro, una plataforma educativa desarrollada con Django REST Framework que permite a estudiantes acceder a cursos, realizar exámenes, participar en foros y más.
+# Estudia Pro - Backend API
 
- ## Tabla de Contenidos
+Backend del proyecto Estudia Pro, una plataforma educativa desarrollada con Django REST Framework.
 
-Características
-Tecnologías
-Instalación
-Configuración
-Estructura del Proyecto
-API Endpoints
-Modelos
-Uso
-Contribuir
+---
 
+## Tabla de Contenidos
 
-## Características
-Autenticación y Usuarios
-Sistema de registro y login con tokens 3 tipos de usuarios: Estudiante, Creador y Administrador
-Perfiles personalizados por tipo de usuario
-Validación de correos únicos y contraseñas
+1. [Tecnologias](#tecnologias)
+2. [Estructura del Proyecto](#estructura-del-proyecto)
+3. [Instalacion](#instalacion)
+4. [Configuracion](#configuracion)
+5. [Modelos de Datos](#modelos-de-datos)
+6. [API Endpoints](#api-endpoints)
+7. [Autenticacion](#autenticacion)
+8. [Integracion con Frontend](#integracion-con-frontend)
 
-## Sistema de Cursos
+---
 
-Cursos con módulos y recursos (videos, PDFs, lecturas)
-Inscripción de estudiantes a cursos
-Seguimiento de progreso por curso
-Sistema de calificaciones por módulo
+## Tecnologias
 
-## Evaluaciones
+| Tecnologia | Version | Descripcion |
+|------------|---------|-------------|
+| Python | 3.8+ | Lenguaje de programacion |
+| Django | 4.2+ | Framework web |
+| Django REST Framework | 3.14.0 | API REST |
+| django-cors-headers | 4.3.0 | Manejo de CORS |
+| SQLite | - | Base de datos (desarrollo) |
+| PostgreSQL | - | Base de datos (produccion) |
 
-Banco de preguntas por módulo
-Exámenes con cronómetro
-Simuladores de examen configurables
-Historial de intentos y calificaciones
-Corrección automática
+---
 
-## Gamificación
+## Estructura del Proyecto
 
-Sistema de puntos y niveles
-Logros desbloqueables
-Tracking de actividades
-Progreso detallado por estudiante
+```
+backend/
+├── manage.py                    # CLI de Django
+├── requirements.txt             # Dependencias Python
+├── estudia_pro_db.sql           # Dump de base de datos
+├── Estudia_Pro_API.postman_collection.json  # Coleccion Postman
+│
+├── estudiapro/                  # Configuracion principal
+│   ├── settings.py              # Configuracion Django
+│   ├── urls.py                  # URLs raiz
+│   ├── wsgi.py                  # WSGI application
+│   └── asgi.py                  # ASGI application
+│
+├── usuarios/                    # App de autenticacion y usuarios
+│   ├── models.py                # Usuario, Estudiante, Creador, Administrador
+│   ├── views.py                 # Vistas de auth (register, login, logout)
+│   ├── serializers.py           # Serializadores de usuario
+│   ├── urls.py                  # Rutas /api/auth/
+│   ├── admin.py                 # Configuracion admin
+│   ├── admin_views.py           # Vistas de administracion
+│   └── admin_urls.py            # Rutas admin personalizadas
+│
+└── cursos/                      # App principal de contenido
+    ├── models.py                # Todos los modelos de cursos, examenes, foro, etc.
+    ├── views.py                 # ViewSets y vistas
+    ├── serializers.py           # Serializadores
+    ├── urls.py                  # Rutas /api/
+    ├── admin.py                 # Configuracion admin
+    └── management/commands/     # Comandos personalizados
+        ├── poblar_calculo.py    # Poblar datos de calculo
+        └── poblar_comunidad.py  # Poblar datos de comunidad
+```
 
-## Comunidad
+---
 
-Foro de ayuda y discusión
-Sistema de preguntas y respuestas
-Votación de respuestas
-Recursos compartidos por la comunidad
-Calificación y descarga de recursos
+## Instalacion
 
-## Formularios
+### 1. Clonar y acceder al directorio
 
-Encuestas y formularios de feedback
-Múltiples tipos de preguntas
-Respuestas anónimas opcionales
-Estadísticas y resultados
-
-
-## Tecnologías
-
-Python: 3.8+
-Django: 6.0
-Django REST Framework: 3.14.0
-django-cors-headers: 4.3.1
-Base de datos: SQLite (desarrollo) / PostgreSQL (producción)
-
-
-## Instalación
-1. Clonar el repositorio
 ```bash
 git clone <url-del-repositorio>
 cd Estudia-Pro/backend
 ```
 
-2. Crear entorno virtual
+### 2. Crear entorno virtual
+
 ```bash
 # Windows
 python -m venv venv
@@ -85,450 +88,672 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-3. Instalar dependencias
+### 3. Instalar dependencias
+
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Configurar variables de entorno (opcional)
-Crea un archivo .env en la raíz:
-```env
-SECRET_KEY=tu-secret-key-aqui
-DEBUG=True
-```
+### 4. Ejecutar migraciones
 
-5. Ejecutar migraciones
 ```bash
-python manage.py makemigrations
 python manage.py migrate
 ```
 
-6. Crear superusuario
+### 5. Crear superusuario (opcional)
+
 ```bash
 python manage.py createsuperuser
 ```
 
-7. Poblar base de datos (opcional)
+### 6. Poblar datos de prueba (opcional)
 
-**Curso de Cálculo:**
 ```bash
 python manage.py poblar_calculo
-```
-Este comando crea:
-
-Curso de "Cálculo Diferencial"
-4 módulos (Límites, Derivadas, Integrales, Aplicaciones)
-Recursos de aprendizaje
-Preguntas de prueba
-Exámenes
-
-**Recursos de Comunidad y Formularios:**
-```bash
 python manage.py poblar_comunidad
 ```
-Este comando crea:
 
-Recursos de comunidad compartidos (documentos, videos, código)
-Formularios de encuesta y feedback
-Preguntas para formularios
+### 7. Iniciar servidor
 
-8. Ejecutar servidor
 ```bash
 python manage.py runserver
 ```
-El servidor estará disponible en: http://127.0.0.1:8000/
 
-## Configuración
+El servidor estara disponible en `http://127.0.0.1:8000`
 
-### CORS (para frontend)
-En backend/settings.py:
+---
+
+## Configuracion
+
+### Variables de Entorno
+
+Crear archivo `.env` en la raiz del backend:
+
+```env
+# Django
+DJANGO_SECRET_KEY=tu-secret-key-segura
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+
+# Base de datos (SQLite por defecto)
+DB_ENGINE=django.db.backends.sqlite3
+DB_NAME=db.sqlite3
+
+# PostgreSQL (produccion)
+# DB_ENGINE=django.db.backends.postgresql
+# DB_NAME=estudiapro_db
+# DB_USER=postgres
+# DB_PASSWORD=tu_password
+# DB_HOST=localhost
+# DB_PORT=5432
+```
+
+### Configuracion CORS
+
+El backend permite peticiones desde cualquier origen en desarrollo. Para produccion, configurar en `settings.py`:
+
 ```python
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React
-    "http://localhost:5173",  # Vite
+    "https://tu-dominio-frontend.com",
 ]
 ```
 
-### Admin de Django
-Accede al panel administrativo en: http://127.0.0.1:8000/admin/
+---
 
-## Estructura del Proyecto
-backend/
-├── backend/                 # Configuración del proyecto
-│   ├── settings.py         # Configuraciones
-│   ├── urls.py             # URLs principales
-│   └── wsgi.py
-├── usuarios/               # App de autenticación
-│   ├── models.py           # Usuario, Estudiante, Creador, Administrador
-│   ├── serializers.py      # Serializers de usuarios
-│   ├── views.py            # Login, registro, perfil
-│   └── urls.py
-├── cursos/                 # App de cursos
-│   ├── models.py           # Curso, Módulo, Recurso, Examen, etc.
-│   ├── serializers.py      # Serializers de cursos
-│   ├── views.py            # Endpoints de cursos
-│   ├── urls.py
-│   └── management/
-│       └── commands/
-│           ├── poblar_calculo.py
-│           └── poblar_comunidad.py
-├── manage.py
-├── requirements.txt
-├── .gitignore
-└── README.md
+## Modelos de Datos
+
+### App: usuarios
+
+#### Usuario (AbstractUser)
+Modelo base de usuario con campos extendidos.
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| username | CharField | Nombre de usuario unico |
+| email | EmailField | Correo electronico unico |
+| rol | CharField | ESTUDIANTE, CREADOR, ADMINISTRADOR |
+| estado | CharField | ACTIVO, INACTIVO, SUSPENDIDO |
+| nivel | IntegerField | Nivel de gamificacion (1-100) |
+| puntos_gamificacion | IntegerField | Puntos acumulados |
+| is_premium | BooleanField | Estado premium |
+| fecha_registro | DateTimeField | Fecha de registro |
+| foto_perfil | URLField | URL de foto de perfil |
+
+#### Estudiante
+Perfil extendido para estudiantes.
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| id_usuario | OneToOneField | Relacion con Usuario |
+| carrera | CharField | Carrera del estudiante |
+| semestre | IntegerField | Semestre actual |
+| tiempo_estudio_minutos | IntegerField | Tiempo total de estudio |
+| fecha_nacimiento | DateField | Fecha de nacimiento |
+
+#### Creador
+Perfil extendido para creadores de contenido.
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| id_usuario | OneToOneField | Relacion con Usuario |
+| especialidad | CharField | Area de especializacion |
+| biografia | TextField | Descripcion del creador |
+| calificacion_promedio | DecimalField | Promedio de calificaciones |
+| es_tutor | BooleanField | Si ofrece tutorias |
+
+#### Administrador
+Perfil extendido para administradores.
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| id_usuario | OneToOneField | Relacion con Usuario |
+| area_responsabilidad | CharField | Area asignada |
+
+---
+
+### App: cursos
+
+#### Curso
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| titulo | CharField | Nombre del curso |
+| descripcion | TextField | Descripcion completa |
+| imagen_portada | URLField | URL de imagen |
+| creador | ForeignKey | Creador del curso |
+| precio | DecimalField | Precio (0 si es gratuito) |
+| es_gratuito | BooleanField | Indica si es gratuito |
+| categoria | CharField | Categoria del curso |
+| nivel | CharField | BASICO, INTERMEDIO, AVANZADO |
+| activo | BooleanField | Estado del curso |
+
+#### Modulo
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| curso | ForeignKey | Curso padre |
+| titulo | CharField | Nombre del modulo |
+| descripcion | TextField | Descripcion |
+| orden | IntegerField | Orden de aparicion |
+| icono | CharField | Icono del modulo |
+
+#### Recurso
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| modulo | ForeignKey | Modulo padre |
+| titulo | CharField | Nombre del recurso |
+| tipo | CharField | VIDEO, PDF, LECTURA, EJERCICIO |
+| contenido_url | URLField | URL del contenido |
+| contenido_texto | TextField | Contenido textual |
+| duracion_minutos | IntegerField | Duracion estimada |
+| es_gratuito | BooleanField | Acceso gratuito |
+| orden | IntegerField | Orden de aparicion |
+
+#### Inscripcion
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| estudiante | ForeignKey | Estudiante inscrito |
+| curso | ForeignKey | Curso inscrito |
+| fecha_inscripcion | DateTimeField | Fecha de inscripcion |
+| progreso_porcentaje | DecimalField | Progreso 0-100 |
+| completado | BooleanField | Curso completado |
+| fecha_examen | DateField | Fecha de examen programado |
+| hora_examen | TimeField | Hora del examen |
+
+#### Pregunta
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| modulo | ForeignKey | Modulo asociado |
+| texto_pregunta | TextField | Enunciado |
+| tipo | CharField | OPCION_MULTIPLE, VERDADERO_FALSO, etc. |
+| opciones | JSONField | Opciones de respuesta |
+| respuesta_correcta | CharField | Respuesta correcta |
+| explicacion | TextField | Explicacion de la respuesta |
+| dificultad | CharField | FACIL, MEDIO, DIFICIL |
+| puntos | IntegerField | Puntos por respuesta correcta |
+
+#### Examen
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| curso | ForeignKey | Curso asociado |
+| titulo | CharField | Nombre del examen |
+| descripcion | TextField | Descripcion |
+| duracion_minutos | IntegerField | Tiempo limite |
+| numero_preguntas | IntegerField | Cantidad de preguntas |
+| puntaje_minimo_aprobacion | DecimalField | Porcentaje minimo |
+| activo | BooleanField | Estado del examen |
+
+#### IntentoExamen
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| estudiante | ForeignKey | Estudiante |
+| examen | ForeignKey | Examen realizado |
+| fecha_inicio | DateTimeField | Inicio del intento |
+| fecha_fin | DateTimeField | Fin del intento |
+| puntaje_obtenido | DecimalField | Puntaje final |
+| completado | BooleanField | Si fue completado |
+| aprobado | BooleanField | Si aprobo |
+| tiempo_usado | IntegerField | Minutos utilizados |
+
+#### TemaForo
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| titulo | CharField | Titulo del tema |
+| contenido | TextField | Contenido del tema |
+| categoria | CharField | PREGUNTA, DISCUSION, AYUDA, ANUNCIO |
+| autor | ForeignKey | Usuario autor |
+| curso | ForeignKey | Curso relacionado (opcional) |
+| cerrado | BooleanField | Tema cerrado |
+| resuelto | BooleanField | Tema resuelto |
+| vistas | IntegerField | Contador de vistas |
+
+#### RespuestaForo
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| tema | ForeignKey | Tema padre |
+| autor | ForeignKey | Usuario autor |
+| contenido | TextField | Contenido de respuesta |
+| es_solucion | BooleanField | Marcada como solucion |
+| votos | IntegerField | Contador de votos |
+
+#### RecursoComunidad
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| titulo | CharField | Nombre del recurso |
+| descripcion | TextField | Descripcion |
+| tipo | CharField | DOCUMENTO, VIDEO, ENLACE, CODIGO, PRESENTACION |
+| archivo_url | URLField | URL externa |
+| archivo | FileField | Archivo subido |
+| autor | ForeignKey | Usuario autor |
+| curso | ForeignKey | Curso relacionado (opcional) |
+| descargas | IntegerField | Contador de descargas |
+| calificacion_promedio | DecimalField | Promedio de calificaciones |
+| aprobado | BooleanField | Aprobado por admin |
+| activo | BooleanField | Estado activo |
+
+#### FormularioEstudio
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| titulo | CharField | Nombre del formulario |
+| materia | CharField | Materia asociada |
+| archivo | FileField | Archivo PDF |
+| archivo_url | URLField | URL alternativa |
+| creado_por | ForeignKey | Usuario creador |
+| activo | BooleanField | Estado activo |
+
+#### TutorPerfil
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| creador | OneToOneField | Perfil de creador |
+| activo | BooleanField | Disponible para tutorias |
+| materias | JSONField | Lista de materias |
+| horario | JSONField | Horario disponible |
+| tarifa_hora | DecimalField | Precio por hora |
+
+#### Tutoria
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| estudiante | ForeignKey | Estudiante solicitante |
+| tutor | ForeignKey | Tutor asignado |
+| curso | ForeignKey | Curso relacionado |
+| fecha_hora | DateTimeField | Fecha y hora programada |
+| duracion_minutos | IntegerField | Duracion (30 o 60) |
+| estado | CharField | PENDIENTE, CONFIRMADA, COMPLETADA, CANCELADA |
+| tema | CharField | Tema especifico |
+
+#### Notificacion
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| usuario | ForeignKey | Usuario destinatario |
+| titulo | CharField | Titulo de notificacion |
+| mensaje | TextField | Contenido |
+| tipo | CharField | info, success, warning, alert |
+| leida | BooleanField | Estado de lectura |
+| fecha_creacion | DateTimeField | Fecha de creacion |
+
+#### ProximaActividad
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| estudiante | ForeignKey | Estudiante |
+| curso | ForeignKey | Curso relacionado |
+| titulo | CharField | Titulo de actividad |
+| tipo | CharField | EXAMEN, TAREA, TUTORIA |
+| fecha | DateField | Fecha programada |
+| hora | TimeField | Hora programada |
+| origen | CharField | MANUAL, FECHA_EXAMEN, AUTOMATICO |
+
+#### Logro
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| nombre | CharField | Nombre del logro |
+| descripcion | TextField | Descripcion |
+| icono | CharField | Icono/emoji |
+| puntos_recompensa | IntegerField | Puntos otorgados |
+| condicion_tipo | CharField | Tipo de condicion |
+| condicion_valor | IntegerField | Valor requerido |
+| activo | BooleanField | Estado activo |
+
+---
 
 ## API Endpoints
 
-### Autenticación
-| Método | Endpoint | Descripción | Auth |
+### Autenticacion (/api/auth/)
+
+| Metodo | Endpoint | Descripcion | Auth |
 |--------|----------|-------------|------|
-| POST | `/api/auth/register/` | Registrar usuario | No |
-| POST | `/api/auth/login/` | Iniciar sesión | No |
-| POST | `/api/auth/logout/` | Cerrar sesión | Sí |
-| GET | `/api/auth/profile/` | Ver perfil | Sí |
-| GET | `/api/auth/verificar-rol/` | Verificar rol del usuario | Sí |
+| POST | `/api/auth/register/` | Registrar nuevo usuario | No |
+| POST | `/api/auth/login/` | Iniciar sesion | No |
+| POST | `/api/auth/logout/` | Cerrar sesion | Si |
+| GET | `/api/auth/profile/` | Obtener perfil del usuario | Si |
+| GET | `/api/auth/verificar-rol/` | Verificar rol del usuario | Si |
+| POST | `/api/auth/activate-premium/` | Activar premium (simulado) | Si |
+| POST | `/api/auth/track-time/` | Registrar tiempo de estudio | Si |
+| GET | `/api/auth/admin/users/` | Listar usuarios (admin) | Si |
+| PUT/DELETE | `/api/auth/admin/users/<id>/` | Gestionar usuario (admin) | Si |
 
-### Dashboard
-| Método | Endpoint | Descripción | Auth |
+### Cursos (/api/cursos/)
+
+| Metodo | Endpoint | Descripcion | Auth |
 |--------|----------|-------------|------|
-| GET | `/api/mi-panel/` | Dashboard completo del estudiante | Sí |
-| GET | `/api/mis-cursos/` | Mis cursos inscritos | Sí |
+| GET | `/api/cursos/` | Listar cursos | Si |
+| GET | `/api/cursos/<id>/` | Detalle de curso | Si |
+| GET | `/api/cursos/<id>/modulos/` | Modulos de un curso | Si |
+| POST | `/api/cursos/<id>/inscribirse/` | Inscribirse a curso | Si |
+| POST | `/api/cursos/<id>/desinscribirse/` | Cancelar inscripcion | Si |
+| GET | `/api/cursos/<id>/mi-progreso/` | Progreso en curso | Si |
 
-### Cursos
-| Método | Endpoint | Descripción | Auth |
+### Recursos (/api/recursos/)
+
+| Metodo | Endpoint | Descripcion | Auth |
 |--------|----------|-------------|------|
-| GET | `/api/cursos/` | Listar todos los cursos | Sí |
-| GET | `/api/cursos/{id}/` | Detalle de un curso | Sí |
-| GET | `/api/cursos/{id}/modulos/` | Módulos de un curso | Sí |
-| POST | `/api/cursos/{id}/inscribirse/` | Inscribirse a un curso | Sí |
-| GET | `/api/cursos/{id}/mi_progreso/` | Ver mi progreso en el curso | Sí |
-| GET | `/api/buscar-cursos/` | Buscar y filtrar cursos | Sí |
+| GET | `/api/recursos/` | Listar recursos | Si |
+| GET | `/api/recursos/<id>/` | Detalle de recurso | Si |
+| POST | `/api/recursos/<id>/marcar_completado/` | Marcar recurso completado | Si |
 
-**Parámetros de búsqueda:**
-- `?q=texto` - Búsqueda por texto
-- `?categoria=MATEMATICAS` - Filtrar por categoría
-- `?nivel=BASICO` - Filtrar por nivel
-- `?gratuito=true` - Solo cursos gratuitos
+### Preguntas (/api/preguntas/)
 
-### Recursos
-| Método | Endpoint | Descripción | Auth |
+| Metodo | Endpoint | Descripcion | Auth |
 |--------|----------|-------------|------|
-| GET | `/api/recursos/` | Listar recursos | Sí |
-| GET | `/api/recursos/{id}/` | Detalle de un recurso | Sí |
-| POST | `/api/recursos/{id}/marcar_completado/` | Marcar recurso como completado | Sí |
+| GET | `/api/preguntas/` | Listar preguntas | Si |
+| GET | `/api/preguntas/<id>/` | Detalle de pregunta | Si |
+| GET | `/api/preguntas/por_modulo/?modulo_id=<id>` | Preguntas de un modulo | Si |
+| GET | `/api/preguntas/por_dificultad/?dificultad=<nivel>` | Filtrar por dificultad | Si |
 
-### Preguntas
-| Método | Endpoint | Descripción | Auth |
+### Examenes (/api/examenes/)
+
+| Metodo | Endpoint | Descripcion | Auth |
 |--------|----------|-------------|------|
-| GET | `/api/preguntas/` | Listar preguntas | Sí |
-| GET | `/api/preguntas/por_modulo/?modulo_id=1` | Preguntas por módulo | Sí |
-| GET | `/api/preguntas/por_dificultad/?dificultad=FACIL` | Filtrar por dificultad | Sí |
+| GET | `/api/examenes/` | Listar examenes | Si |
+| GET | `/api/examenes/<id>/` | Detalle de examen | Si |
+| POST | `/api/examenes/<id>/iniciar/` | Iniciar intento de examen | Si |
+| POST | `/api/examenes/<id>/enviar_respuestas/` | Enviar respuestas | Si |
 
-### Exámenes
-| Método | Endpoint | Descripción | Auth |
+### Foro (/api/foro/)
+
+| Metodo | Endpoint | Descripcion | Auth |
 |--------|----------|-------------|------|
-| GET | `/api/examenes/` | Listar exámenes | Sí |
-| GET | `/api/examenes/{id}/` | Detalle de un examen | Sí |
-| POST | `/api/examenes/{id}/iniciar/` | Iniciar examen | Sí |
-| POST | `/api/examenes/{id}/enviar_respuestas/` | Enviar respuestas y calificar | Sí |
+| GET | `/api/foro/` | Listar temas | Si |
+| POST | `/api/foro/` | Crear tema | Si |
+| GET | `/api/foro/<id>/` | Detalle de tema (incrementa vistas) | Si |
+| POST | `/api/foro/<id>/responder/` | Responder a tema | Si |
+| POST | `/api/foro/<id>/marcar_resuelto/` | Marcar como resuelto (autor) | Si |
+| GET | `/api/foro/mis_temas/` | Mis temas creados | Si |
+| GET | `/api/foro/por_curso/?curso_id=<id>` | Temas de un curso | Si |
+| POST | `/api/foro/votar-respuesta/<id>/` | Votar respuesta (UP/DOWN) | Si |
 
-### Progreso y Logros
-| Método | Endpoint | Descripción | Auth |
+### Recursos Comunidad (/api/recursos-comunidad/)
+
+| Metodo | Endpoint | Descripcion | Auth |
 |--------|----------|-------------|------|
-| GET | `/api/mi-progreso/` | Progreso detallado | Sí |
-| GET | `/api/mis-logros/` | Mis logros y badges | Sí |
+| GET | `/api/recursos-comunidad/` | Listar recursos | Si |
+| POST | `/api/recursos-comunidad/` | Crear recurso | Si |
+| GET | `/api/recursos-comunidad/<id>/` | Detalle de recurso | Si |
+| PUT | `/api/recursos-comunidad/<id>/` | Actualizar recurso | Si |
+| DELETE | `/api/recursos-comunidad/<id>/` | Eliminar recurso | Si |
+| POST | `/api/recursos-comunidad/<id>/descargar/` | Registrar descarga | Si |
+| POST | `/api/recursos-comunidad/<id>/calificar/` | Calificar recurso | Si |
+| GET | `/api/recursos-comunidad/mis_recursos/` | Mis recursos | Si |
+| GET | `/api/recursos-comunidad/por_curso/?curso_id=<id>` | Recursos de curso | Si |
+| GET | `/api/recursos-comunidad/buscar/?q=<texto>&tipo=<tipo>` | Buscar recursos | Si |
 
-### Foro
-| Método | Endpoint | Descripción | Auth |
+### Formularios de Estudio (/api/formularios-estudio/)
+
+| Metodo | Endpoint | Descripcion | Auth |
 |--------|----------|-------------|------|
-| GET | `/api/foro/` | Listar temas del foro | Sí |
-| POST | `/api/foro/` | Crear nuevo tema | Sí |
-| GET | `/api/foro/{id}/` | Ver tema con respuestas | Sí |
-| POST | `/api/foro/{id}/responder/` | Responder a un tema | Sí |
-| POST | `/api/foro/{id}/marcar_resuelto/` | Marcar como resuelto | Sí |
-| GET | `/api/foro/mis_temas/` | Mis temas creados | Sí |
-| GET | `/api/foro/por_curso/?curso_id=1` | Temas por curso | Sí |
-| POST | `/api/foro/respuesta/{id}/votar/` | Votar respuesta | Sí |
+| GET | `/api/formularios-estudio/` | Listar formularios PDF | Si |
+| POST | `/api/formularios-estudio/` | Crear formulario (admin) | Si |
+| GET | `/api/formularios-estudio/<id>/` | Detalle de formulario | Si |
+| PUT | `/api/formularios-estudio/<id>/` | Actualizar (admin) | Si |
+| DELETE | `/api/formularios-estudio/<id>/` | Eliminar (admin) | Si |
 
-### Recursos de Comunidad
-| Método | Endpoint | Descripción | Auth |
+### Formularios/Encuestas (/api/formularios/)
+
+| Metodo | Endpoint | Descripcion | Auth |
 |--------|----------|-------------|------|
-| GET | `/api/recursos-comunidad/` | Listar recursos compartidos | Sí |
-| POST | `/api/recursos-comunidad/` | Subir recurso | Sí |
-| GET | `/api/recursos-comunidad/{id}/` | Detalle del recurso | Sí |
-| POST | `/api/recursos-comunidad/{id}/descargar/` | Descargar recurso | Sí |
-| POST | `/api/recursos-comunidad/{id}/calificar/` | Calificar recurso | Sí |
-| GET | `/api/recursos-comunidad/mis_recursos/` | Mis recursos subidos | Sí |
-| GET | `/api/recursos-comunidad/buscar/` | Buscar recursos | Sí |
+| GET | `/api/formularios/` | Listar formularios | Si |
+| POST | `/api/formularios/` | Crear formulario (creador/admin) | Si |
+| GET | `/api/formularios/<id>/` | Detalle con preguntas | Si |
+| POST | `/api/formularios/<id>/responder/` | Responder formulario | Si |
+| GET | `/api/formularios/<id>/resultados/` | Ver resultados (creador) | Si |
+| GET | `/api/formularios/disponibles/` | Formularios para responder | Si |
+| GET | `/api/formularios/mis_formularios/` | Mis formularios creados | Si |
 
-### Formularios
-| Método | Endpoint | Descripción | Auth |
+### Proximas Actividades (/api/proximas-actividades/)
+
+| Metodo | Endpoint | Descripcion | Auth |
 |--------|----------|-------------|------|
-| GET | `/api/formularios/` | Listar formularios | Sí |
-| POST | `/api/formularios/` | Crear formulario | Sí |
-| GET | `/api/formularios/{id}/` | Ver formulario | Sí |
-| POST | `/api/formularios/{id}/responder/` | Responder formulario | Sí |
-| GET | `/api/formularios/{id}/resultados/` | Ver resultados (creador) | Sí |
-| GET | `/api/formularios/disponibles/` | Formularios disponibles | Sí |
-| GET | `/api/formularios/mis_formularios/` | Mis formularios creados | Sí |
+| GET | `/api/proximas-actividades/` | Listar actividades | Si |
+| POST | `/api/proximas-actividades/` | Crear actividad manual | Si |
+| PUT | `/api/proximas-actividades/<id>/` | Actualizar (solo manual) | Si |
+| DELETE | `/api/proximas-actividades/<id>/` | Eliminar (solo manual) | Si |
 
-## Modelos
-App: usuarios
-Usuario (extends AbstractUser)
+### Tutores (/api/tutores/)
 
-Campos adicionales: rol, puntos_gamificacion, nivel, foto_perfil_url, estado
+| Metodo | Endpoint | Descripcion | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/tutores/` | Listar tutores activos | Si |
+| GET | `/api/tutores/<id>/` | Detalle de tutor | Si |
+| GET/PUT | `/api/tutores/me/` | Mi perfil de tutor (creador) | Si |
+| POST | `/api/tutores/agendar/` | Solicitar tutoria (estudiante) | Si |
 
-Estudiante
+### Notificaciones (/api/notificaciones/)
 
-Perfil específico para estudiantes
-Campos: nivel_escolar, id_institucion
+| Metodo | Endpoint | Descripcion | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/notificaciones/` | Listar notificaciones | Si |
+| POST | `/api/notificaciones/leer/` | Marcar como leida | Si |
 
-Creador
+### Dashboard y Utilidades
 
-Perfil específico para creadores de contenido
-Campos: especialidad, calificacion_promedio, ranking_promedio
+| Metodo | Endpoint | Descripcion | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/mi-panel/` | Dashboard del usuario | Si |
+| GET | `/api/mis-cursos/` | Cursos inscritos | Si |
+| GET | `/api/buscar-cursos/?q=<texto>` | Buscar cursos | Si |
+| PUT | `/api/actualizar-fecha-examen/` | Actualizar fecha de examen | Si |
+| GET | `/api/mi-progreso-detallado/` | Progreso detallado | Si |
+| GET | `/api/mis-logros/` | Logros del estudiante | Si |
 
-Administrador
+---
 
-Perfil específico para administradores
-Campos: permiso
+## Autenticacion
 
-App: cursos
-Curso
+El backend utiliza autenticacion basada en Token (Django REST Framework Token Authentication).
 
-Información del curso: titulo, descripcion, categoria, nivel, precio, creador
+### Registro
 
-Módulo
-
-Secciones dentro de un curso
-Campos: titulo, orden, descripcion
-
-Recurso
-
-Contenido de aprendizaje: videos, PDFs, lecturas
-Campos: tipo, contenido_url, duracion_minutos
-
-Pregunta
-
-Banco de preguntas para exámenes
-Campos: texto_pregunta, opciones (A-D), respuesta_correcta, dificultad
-
-Examen
-
-Exámenes y simuladores
-Campos: tipo, duracion_minutos, numero_preguntas
-
-Inscripcion
-
-Relación estudiante-curso
-Campos: progreso_porcentaje, completado
-
-ProgresoRecurso
-
-Tracking de recursos completados
-
-IntentoExamen
-
-Intentos de examen de estudiantes
-Campos: puntaje_obtenido, tiempo_usado, aprobado
-
-Logro
-
-Achievements/badges disponibles
-Campos: nombre, tipo, puntos_recompensa
-
-LogroEstudiante
-
-Logros desbloqueados por estudiante
-Campos: progreso_actual, desbloqueado
-
-TemaForo
-
-Temas del foro
-Campos: titulo, contenido, categoria, resuelto
-
-RespuestaForo
-
-Respuestas en el foro
-Campos: contenido, es_solucion, votos
-
-RecursoComunidad
-
-Recursos compartidos por usuarios
-Campos: titulo, tipo, archivo_url, calificacion_promedio
-
-Formulario
-
-Encuestas y formularios
-Campos: titulo, tipo, anonimo, fecha_cierre
-
-
-## Uso
-
-### Ejemplo: Registrar un estudiante
-```bash
-POST http://127.0.0.1:8000/api/auth/register/
+```http
+POST /api/auth/register/
 Content-Type: application/json
 
 {
-    "username": "estudiante1",
-    "email": "estudiante@example.com",
-    "password": "password123",
-    "password_confirm": "password123",
-    "first_name": "Juan",
-    "last_name": "Pérez",
-    "rol": "ESTUDIANTE",
-    "nivel_escolar": "Universidad",
-    "id_institucion": 1
+    "username": "usuario123",
+    "email": "usuario@ejemplo.com",
+    "password": "contraseña123",
+    "first_name": "Nombre",
+    "last_name": "Apellido",
+    "rol": "ESTUDIANTE"
 }
 ```
 
-### Ejemplo: Login
-```bash
-POST http://127.0.0.1:8000/api/auth/login/
-Content-Type: application/json
-
-{
-    "username": "estudiante1",
-    "password": "password123"
-}
-```
-
-Respuesta:
+Respuesta exitosa (201):
 ```json
 {
-    "token": "a1b2c3d4e5f6...",
+    "token": "abc123...",
     "usuario": {
         "id": 1,
-        "username": "estudiante1",
-        "email": "estudiante@example.com",
+        "username": "usuario123",
+        "email": "usuario@ejemplo.com",
         "rol": "ESTUDIANTE",
         ...
-    }
+    },
+    "message": "Usuario creado exitosamente"
 }
 ```
 
-### Ejemplo: Usar el token en peticiones
-```bash
-GET http://127.0.0.1:8000/api/mi-panel/
-Authorization: Token a1b2c3d4e5f6...
+### Login
+
+```http
+POST /api/auth/login/
+Content-Type: application/json
+
+{
+    "username": "usuario123",
+    "password": "contraseña123"
+}
 ```
 
-### Ejemplo: Inscribirse a un curso
-```bash
-POST http://127.0.0.1:8000/api/cursos/1/inscribirse/
-Authorization: Token a1b2c3d4e5f6...
-```
-
-### Ejemplo: Iniciar examen
-```bash
-POST http://127.0.0.1:8000/api/examenes/1/iniciar/
-Authorization: Token a1b2c3d4e5f6...
-```
-
-Respuesta:
+Respuesta exitosa (200):
 ```json
 {
-    "intento_id": 1,
-    "duracion_minutos": 60,
-    "preguntas": [
-        {
-            "id": 1,
-            "texto_pregunta": "¿Qué es un límite?",
-            "opcion_a": "...",
-            "opcion_b": "...",
-            ...
-        }
-    ]
+    "token": "abc123...",
+    "usuario": {
+        "id": 1,
+        "username": "usuario123",
+        ...
+    },
+    "message": "Login exitoso"
 }
 ```
 
-## Autenticación
-Este proyecto usa Token Authentication de Django REST Framework.
+### Uso del Token
 
-El usuario hace login y recibe un token
-El token se incluye en el header de las peticiones:
+Para endpoints protegidos, incluir el token en el header:
 
-   Authorization: Token <tu-token>
-
-El token es válido hasta que el usuario hace logout
-
-
-## Tipos de Usuario
-Estudiante
-
-Puede inscribirse a cursos
-Ver contenido y recursos
-Realizar exámenes
-Participar en foros
-Descargar recursos de comunidad
-
-Creador
-
-Todo lo de Estudiante +
-Crear cursos
-Crear formularios
-Subir recursos
-
-Administrador
-
-Acceso completo
-Gestión de usuarios
-Aprobación de contenido
-Ver estadísticas globales
-
-
-## Gamificación
-Sistema de Puntos
-
-Iniciar sesión: 5 puntos
-Completar recurso: 10 puntos
-Aprobar examen: 50-100 puntos
-Participar en foro: 15 puntos
-
-Niveles
-
-Nivel 1: 0-100 puntos
-Nivel 2: 101-300 puntos
-Nivel 3: 301-600 puntos
-Nivel 4: 601-1000 puntos
-Nivel 5: 1001+ puntos
-
-Logros
-
- "Bienvenido" - Registrarse
- "Primera semana" - 7 días desde registro
- "Usuario activo" - 10 inicios de sesión
- "Experto" - Completar un curso
- "Perfeccionista" - 100% en un examen
-
-
-## Troubleshooting
-
-### Error: "No module named 'django'"
-```bash
-# Asegúrate de que el entorno virtual esté activado
-venv\Scripts\activate  # Windows
-source venv/bin/activate  # Mac/Linux
-
-# Instala las dependencias
-pip install -r requirements.txt
+```http
+GET /api/cursos/
+Authorization: Token abc123...
 ```
 
-### Error: "no such table: usuario"
+---
+
+## Integracion con Frontend
+
+### URL Base
+
+- Desarrollo: `http://127.0.0.1:8000`
+- Produccion: Configurar segun servidor
+
+### Formato de Peticiones
+
+Todas las peticiones deben incluir:
+
+```http
+Content-Type: application/json
+Authorization: Token <token>  # Para endpoints protegidos
+```
+
+### Formato de Respuestas
+
+Las respuestas siguen el formato JSON estandar:
+
+**Exito:**
+```json
+{
+    "data": { ... },
+    "message": "Operacion exitosa"
+}
+```
+
+**Error:**
+```json
+{
+    "error": "Descripcion del error"
+}
+```
+
+### Codigos de Estado HTTP
+
+| Codigo | Descripcion |
+|--------|-------------|
+| 200 | OK - Peticion exitosa |
+| 201 | Created - Recurso creado |
+| 204 | No Content - Eliminacion exitosa |
+| 400 | Bad Request - Error de validacion |
+| 401 | Unauthorized - Token invalido/faltante |
+| 403 | Forbidden - Sin permisos |
+| 404 | Not Found - Recurso no encontrado |
+| 500 | Internal Server Error - Error del servidor |
+
+### Configuracion CORS
+
+El backend permite peticiones desde `http://localhost:5173` (Vite dev server) por defecto.
+
+Para agregar origenes adicionales, modificar `settings.py`:
+
+```python
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://tu-dominio.com",
+]
+```
+
+### Subida de Archivos
+
+Para endpoints que aceptan archivos (recursos comunidad, formularios):
+
+```http
+POST /api/recursos-comunidad/
+Content-Type: multipart/form-data
+Authorization: Token <token>
+
+{
+    "titulo": "Mi recurso",
+    "descripcion": "Descripcion",
+    "tipo": "DOCUMENTO",
+    "archivo": <file>
+}
+```
+
+---
+
+## Comandos Utiles
+
 ```bash
-# Ejecuta las migraciones
+# Ejecutar servidor de desarrollo
+python manage.py runserver
+
+# Crear migraciones
 python manage.py makemigrations
+
+# Aplicar migraciones
 python manage.py migrate
+
+# Crear superusuario
+python manage.py createsuperuser
+
+# Poblar datos de prueba
+python manage.py poblar_calculo
+python manage.py poblar_comunidad
+
+# Shell de Django
+python manage.py shell
+
+# Ejecutar tests
+python manage.py test
 ```
 
-### Error: CORS
-```bash
-# Verifica que django-cors-headers esté instalado
-pip install django-cors-headers
+---
 
-# Verifica settings.py:
-# - 'corsheaders' en INSTALLED_APPS
-# - 'corsheaders.middleware.CorsMiddleware' en MIDDLEWARE
-# - CORS_ALLOW_ALL_ORIGINS = True (desarrollo)
-```
+## Panel de Administracion
+
+Acceder a `/admin/` con credenciales de superusuario para gestionar:
+
+- Usuarios y perfiles
+- Cursos, modulos y recursos
+- Examenes y preguntas
+- Temas del foro
+- Recursos de comunidad
+- Formularios
+- Logros y gamificacion
+
+---
+
+## Notas para Integracion
+
+1. **Roles de Usuario**: El sistema maneja tres roles (ESTUDIANTE, CREADOR, ADMINISTRADOR). Algunos endpoints estan restringidos por rol.
+
+2. **Progreso**: El progreso se calcula automaticamente al completar recursos y examenes.
+
+3. **Notificaciones**: Se crean automaticamente al solicitar tutorias y otras acciones.
+
+4. **Archivos**: Los archivos subidos se almacenan en `/media/` (configurar almacenamiento en produccion).
+
+5. **Actividades**: Las proximas actividades pueden ser MANUAL (creadas por usuario) o FECHA_EXAMEN (sincronizadas con inscripciones).
+
+6. **Tutorias**: Al crear una tutoria, se envian notificaciones tanto al tutor como al estudiante.

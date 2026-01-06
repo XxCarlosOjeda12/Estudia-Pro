@@ -1,0 +1,18 @@
+[Unit]
+Description=Estudia Pro Django API (Gunicorn)
+After=network.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/estudia-pro/backend
+EnvironmentFile=/home/ubuntu/estudia-pro/backend/.env
+ExecStart=/home/ubuntu/estudia-pro/venv/bin/gunicorn --config /home/ubuntu/estudia-pro/backend/deploy/gunicorn.conf.py estudiapro.wsgi:application
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/home/ubuntu/estudia-pro/logs/gunicorn_stdout.log
+StandardError=append:/home/ubuntu/estudia-pro/logs/gunicorn_stderr.log
+
+[Install]
+WantedBy=multi-user.target

@@ -194,7 +194,7 @@ const LoginPage = ({ onNavigate }) => {
                 type="text"
                 value={identifier}
                 onChange={(event) => setIdentifier(event.target.value)}
-                placeholder="tu.usuario o correo"
+                placeholder="Tu usuario o correo"
                 className="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl focus:ring-2 focus:ring-primary focus:outline-none text-slate-100 placeholder-slate-500 transition-all"
               />
             </div>

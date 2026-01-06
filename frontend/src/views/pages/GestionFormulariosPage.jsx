@@ -3,7 +3,17 @@ import { useAppContext } from '../../context/AppContext.jsx';
 
 const GestionFormulariosPage = ({ formularies, onCreate, onDelete, onUpdate }) => {
   const { pushToast } = useAppContext();
-  const list = useMemo(() => (Array.isArray(formularies) ? formularies : []), [formularies]);
+  const list = useMemo(() => {
+    if (!Array.isArray(formularies)) return [];
+    const seen = new Set();
+    return formularies.filter((item) => {
+      const key = item?.id;
+      if (!key) return true;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [formularies]);
 
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('');
@@ -33,12 +43,12 @@ const GestionFormulariosPage = ({ formularies, onCreate, onDelete, onUpdate }) =
     try {
       if (file) {
         const payload = new FormData();
-        payload.append('titulo', title.trim());
-        payload.append('materia', subject.trim()); // Fixed field name to match model
-        payload.append('archivo', file);
+        payload.append('title', title.trim());
+        payload.append('subject', subject.trim());
+        payload.append('file', file);
         await onCreate(payload);
       } else {
-        await onCreate({ titulo: title.trim(), materia: subject.trim(), archivo_url: url.trim() });
+        await onCreate({ title: title.trim(), subject: subject.trim(), url: url.trim() });
       }
       setTitle('');
       setSubject('');
@@ -67,12 +77,19 @@ const GestionFormulariosPage = ({ formularies, onCreate, onDelete, onUpdate }) =
     setLoading(true);
     try {
       const payload = new FormData();
-      payload.append('titulo', editTitle.trim());
-      payload.append('materia', editSubject.trim());
+      const normalizedUrl = editUrl.trim() || editingForm.url || '';
+
+      payload.append('title', editTitle.trim());
+      payload.append('subject', editSubject.trim());
+
       if (editFile) {
-        payload.append('archivo', editFile);
-      } else if (editUrl.trim() && editUrl !== editingForm.url) {
-        payload.append('archivo_url', editUrl.trim());
+        payload.append('file', editFile);
+      } else if (normalizedUrl) {
+        payload.append('url', normalizedUrl);
+      } else {
+        pushToast({ title: 'Formularios', message: 'Sube un PDF o agrega una URL.', type: 'alert' });
+        setLoading(false);
+        return;
       }
 
       if (onUpdate) {
@@ -165,8 +182,8 @@ const GestionFormulariosPage = ({ formularies, onCreate, onDelete, onUpdate }) =
         </div>
         {list.length ? (
           <div className="space-y-2">
-            {list.map((form) => (
-              <div key={form.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+            {list.map((form, idx) => (
+              <div key={form.id || `form-${idx}`} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
                 <div className="min-w-0">
                   <p className="font-semibold truncate">{form.title}</p>
                   <p className="text-xs text-slate-500 truncate">{form.subject}{form.fileName ? ` • ${form.fileName}` : ''}</p>

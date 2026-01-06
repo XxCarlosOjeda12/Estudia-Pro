@@ -64,6 +64,7 @@ class CursoListSerializer(serializers.ModelSerializer):
         model = Curso
         fields = [
             'id', 'titulo', 'descripcion', 'imagen_portada',
+            'profesor', 'escuela', 'nivel',
             'creador', 'precio', 'es_gratuito', 'fecha_creacion',
             'activo', 'total_modulos'
         ]
@@ -82,6 +83,7 @@ class CursoDetalleSerializer(serializers.ModelSerializer):
         model = Curso
         fields = [
             'id', 'titulo', 'descripcion', 'imagen_portada',
+            'profesor', 'escuela', 'nivel',
             'creador', 'precio', 'es_gratuito', 'fecha_creacion',
             'activo', 'modulos', 'total_estudiantes'
         ]

@@ -1,7 +1,19 @@
+const matchesCreator = (res, user) => {
+  if (!res || !user) return false;
+  const author = (res.author || res.autor || res.autor_nombre || '').toString().toLowerCase();
+  const name = (user.name || '').toString().toLowerCase();
+  const username = (user.username || '').toString().toLowerCase();
+  const email = (user.email || '').toString().toLowerCase();
+  return author === name || author === username || author === email;
+};
+
 const PanelCreator = ({ user, resources, tutoringRequests = [], navigateTo, onDeleteUpcomingActivity }) => {
-  const creatorResources = resources.filter((res) => res.author === user?.name);
+  const creatorResources = resources.filter((res) => matchesCreator(res, user));
   const creatorProfile = user?.raw?.perfil_creador || {};
   const stats = user?.raw?.dashboard || {};
+  const publishedCount = stats.published ?? creatorResources.length;
+  const avgRating = stats.rating ?? creatorProfile.calificacion_promedio ?? '—';
+  const studentsHelped = stats.studentsHelped ?? creatorProfile.num_resenas ?? 0;
 
   return (
     <div className="page active space-y-8">
@@ -12,15 +24,15 @@ const PanelCreator = ({ user, resources, tutoringRequests = [], navigateTo, onDe
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="glass-effect-light p-5 rounded-2xl text-center">
           <p className="text-xs uppercase text-slate-500 tracking-widest">Recursos Publicados</p>
-          <p className="text-4xl font-bold text-primary mt-2">{stats.published ?? creatorResources.length}</p>
+          <p className="text-4xl font-bold text-primary mt-2">{publishedCount}</p>
         </div>
         <div className="glass-effect-light p-5 rounded-2xl text-center">
           <p className="text-xs uppercase text-slate-500 tracking-widest">Rating Promedio</p>
-          <p className="text-4xl font-bold text-primary mt-2">{stats.rating ?? creatorProfile.calificacion_promedio ?? '—'}</p>
+          <p className="text-4xl font-bold text-primary mt-2">{avgRating || '—'}</p>
         </div>
         <div className="glass-effect-light p-5 rounded-2xl text-center">
           <p className="text-xs uppercase text-slate-500 tracking-widest">Estudiantes Ayudados</p>
-          <p className="text-4xl font-bold text-primary mt-2">{stats.studentsHelped ?? creatorProfile.num_resenas ?? 0}</p>
+          <p className="text-4xl font-bold text-primary mt-2">{studentsHelped}</p>
         </div>
       </div>
 
@@ -37,7 +49,7 @@ const PanelCreator = ({ user, resources, tutoringRequests = [], navigateTo, onDe
               {creatorResources.slice(0, 4).map((res) => (
                 <li key={res.id} className="flex items-center justify-between text-sm">
                   <span>{res.title}</span>
-                  <span className="text-slate-400">{res.sales || res.downloads || 0} ventas</span>
+                  <span className="text-slate-400">{res.sales || res.downloads || res.descargas || 0} ventas</span>
                 </li>
               ))}
             </ul>

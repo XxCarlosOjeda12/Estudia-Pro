@@ -5,11 +5,10 @@ import 'mathlive';
 
 import MathRenderer from '../../components/MathRenderer.jsx';
 
-// Wrapper for the MathLive web component
+// Wrapper for the MathLive web component (for open-ended questions)
 const MathInput = ({ value, onChange }) => {
   const mfRef = useRef(null);
 
-  // Sync value from props to the web component
   useEffect(() => {
     if (mfRef.current && mfRef.current.value !== value) {
       mfRef.current.setValue(value);
@@ -18,12 +17,10 @@ const MathInput = ({ value, onChange }) => {
 
   const onChangeRef = useRef(onChange);
 
-  // Keep ref updated with the latest onChange handler
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
 
-  // Handle changes from the web component
   useEffect(() => {
     const mf = mfRef.current;
     if (!mf) return;
@@ -37,12 +34,11 @@ const MathInput = ({ value, onChange }) => {
     mf.addEventListener('input', handleInput);
     return () => {
       mf.removeEventListener('input', handleInput);
-      // Hide the virtual keyboard ONLY when the component truly unmounts
       if (window.mathVirtualKeyboard) {
         window.mathVirtualKeyboard.hide();
       }
     };
-  }, []); // Empty dependency array ensures this runs only on mount/unmount
+  }, []);
 
   return (
     <math-field
@@ -65,13 +61,21 @@ const MathInput = ({ value, onChange }) => {
 
 const ExamenPage = ({ exam, onFinish }) => {
   const { pushToast } = useAppContext();
-  const [timeLeft, setTimeLeft] = useState(exam?.duration || 0);
+  const [timeLeft, setTimeLeft] = useState(() => exam?.duration || 0);
   const [answers, setAnswers] = useState({});
   const [paused, setPaused] = useState(false);
   const [checked, setChecked] = useState({});
+  const [showExplanation, setShowExplanation] = useState({});
+  const examDurationRef = useRef(exam?.duration);
 
-  useEffect(() => {
+  // Reiniciar tiempo si cambia el examen
+  if (exam?.duration !== examDurationRef.current) {
+    examDurationRef.current = exam?.duration;
     setTimeLeft(exam?.duration || 0);
+  }
+
+  // Timer del examen
+  useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (paused) return prev;
@@ -79,23 +83,77 @@ const ExamenPage = ({ exam, onFinish }) => {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [exam, paused]);
+  }, [paused]);
 
-  const renderQuestion = (text) => {
-    if (!text) return '';
-    // Pre-process common latex patterns that might be missing delimiters
-    // If text contains \begin but no $, wrap it.
-    let processed = text.replace(/\\/g, '\\');
+  // Detectar si la pregunta es de opción múltiple
+  const isMultipleChoice = (question) => {
+    return question.options && Array.isArray(question.options) && question.options.length > 0;
+  };
 
-    // Quick fix for "undelimited" latex like the user showed:
-    // "Calcula ... matriz \begin{vmatrix}..."
-    // We want to ensure specific environments are treated as math mode if not already.
-    // However, the MathRenderer auto-render might handle it if we configure it right,
-    // OR we just assume the API sends valid strings.
-    // For now, let's trust the current text but ensure newlines are handled if needed,
-    // though MathRenderer textContent handles text nodes.
+  // Construir query para Wolfram Alpha
+  const buildWolframQuery = (question) => {
+    // Usar wolframQuery si existe, sino usar el texto de la pregunta
+    let query = question.wolframQuery || question.text || '';
+    
+    // Limpiar LaTeX para Wolfram
+    query = query
+      .replace(/\$\$/g, '')
+      .replace(/\$/g, '')
+      .replace(/\\,/g, ' ')
+      .replace(/\\to/gi, '->')
+      .replace(/\\rightarrow/gi, '->')
+      .replace(/\\pi/gi, 'pi')
+      .replace(/\\infty/gi, 'infinity')
+      .replace(/\\frac\s*\{([^}]*)\}\s*\{([^}]*)\}/gi, '($1)/($2)')
+      .replace(/\\sqrt\s*\{([^}]*)\}/gi, 'sqrt($1)')
+      .replace(/\\sin/gi, 'sin')
+      .replace(/\\cos/gi, 'cos')
+      .replace(/\\tan/gi, 'tan')
+      .replace(/\\ln/gi, 'ln')
+      .replace(/\\log/gi, 'log')
+      .replace(/\\lim_\{([^}]*)\}/gi, 'limit as $1 of')
+      .replace(/\\int/gi, 'integral of')
+      .replace(/\\sum/gi, 'sum of')
+      .replace(/\\cdot/gi, '*')
+      .replace(/\\times/gi, '*')
+      .replace(/\\div/gi, '/')
+      .replace(/\\pm/gi, '+-')
+      .replace(/\\leq/gi, '<=')
+      .replace(/\\geq/gi, '>=')
+      .replace(/\\neq/gi, '!=')
+      .replace(/\\left/gi, '')
+      .replace(/\\right/gi, '')
+      .replace(/[{}]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
 
-    return processed;
+    // Añadir contexto según el tipo de problema
+    const lowerText = (question.text || '').toLowerCase();
+    if (lowerText.includes('derivada') || lowerText.includes('derivative')) {
+      if (!query.toLowerCase().includes('derivative')) {
+        query = `derivative of ${query}`;
+      }
+    } else if (lowerText.includes('integral')) {
+      if (!query.toLowerCase().includes('integral')) {
+        query = `integrate ${query}`;
+      }
+    } else if (lowerText.includes('límite') || lowerText.includes('limit')) {
+      if (!query.toLowerCase().includes('limit')) {
+        query = `limit ${query}`;
+      }
+    }
+
+    return query;
+  };
+
+  const openWolfram = (question) => {
+    const query = buildWolframQuery(question);
+    if (!query) {
+      pushToast({ title: 'Wolfram', message: 'No hay información para buscar.', type: 'info' });
+      return;
+    }
+    const url = `https://www.wolframalpha.com/input?i=${encodeURIComponent(query)}`;
+    window.open(url, '_blank');
   };
 
   if (!exam) return <div className="page active"><p>No hay examen disponible.</p></div>;
@@ -115,25 +173,36 @@ const ExamenPage = ({ exam, onFinish }) => {
   };
 
   const checkQuestion = (question) => {
-    // Normalization for comparison (basic)
-    const given = (answers[question.id] || '').replace(/\s+/g, '').toLowerCase();
-    const expected = (question.answer || '').replace(/\s+/g, '').toLowerCase();
+    const userAnswer = answers[question.id];
+    
+    if (!userAnswer) {
+      pushToast({ title: 'Revisión', message: 'Selecciona o escribe una respuesta primero.', type: 'info' });
+      return;
+    }
 
-    // In a real app with MathLive, you might want to compare semantic Latex, but string compare is a start
-    const ok = given && expected && given === expected;
+    let isCorrect = false;
+    const correctAnswer = (question.answer || question.respuesta_correcta || '').toUpperCase().trim();
 
-    setChecked((prev) => ({ ...prev, [question.id]: ok ? 'correct' : 'wrong' }));
+    if (isMultipleChoice(question)) {
+      // Para opción múltiple, comparar letra seleccionada
+      isCorrect = userAnswer.toUpperCase() === correctAnswer;
+    } else {
+      // Para respuesta abierta, comparar texto (normalizado)
+      const normalizedUser = userAnswer.replace(/\s+/g, '').toLowerCase();
+      const normalizedCorrect = correctAnswer.replace(/\s+/g, '').toLowerCase();
+      isCorrect = normalizedUser === normalizedCorrect;
+    }
+
+    setChecked((prev) => ({ ...prev, [question.id]: isCorrect ? 'correct' : 'wrong' }));
+    setShowExplanation((prev) => ({ ...prev, [question.id]: true }));
+    
     pushToast({
       title: 'Revisión',
-      message: ok ? 'Respuesta correcta.' : 'Respuesta incorrecta, revisa la solución.',
-      type: ok ? 'success' : 'alert'
+      message: isCorrect 
+        ? '¡Respuesta correcta!' 
+        : `Incorrecto. La respuesta correcta es: ${correctAnswer}`,
+      type: isCorrect ? 'success' : 'alert'
     });
-  };
-
-  const openWolfram = (query) => {
-    if (!query) return;
-    const url = `https://www.wolframalpha.com/input?i=${encodeURIComponent(query)}`;
-    window.open(url, '_blank');
   };
 
   const handleExit = () => {
@@ -147,6 +216,8 @@ const ExamenPage = ({ exam, onFinish }) => {
     }
     onFinish?.();
   };
+
+  const optionLabels = ['A', 'B', 'C', 'D'];
 
   return (
     <div className="page active space-y-6">
@@ -167,66 +238,125 @@ const ExamenPage = ({ exam, onFinish }) => {
           </div>
         </div>
       </div>
+      
       <div>
-        <h1 className="text-3xl font-bold">{exam.title}</h1>
+        <h1 className="text-3xl font-bold">{exam.title || 'Simulador'}</h1>
         <p className="text-slate-500 dark:text-slate-400">Resuelve los ejercicios en el tiempo establecido.</p>
       </div>
+
       <div className="space-y-4">
-        {(exam.questions || []).map((question, index) => (
-          <div key={question.id} className="glass-effect-light p-6 rounded-2xl space-y-3">
-            <p className="font-semibold flex items-center gap-2">
-              Pregunta {index + 1}/{exam.questions.length}
-              {checked[question.id] && (
-                <span className={`text-xs px-2 py-1 rounded-full ${checked[question.id] === 'correct' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                  {checked[question.id] === 'correct' ? 'Correcta' : 'Incorrecta'}
-                </span>
-              )}
-            </p>
-
-            {/* Question Text with Math Rendering */}
-            <div className="text-lg">
-              <MathRenderer text={renderQuestion(question.text)} />
-            </div>
-
-            {/* MathLive Input Replacement */}
-            <div className="my-4">
-              <MathInput
-                value={answers[question.id] || ''}
-                onChange={(val) => setAnswers((prev) => ({ ...prev, [question.id]: val }))}
-              />
-              <p className="text-xs text-slate-400 mt-2">
-                Usa el teclado virtual para escribir fórmulas matemáticas (integrales, raíces, fracciones).
+        {(exam.questions || []).map((question, index) => {
+          const hasOptions = isMultipleChoice(question);
+          const isChecked = checked[question.id];
+          const correctAnswer = (question.answer || '').toUpperCase();
+          
+          return (
+            <div key={question.id} className="glass-effect-light p-6 rounded-2xl space-y-4">
+              <p className="font-semibold flex items-center gap-2">
+                Pregunta {index + 1}/{exam.questions.length}
+                {isChecked && (
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    isChecked === 'correct' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                  }`}>
+                    {isChecked === 'correct' ? 'Correcta' : 'Incorrecta'}
+                  </span>
+                )}
               </p>
-            </div>
 
-            <div className="flex justify-end">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  className="text-xs text-slate-400 hover:text-primary"
-                  onClick={() => checkQuestion(question)}
-                >
-                  Revisar
-                </button>
-                <button
-                  type="button"
-                  className="text-xs text-slate-400 hover:text-primary"
-                  onClick={() => openWolfram(question.wolframQuery)}
-                >
-                  Ver solución en Wolfram
-                </button>
+              {/* Texto de la pregunta */}
+              <div className="text-lg">
+                <MathRenderer text={question.text || question.texto_pregunta || ''} />
+              </div>
+
+              {/* Opciones múltiples o Input libre */}
+              {hasOptions ? (
+                <div className="space-y-2">
+                  {question.options.map((option, optIdx) => {
+                    const label = optionLabels[optIdx];
+                    const isSelected = answers[question.id] === label;
+                    const isCorrectOption = showExplanation[question.id] && label === correctAnswer;
+                    const isWrongSelected = showExplanation[question.id] && isSelected && label !== correctAnswer;
+                    
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => !showExplanation[question.id] && setAnswers(prev => ({ ...prev, [question.id]: label }))}
+                        disabled={showExplanation[question.id]}
+                        className={`w-full p-3 rounded-xl text-left transition-all flex items-center gap-3 ${
+                          isCorrectOption ? 'bg-green-500/30 border-2 border-green-500' :
+                          isWrongSelected ? 'bg-red-500/30 border-2 border-red-500' :
+                          isSelected ? 'bg-primary/30 border-2 border-primary' :
+                          'bg-white/50 dark:bg-slate-800/50 border border-light-border dark:border-dark-border hover:bg-primary/10'
+                        }`}
+                      >
+                        <span className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm ${
+                          isCorrectOption ? 'bg-green-500 text-white' :
+                          isWrongSelected ? 'bg-red-500 text-white' :
+                          isSelected ? 'bg-primary text-white' :
+                          'bg-slate-200 dark:bg-slate-700'
+                        }`}>
+                          {label}
+                        </span>
+                        <span className="flex-1">
+                          <MathRenderer text={option} />
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="my-4">
+                  <MathInput
+                    value={answers[question.id] || ''}
+                    onChange={(val) => setAnswers((prev) => ({ ...prev, [question.id]: val }))}
+                  />
+                  <p className="text-xs text-slate-400 mt-2">
+                    Usa el teclado virtual para escribir fórmulas matemáticas (integrales, raíces, fracciones).
+                  </p>
+                </div>
+              )}
+
+              {/* Explicación */}
+              {showExplanation[question.id] && question.explanation && (
+                <div className="p-4 bg-blue-500/10 rounded-xl border border-blue-500/30">
+                  <p className="text-sm font-medium text-blue-400 mb-2">Explicación:</p>
+                  <MathRenderer text={question.explanation || question.explicacion || ''} />
+                </div>
+              )}
+
+              {/* Botones de acción */}
+              <div className="flex justify-end">
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    className="text-sm text-slate-400 hover:text-primary transition-colors"
+                    onClick={() => checkQuestion(question)}
+                  >
+                    Revisar
+                  </button>
+                  <button
+                    type="button"
+                    className="text-sm text-slate-400 hover:text-primary transition-colors"
+                    onClick={() => openWolfram(question)}
+                  >
+                    Ver solución en Wolfram
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
       <div className="text-center">
-        <button className="py-3 px-8 bg-secondary/80 hover:bg-secondary text-white font-bold rounded-lg transition" onClick={handleFinish}>
+        <button 
+          className="py-3 px-8 bg-secondary/80 hover:bg-secondary text-white font-bold rounded-lg transition" 
+          onClick={handleFinish}
+        >
           Terminar y Calificar Examen
         </button>
       </div>
-
-      {/* Manual keyboard removed - MathLive handles its own virtual keyboard */}
     </div>
   );
 };

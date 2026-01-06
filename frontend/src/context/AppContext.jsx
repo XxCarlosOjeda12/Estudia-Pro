@@ -70,14 +70,14 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const refreshNotifications = async () => {
+  const refreshNotifications = useCallback(async () => {
     try {
       const list = await apiService.getUserNotifications();
       setNotifications(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error('notifications error', error);
     }
-  };
+  }, []);
 
   const loadCollection = async (key, loader) => {
     if (cache[key] && cache[key].length) return cache[key];

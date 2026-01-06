@@ -7,7 +7,7 @@ import NotificationStack from './components/NotificationStack.jsx';
 
 const App = () => {
   const { user, token, loadProfile } = useAppContext();
-  const [authView, setAuthView] = useState('login'); // 'login' or 'register'
+  const [authView, setAuthView] = useState('login');  
 
   useEffect(() => {
     if (token && !user) {

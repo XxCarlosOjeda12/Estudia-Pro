@@ -2,6 +2,11 @@ import { useMemo, useState, useEffect } from 'react';
 import { apiService } from '../../lib/api';
 
 const normalize = (value) => (value || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const LEVEL_LABELS = {
+  BASICO: 'Básico',
+  INTERMEDIO: 'Intermedio',
+  AVANZADO: 'Avanzado'
+};
 
 const ExplorePage = ({ subjects, onAddSubject }) => {
   const [search, setSearch] = useState('');
@@ -60,14 +65,20 @@ const ExplorePage = ({ subjects, onAddSubject }) => {
         {results.map((subject) => (
           <div key={subject.id} className="glass-effect-light p-6 rounded-2xl border border-slate-200 dark:border-white/10 text-slate-900 dark:text-slate-100 transition-colors">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold bg-primary/15 text-primary py-1 px-2 rounded-full">{subject.level || 'General'}</span>
+              <span className="text-xs font-semibold bg-primary/15 text-primary py-1 px-2 rounded-full">
+                {LEVEL_LABELS[(subject.level || '').toString().toUpperCase()] || subject.level || 'General'}
+              </span>
               <span className="text-xs text-slate-500">{subject.school || 'ESCOM'}</span>
             </div>
             <h3 className="text-xl font-bold mb-2">{subject.title}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{subject.professor || 'Profesor'}</p>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">{subject.description}</p>
             <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1 mb-4">
               {(subject.temario || []).slice(0, 3).map((item) => (
-                <li key={item.title}>• {item.title}</li>
+                <li key={item.title}>
+                  • {item.title}
+                  {item.description ? <span className="text-slate-400"> — {item.description}</span> : null}
+                </li>
               ))}
             </ul>
             <button

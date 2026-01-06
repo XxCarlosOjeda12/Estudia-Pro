@@ -41,6 +41,7 @@ const DashboardShell = () => {
   const [darkMode, setDarkMode] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
   const refreshAllTimer = useRef(null);
+  const refreshFailures = useRef(0);
 
   const handleMarkRead = async (id) => {
     await apiService.markNotificationAsRead(id);
@@ -57,6 +58,11 @@ const DashboardShell = () => {
     await apiService.deleteAllNotifications();
     await refreshNotifications();
   };
+
+  const reloadExams = useCallback(async () => {
+    const freshExams = await apiService.getAllExams();
+    setExams(Array.isArray(freshExams) ? freshExams : []);
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -147,8 +153,25 @@ const DashboardShell = () => {
       ...communityResourcesData.map((res) => normalizeResource(res, 'community'))
     ];
 
+    // If creador, garantiza que sus recursos propios estén incluidos
+    let mergedResources = allResources;
+    if (user?.role === 'creador') {
+      try {
+        const myCommunity = await apiService.getMyCommunityResources();
+        const normalizedMine = (myCommunity || []).map((res) => normalizeResource(res, 'community'));
+        const existingIds = new Set(mergedResources.map((r) => r.id));
+        normalizedMine.forEach((item) => {
+          if (!existingIds.has(item.id)) {
+            mergedResources.push(item);
+          }
+        });
+      } catch (err) {
+        console.warn('No se pudieron cargar recursos del creador:', err);
+      }
+    }
+
     setSubjects(subjectsData);
-    setResources(allResources);
+    setResources(mergedResources);
     setExams(examsData);
     setForums(forumsData);
     setFormularies(formulariesData);
@@ -156,14 +179,22 @@ const DashboardShell = () => {
     setTutoringRequests(dashboardData?.tutoring || []);
 
     if (user?.role === 'estudiante') {
-      const [studentSubjects, purchased, upcoming] = await Promise.all([
-        apiService.getUserSubjects(),
-        apiService.getPurchasedResources(),
-        apiService.getUpcomingActivities()
-      ]);
-      setUserSubjects(studentSubjects);
-      setPurchasedResources(purchased);
-      setUpcomingActivities(upcoming);
+      try {
+        const [studentSubjects, purchased, upcoming] = await Promise.all([
+          apiService.getUserSubjects(),
+          apiService.getPurchasedResources(),
+          apiService.getUpcomingActivities()
+        ]);
+        setUserSubjects(studentSubjects);
+        setPurchasedResources(purchased);
+        setUpcomingActivities(upcoming);
+      } catch (error) {
+        console.error('Student bootstrap data error:', error);
+        const studentSubjects = await apiService.getUserSubjects().catch(() => []);
+        setUserSubjects(Array.isArray(studentSubjects) ? studentSubjects : []);
+        setPurchasedResources([]);
+        setUpcomingActivities([]);
+      }
     } else {
       setUserSubjects([]);
       setPurchasedResources([]);
@@ -195,32 +226,10 @@ const DashboardShell = () => {
   useEffect(() => {
     if (demoEnabled) return;
     if (!user) return;
-
-    let cancelled = false;
-    let inFlight = false;
-
-    const tick = async () => {
-      if (cancelled || inFlight) return;
-      inFlight = true;
-      try {
-        await refreshAllData();
-      } catch (error) {
-        console.error('Real-time refresh error:', error);
-      } finally {
-        inFlight = false;
-      }
-    };
-
-    const interval = setInterval(tick, 7000);
-    const handleFocus = () => scheduleRefreshAll();
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [demoEnabled, user, refreshAllData, scheduleRefreshAll]);
+    // Desactivamos polling en tiempo real para evitar loops/reintentos constantes
+    // Los datos se cargan en bootstrap y por acciones explícitas.
+    return undefined;
+  }, [demoEnabled, user]);
 
   useEffect(() => {
     if (!demoEnabled) return;
@@ -328,13 +337,23 @@ const DashboardShell = () => {
   };
 
   const handleAddSubject = async (subjectId) => {
+    if (userSubjects.some((s) => s.id === subjectId)) {
+      pushToast({ title: 'Materias', message: 'Ya estás inscrito en esta materia.', type: 'info' });
+      return;
+    }
     try {
       await apiService.addSubject(subjectId);
       const studentSubjects = await apiService.getUserSubjects();
       setUserSubjects(studentSubjects);
       pushToast({ title: 'Materias', message: 'Se añadió la materia.', type: 'success' });
-    } catch {
-      pushToast({ title: 'Materias', message: 'No se pudo añadir la materia.', type: 'alert' });
+    } catch (error) {
+      if ((error?.message || '').toLowerCase().includes('ya estás inscrito')) {
+        const studentSubjects = await apiService.getUserSubjects().catch(() => []);
+        setUserSubjects(Array.isArray(studentSubjects) ? studentSubjects : []);
+        pushToast({ title: 'Materias', message: 'Ya estabas inscrito en esta materia.', type: 'info' });
+      } else {
+        pushToast({ title: 'Materias', message: error?.message || 'No se pudo añadir la materia.', type: 'alert' });
+      }
     }
   };
 
@@ -376,6 +395,13 @@ const DashboardShell = () => {
 
   const handleDeleteUpcomingActivity = async (activityId) => {
     try {
+      if (typeof activityId === 'string' && activityId.startsWith('tut-')) {
+        const realId = activityId.replace('tut-', '');
+        setTutoringRequests((prev) => prev.filter((item) => item.id?.toString() !== realId.toString()));
+        await apiService.deleteTutoringRequest(realId);
+        pushToast({ title: 'Tutorias', message: 'Solicitud eliminada.', type: 'success' });
+        return;
+      }
       await apiService.deleteUpcomingActivity(activityId);
       await refreshUpcomingActivities();
       pushToast({ title: 'Actividades', message: 'Actividad eliminada.', type: 'success' });
@@ -430,10 +456,15 @@ const DashboardShell = () => {
 
   const handleCreateSubject = async (payload) => {
     const response = await apiService.createSubject(payload);
-    if (response?.subject) {
-      setSubjects((prev) => [...prev, response.subject]);
+    const created = response?.subject || response?.course || null;
+    if (created) {
+      setSubjects((prev) => [...prev, created]);
       pushToast({ title: 'Materias', message: 'Materia agregada.', type: 'success' });
+      alert('Materia creada exitosamente');
+      return created;
     }
+    pushToast({ title: 'Materias', message: response?.message || 'No se pudo crear la materia.', type: 'alert' });
+    return null;
   };
 
   const handleDeleteSubject = async (subjectId) => {
@@ -444,18 +475,28 @@ const DashboardShell = () => {
 
   const handleUpdateSubject = async (subjectId, payload) => {
     const response = await apiService.updateSubject(subjectId, payload);
-    if (response?.success) {
-      setSubjects((prev) => prev.map((s) => (s.id === subjectId ? { ...s, ...response.subject } : s)));
+    const updated = response?.subject || response?.course || null;
+    if (updated) {
+      setSubjects((prev) => prev.map((s) => (s.id === subjectId ? { ...s, ...updated } : s)));
       pushToast({ title: 'Materias', message: 'Materia actualizada.', type: 'success' });
-    } else {
-      pushToast({ title: 'Materias', message: 'No se pudo actualizar.', type: 'alert' });
+      return updated;
     }
+    pushToast({ title: 'Materias', message: response?.message || 'No se pudo actualizar.', type: 'alert' });
+    return null;
   };
 
   const handleUpdateUser = async (userId, payload) => {
-    await apiService.manageUser(userId, 'update', payload);
-    setAdminUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, ...payload } : u)));
-    pushToast({ title: 'Usuarios', message: 'Usuario actualizado.', type: 'success' });
+    try {
+      const response = await apiService.manageUser(userId, 'update', payload);
+      setAdminUsers((prev) => prev.map((u) => {
+        if (u.id !== userId) return u;
+        const updated = response?.user ? { ...u, ...response.user } : { ...u, ...payload };
+        return updated;
+      }));
+      pushToast({ title: 'Usuarios', message: 'Usuario actualizado.', type: 'success' });
+    } catch (error) {
+      pushToast({ title: 'Usuarios', message: error?.message || 'No se pudo actualizar.', type: 'alert' });
+    }
   };
 
   const handleCreateFormulary = async (payload) => {
@@ -561,7 +602,7 @@ const DashboardShell = () => {
           return <PanelCreator resources={resources} user={user} tutoringRequests={tutoringRequests} navigateTo={navigateTo} onDeleteUpcomingActivity={handleDeleteUpcomingActivity} />;
         }
         if (user?.role === 'administrador') {
-          return <PanelAdmin user={user} subjects={subjects} resources={resources} users={adminUsers} navigateTo={navigateTo} />;
+          return <PanelAdmin user={user} subjects={subjects} resources={resources} users={adminUsers} navigateTo={navigateTo} onExamsUpdated={reloadExams} />;
         }
         return (
           <PanelStudent
@@ -623,7 +664,6 @@ const DashboardShell = () => {
           <SimuladorPage
             subject={currentSubject}
             exams={exams}
-            onStartExam={(ctx) => navigateTo('examen', ctx)}
             onBack={() => navigateTo('materia', { subjectId: currentSubject?.id })}
           />
         );

@@ -1,4 +1,32 @@
-const PanelAdmin = ({ user, subjects, resources, users, navigateTo }) => {
+import { useMemo, useState } from 'react';
+import ExamGeneratorModal from '../../components/ExamGeneratorModal.jsx';
+import { apiService } from '../../lib/api';
+import { useAppContext } from '../../context/AppContext.jsx';
+
+const PanelAdmin = ({ user, subjects, resources, users, navigateTo, onExamsUpdated }) => {
+  const { pushToast } = useAppContext();
+  const [showExamModal, setShowExamModal] = useState(false);
+  const [loadingExam, setLoadingExam] = useState(false);
+
+  const calculusSubjects = useMemo(
+    () => subjects.filter((s) => /c[aá]lculo/i.test(s.title || s.nombre || '')),
+    [subjects]
+  );
+
+  const handleGenerateExam = async (payload) => {
+    setLoadingExam(true);
+    try {
+      await apiService.generateSimulatorExam(payload);
+      pushToast({ title: 'Exámenes', message: 'Simulador generado.', type: 'success' });
+      setShowExamModal(false);
+      if (onExamsUpdated) await onExamsUpdated();
+    } catch (error) {
+      pushToast({ title: 'Exámenes', message: error?.message || 'No se pudo generar.', type: 'alert' });
+    } finally {
+      setLoadingExam(false);
+    }
+  };
+
   return (
     <div className="page active space-y-8">
       <div>
@@ -53,6 +81,14 @@ const PanelAdmin = ({ user, subjects, resources, users, navigateTo }) => {
               </li>
             ))}
           </ul>
+          {calculusSubjects.length > 0 && (
+            <button
+              className="mt-4 w-full py-2.5 text-sm font-semibold rounded-xl bg-primary text-white hover:bg-primary-dark transition-colors"
+              onClick={() => setShowExamModal(true)}
+            >
+              Generar simulador de Cálculo
+            </button>
+          )}
         </div>
         <div className="glass-effect-light p-6 rounded-2xl">
           <div className="flex items-center justify-between mb-4">
@@ -71,6 +107,14 @@ const PanelAdmin = ({ user, subjects, resources, users, navigateTo }) => {
           </ul>
         </div>
       </div>
+
+      <ExamGeneratorModal
+        open={showExamModal}
+        onClose={() => setShowExamModal(false)}
+        subjects={calculusSubjects}
+        onGenerate={handleGenerateExam}
+        loading={loadingExam}
+      />
     </div>
   );
 };

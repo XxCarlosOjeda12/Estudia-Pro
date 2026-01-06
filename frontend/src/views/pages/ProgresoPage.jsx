@@ -59,6 +59,7 @@ const ProgresoPage = () => {
   const stats = data?.estadisticas || {};
   const totalExamAttempts = subjects.reduce((sum, subject) => sum + (Number(subject.total_examenes) || 0), 0);
   const subjectsWithExams = subjects.filter((subject) => (Number(subject.total_examenes) || 0) > 0);
+  const attempts = data?.intentos_historial || [];
 
   // Calculate average from stats
   const average = stats.cursos_completados !== undefined ?
@@ -162,7 +163,45 @@ const ProgresoPage = () => {
             <div className="text-2xl font-bold text-primary">{Number(stats.tiempo_total_horas || 0).toFixed(1)}h</div>
             <p className="text-sm text-slate-500 dark:text-slate-400">Horas estudiadas</p>
           </div>
+          <div className="md:col-span-3 flex justify-center gap-6 text-sm text-slate-500 dark:text-slate-400">
+            <span>Intentos de examen: <strong className="text-primary">{stats.total_intentos || attempts.length}</strong></span>
+          </div>
         </div>
+      </div>
+
+      <div className="glass-effect-light p-6 rounded-2xl space-y-4 dark:border-white/5 border border-slate-200">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold">Historial de exámenes</h3>
+          <span className="text-sm text-slate-500 dark:text-slate-400">Intentos: {stats.total_intentos || attempts.length}</span>
+        </div>
+        {attempts.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-slate-500 dark:text-slate-400">
+                <tr>
+                  <th className="py-2">Curso</th>
+                  <th className="py-2">Examen</th>
+                  <th className="py-2">Puntaje</th>
+                  <th className="py-2">Fecha</th>
+                  <th className="py-2">Duración (min)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200/50 dark:divide-white/10">
+                {attempts.map((att, idx) => (
+                  <tr key={`${att.curso}-${att.examen}-${idx}`} className="text-slate-700 dark:text-slate-200">
+                    <td className="py-2">{att.curso}</td>
+                    <td className="py-2">{att.examen}</td>
+                    <td className="py-2 font-semibold">{att.puntaje}%</td>
+                    <td className="py-2">{new Date(att.fecha).toLocaleDateString()}</td>
+                    <td className="py-2">{att.duracion_minutos}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Aún no tienes intentos registrados.</p>
+        )}
       </div>
     </div>
   );

@@ -31,12 +31,17 @@ export const API_CONFIG = {
     EXAMS: {
       GET_ALL: '/examenes/',
       START_EXAM: '/examenes/iniciar/',
-      SUBMIT_EXAM: '/examenes/enviar/'
+      SUBMIT_EXAM: '/examenes/enviar_respuestas/',
+      GENERATE: '/examenes/generar/',
+      TEMPLATES: '/examenes/plantillas/'
     },
     TUTORS: {
       GET_ALL: '/tutores/',
       ME: '/tutores/me/',
       SCHEDULE: '/tutores/agendar/'
+    },
+    TUTORING: {
+      REQUESTS: '/tutores/solicitudes/'
     },
     FORUMS: {
       GET_ALL: '/foro/',
@@ -116,26 +121,41 @@ export const HARDCODED_DATA = {
       'Integrales con cambio de variable'
     ]
   },
-  subjectsCatalog: [
+    subjectsCatalog: [
     {
       id: 'calc-1',
-      title: 'Cálculo Diferencial',
-      description: 'Domina límites, derivadas y aplicaciones esenciales para ingeniería.',
-      professor: 'Dra. Sofía Reyes',
+      title: 'C?lculo Diferencial',
+      description: 'Domina l?mites, derivadas y aplicaciones esenciales para ingenier?a.',
+      professor: 'Dra. Sof?a Reyes',
       school: 'ESCOM',
       progress: 68,
       level: 'Intermedio',
       temario: [
-        { title: 'Límites y continuidad' },
+        { title: 'L?mites y continuidad' },
         { title: 'Derivadas y reglas principales' },
         { title: 'Aplicaciones de la derivada' },
-        { title: 'Optimización y máximos relativos' }
+        { title: 'Optimizaci?n y m?ximos relativos' }
+      ]
+    },
+    {
+      id: 'calc-2',
+      title: 'C?lculo Integral',
+      description: 'Integra funciones con sustituci?n, partes y aplicaciones de ?rea.',
+      professor: 'Mtro. Luis Cabrera',
+      school: 'ESCOM',
+      progress: 52,
+      level: 'Intermedio',
+      temario: [
+        { title: 'Antiderivadas b?sicas' },
+        { title: 'M?todos de integraci?n' },
+        { title: 'Integrales definidas' },
+        { title: 'Aplicaciones de la integral' }
       ]
     },
     {
       id: 'alg-2',
-      title: 'Álgebra Lineal Avanzada',
-      description: 'Matrices, espacios vectoriales y diagonalización con casos reales.',
+      title: '?lgebra Lineal Avanzada',
+      description: 'Matrices, espacios vectoriales y diagonalizaci?n con casos reales.',
       professor: 'Mtro. Armando Flores',
       school: 'ESCOM',
       progress: 55,
@@ -150,29 +170,29 @@ export const HARDCODED_DATA = {
     {
       id: 'ecu-1',
       title: 'Ecuaciones Diferenciales',
-      description: 'Aprende a modelar sistemas dinámicos con ecuaciones reales.',
+      description: 'Aprende a modelar sistemas din?micos con ecuaciones reales.',
       professor: 'Dra. Julieta Morales',
       school: 'IPN',
       progress: 32,
       level: 'Intermedio',
       temario: [
         { title: 'Ecuaciones de primer orden' },
-        { title: 'Método de coeficientes indeterminados' },
+        { title: 'M?todo de coeficientes indeterminados' },
         { title: 'Transformada de Laplace' }
       ]
     },
     {
       id: 'prob-1',
-      title: 'Probabilidad y Estadística',
-      description: 'Distribuciones, inferencia y visualización de datos aplicada.',
+      title: 'Probabilidad y Estad?stica',
+      description: 'Distribuciones, inferencia y visualizaci?n de datos aplicada.',
       professor: 'Mtra. Paula Navarro',
       school: 'ESCOM',
       progress: 40,
-      level: 'Básico',
+      level: 'B?sico',
       temario: [
         { title: 'Combinatoria y conteo' },
         { title: 'Variables aleatorias' },
-        { title: 'Distribuciones clásicas' },
+        { title: 'Distribuciones cl?sicas' },
         { title: 'Intervalos de confianza' }
       ]
     }
@@ -180,21 +200,35 @@ export const HARDCODED_DATA = {
   userSubjects: [
     {
       id: 'calc-1',
-      title: 'Cálculo Diferencial',
-      professor: 'Dra. Sofía Reyes',
+      title: 'C?lculo Diferencial',
+      professor: 'Dra. Sof?a Reyes',
       school: 'ESCOM',
       progress: 68,
       examDate: '2025-09-22',
       temario: [
-        { title: 'Límites y continuidad' },
+        { title: 'L?mites y continuidad' },
         { title: 'Derivadas y reglas principales' },
         { title: 'Aplicaciones de la derivada' },
-        { title: 'Optimización y máximos relativos' }
+        { title: 'Optimizaci?n y m?ximos relativos' }
+      ]
+    },
+    {
+      id: 'calc-2',
+      title: 'C?lculo Integral',
+      professor: 'Mtro. Luis Cabrera',
+      school: 'ESCOM',
+      progress: 42,
+      examDate: '2025-09-28',
+      temario: [
+        { title: 'Antiderivadas b?sicas' },
+        { title: 'M?todos de integraci?n' },
+        { title: 'Integrales definidas' },
+        { title: 'Aplicaciones de la integral' }
       ]
     },
     {
       id: 'alg-2',
-      title: 'Álgebra Lineal Avanzada',
+      title: '?lgebra Lineal Avanzada',
       professor: 'Mtro. Armando Flores',
       school: 'ESCOM',
       progress: 55,
@@ -208,7 +242,7 @@ export const HARDCODED_DATA = {
     },
     {
       id: 'prob-1',
-      title: 'Probabilidad y Estadística',
+      title: 'Probabilidad y Estad?stica',
       professor: 'Mtra. Paula Navarro',
       school: 'ESCOM',
       progress: 40,
@@ -216,7 +250,8 @@ export const HARDCODED_DATA = {
       temario: [
         { title: 'Combinatoria y conteo' },
         { title: 'Variables aleatorias' },
-        { title: 'Distribuciones clásicas' }
+        { title: 'Distribuciones cl?sicas' },
+        { title: 'Intervalos de confianza' }
       ]
     }
   ],
@@ -299,93 +334,110 @@ export const HARDCODED_DATA = {
   // Community resources are now loaded from /public/data/community-resources.json
   communityResources: [],
   purchasedResourceIds: ['res-001', 'res-003'],
-  exams: [
+    exams: [
     {
-      id: 'exam-derivadas',
+      id: 'exam-calc1-facil',
       subjectId: 'calc-1',
-      subjectName: 'Cálculo Diferencial',
-      title: 'Simulacro Parcial 1 - Derivadas',
-      duration: 3600,
+      subjectName: 'C?lculo Diferencial',
+      title: 'Simulador C?lculo Diferencial ? F?cil',
+      difficulty: 'FACIL',
+      duration: 1800,
       questions: [
-        {
-          id: 'q-1',
-          text: 'Calcula la derivada de $f(x) = 3x^4 - 5x^2 + 2$',
-          answer: '12x^3-10x',
-          explanation: 'Aplica la regla del poder a cada término.',
-          wolframQuery: 'derivative 3x^4-5x^2+2'
-        },
-        {
-          id: 'q-2',
-          text: 'Evalúa la integral $\\int_0^1 2x \\; dx$',
-          answer: '1',
-          explanation: 'La antiderivada de 2x es x^2. Evalúa entre 0 y 1.',
-          wolframQuery: 'integrate 2x from 0 to 1'
-        },
-        {
-          id: 'q-3',
-          text: 'Resuelve el límite $\\lim_{x \\to 0} \\frac{\\sin(3x)}{x}$',
-          answer: '3',
-          explanation: 'Usa el límite notable sin(x)/x = 1.',
-          wolframQuery: 'limit sin(3x)/x as x->0'
-        },
-        {
-          id: 'q-4',
-          text: 'Determina la derivada de $y = \\ln(x^2 + 1)$',
-          answer: '\\frac{2x}{x^2+1}',
-          explanation: 'Regla de la cadena: $\\frac{1}{u} \\cdot u\'$.',
-          wolframQuery: 'derivative ln(x^2+1)'
-        },
-        {
-          id: 'q-5',
-          text: 'Encuentra la pendiente de la recta tangente a $f(x) = e^x$ en $x=0$',
-          answer: '1',
-          explanation: 'La derivada es $e^x$, evaluada en $0$ es $1$.',
-          wolframQuery: 'slope of e^x at x=0'
-        }
+        { id: 'calc1-facil-q1', text: 'Calcula la derivada de $f(x)=3x^4-5x^2+2$', answer: '12x^3-10x', difficulty: 'FACIL', wolframQuery: 'derivative 3x^4-5x^2+2' },
+        { id: 'calc1-facil-q2', text: 'Eval?a el l?mite $\lim_{x\to 0} \frac{\sin(3x)}{x}$', answer: '3', difficulty: 'FACIL', wolframQuery: 'limit sin(3x)/x as x->0' },
+        { id: 'calc1-facil-q3', text: 'Determina la derivada de $y=\ln(x^2+1)$', answer: '2x/(x^2+1)', difficulty: 'FACIL', wolframQuery: 'derivative ln(x^2+1)' },
+        { id: 'calc1-facil-q4', text: 'Encuentra la pendiente de la recta tangente a $f(x)=e^x$ en $x=0$', answer: '1', difficulty: 'FACIL', wolframQuery: 'slope of e^x at 0' },
+        { id: 'calc1-facil-q5', text: 'Deriva $f(x)=x^3+4x$', answer: '3x^2+4', difficulty: 'FACIL', wolframQuery: 'derivative x^3+4x' }
+      ]
+    },
+    {
+      id: 'exam-calc1-media',
+      subjectId: 'calc-1',
+      subjectName: 'C?lculo Diferencial',
+      title: 'Simulador C?lculo Diferencial - Intermedio',
+      difficulty: 'MEDIA',
+      duration: 2100,
+      questions: [
+        { id: 'calc1-media-q1', text: "Calcula $f'(0)$ si $f(x)=x^2\sin x$", answer: '0', difficulty: 'MEDIA', wolframQuery: 'derivative of x^2 sin x at x=0' },
+        { id: 'calc1-media-q2', text: 'Evalua $\lim_{x\to 0} (1+2x)^{1/x}$', answer: 'e^2', difficulty: 'MEDIA', wolframQuery: 'limit (1+2x)^(1/x) as x->0' },
+        { id: 'calc1-media-q3', text: 'Deriva $y=x^2\ln x$ (para $x>0$)', answer: '2x\ln x + x', difficulty: 'MEDIA', wolframQuery: 'derivative x^2 ln x' },
+        { id: 'calc1-media-q4', text: 'Puntos criticos de $f(x)=x^3-3x$', answer: '-1, 1', difficulty: 'MEDIA', wolframQuery: 'critical points of x^3-3x' },
+        { id: 'calc1-media-q5', text: 'Deriva $f(x)=e^{2x}\cos x$', answer: 'e^{2x}(2\cos x-\sin x)', difficulty: 'MEDIA', wolframQuery: 'derivative e^(2x) cos x' }
+      ]
+    },
+    {
+      id: 'exam-calc1-dificil',
+      subjectId: 'calc-1',
+      subjectName: 'C?lculo Diferencial',
+      title: 'Simulador C?lculo Diferencial - Avanzado',
+      difficulty: 'DIFICIL',
+      duration: 2400,
+      questions: [
+        { id: 'calc1-dificil-q1', text: "Aplica L'Hopital a $\lim_{x\to 0} \frac{\ln(1+x)}{x}$", answer: '1', difficulty: 'DIFICIL', wolframQuery: 'limit ln(1+x)/x as x->0' },
+        { id: 'calc1-dificil-q2', text: 'Evalua $\lim_{x\to 0} \frac{\sin x - x}{x^3}$', answer: '-1/6', difficulty: 'DIFICIL', wolframQuery: 'limit (sin x - x)/x^3 as x->0' },
+        { id: 'calc1-dificil-q3', text: 'Deriva $f(x)=x^x$ en $x=1$', answer: '1', difficulty: 'DIFICIL', wolframQuery: 'derivative of x^x at x=1' },
+        { id: 'calc1-dificil-q4', text: 'Radio de curvatura de $y=x^2$ en $x=1$', answer: '1/(2\sqrt{5})', difficulty: 'DIFICIL', wolframQuery: 'radius of curvature y=x^2 at x=1' },
+        { id: 'calc1-dificil-q5', text: "Resuelve $f'(x)=\frac{1}{x}$ con $f(1)=0$", answer: '\ln x', difficulty: 'DIFICIL', wolframQuery: 'integrate 1/x from 1' }
+      ]
+    },
+    {
+      id: 'exam-calc2-facil',
+      subjectId: 'calc-2',
+      subjectName: 'C?lculo Integral',
+      title: 'Simulador C?lculo Integral ? F?cil',
+      difficulty: 'FACIL',
+      duration: 1800,
+      questions: [
+        { id: 'calc2-facil-q1', text: 'Eval?a la integral definida $\int_0^1 2x\,dx$', answer: '1', difficulty: 'FACIL', wolframQuery: 'integrate 2x from 0 to 1' },
+        { id: 'calc2-facil-q2', text: 'Resuelve $\int 3x^2\,dx$', answer: 'x^3 + C', difficulty: 'FACIL', wolframQuery: 'integral 3x^2' },
+        { id: 'calc2-facil-q3', text: 'Resuelve $\int e^{3x}\,dx$', answer: '(1/3)e^{3x}+C', difficulty: 'FACIL', wolframQuery: 'integral e^(3x)' },
+        { id: 'calc2-facil-q4', text: 'Sustituci?n en $\int \frac{2x}{x^2+1}dx$', answer: '\ln(x^2+1)+C', difficulty: 'FACIL', wolframQuery: 'integral 2x/(x^2+1)' },
+        { id: 'calc2-facil-q5', text: '?rea bajo $y=x$ de 0 a 2', answer: '2', difficulty: 'FACIL', wolframQuery: 'area under y=x from 0 to 2' }
+      ]
+    },
+    {
+      id: 'exam-calc2-media',
+      subjectId: 'calc-2',
+      subjectName: 'C?lculo Integral',
+      title: 'Simulador C?lculo Integral ? Intermedio',
+      difficulty: 'MEDIA',
+      duration: 2100,
+      questions: [
+        { id: 'calc2-media-q1', text: 'Integra por partes $\int x e^{x}dx$', answer: 'x e^{x}-e^{x}+C', difficulty: 'MEDIA', wolframQuery: 'integral x e^x' },
+        { id: 'calc2-media-q2', text: 'Eval?a $\int_0^{\pi} \sin x\,dx$', answer: '2', difficulty: 'MEDIA', wolframQuery: 'integral sin x from 0 to pi' },
+        { id: 'calc2-media-q3', text: 'Resuelve $\int \frac{\cos x}{1+\sin x}dx$', answer: '\ln|1+\sin x|', difficulty: 'MEDIA', wolframQuery: 'integral cos x/(1+sin x)' },
+        { id: 'calc2-media-q4', text: 'Valor promedio de $f(x)=3x^2$ en [0,2]', answer: '4', difficulty: 'MEDIA', wolframQuery: 'average value 3x^2 on [0,2]' },
+        { id: 'calc2-media-q5', text: 'Integra $\int \frac{x}{x^2+1}dx$', answer: '0.5\ln(x^2+1)', difficulty: 'MEDIA', wolframQuery: 'integral x/(x^2+1)' }
+      ]
+    },
+    {
+      id: 'exam-calc2-dificil',
+      subjectId: 'calc-2',
+      subjectName: 'C?lculo Integral',
+      title: 'Simulador C?lculo Integral ? Avanzado',
+      difficulty: 'DIFICIL',
+      duration: 2400,
+      questions: [
+        { id: 'calc2-dificil-q1', text: 'Integra por partes dos veces $\int x^2 e^{x}dx$', answer: 'e^{x}(x^2-2x+2)+C', difficulty: 'DIFICIL', wolframQuery: 'integral x^2 e^x' },
+        { id: 'calc2-dificil-q2', text: 'Eval?a $\int_1^{\infty} \frac{1}{x^2}dx$', answer: '1', difficulty: 'DIFICIL', wolframQuery: 'integral 1/x^2 from 1 to infinity' },
+        { id: 'calc2-dificil-q3', text: 'Resuelve $\int \frac{1}{x^2+4}dx$', answer: '(1/2)\arctan(x/2)+C', difficulty: 'DIFICIL', wolframQuery: 'integral 1/(x^2+4)' },
+        { id: 'calc2-dificil-q4', text: 'Eval?a $\int_0^{1} \frac{1}{\sqrt{1-x^2}}dx$', answer: 'pi/2', difficulty: 'DIFICIL', wolframQuery: 'integral 1/sqrt(1-x^2) from 0 to 1' },
+        { id: 'calc2-dificil-q5', text: 'Resuelve $\int e^{-x}\sin x\,dx$', answer: '-0.5 e^{-x}(\sin x + \cos x)+C', difficulty: 'DIFICIL', wolframQuery: 'integral e^-x sin x' }
       ]
     },
     {
       id: 'exam-algebra',
       subjectId: 'alg-2',
-      subjectName: 'Álgebra Lineal Avanzada',
+      subjectName: '?lgebra Lineal Avanzada',
       title: 'Simulacro Matrices y Determinantes',
+      difficulty: 'MEDIA',
       duration: 2700,
       questions: [
-        {
-          id: 'alg-q1',
-          text: 'Calcula el determinante de la matriz $$\\begin{vmatrix}2 & 3\\\\1 & 4\\end{vmatrix}$$',
-          answer: '5',
-          explanation: 'det(A)=ad-bc = (2)(4)-(3)(1).',
-          wolframQuery: 'determinant [[2,3],[1,4]]'
-        },
-        {
-          id: 'alg-q2',
-          text: '¿Cuál es el vector propio asociado a $\\lambda=3$ de la matriz $A = \\begin{pmatrix}4 & 1\\\\0 & 3\\end{pmatrix}$?',
-          answer: '\\begin{pmatrix}1\\\\-1\\end{pmatrix}',
-          explanation: 'Resuelve $(A-3I)v=0$.',
-          wolframQuery: 'eigenvectors [[4,1],[0,3]]'
-        },
-        {
-          id: 'alg-q3',
-          text: 'Si $A$ es una matriz de $3\\times3$ y $\\det(A)=2$, ¿cuánto es $\\det(2A)$?',
-          answer: '16',
-          explanation: 'Propiedad: $\\det(kA) = k^n \\det(A)$ donde $n=3$. $2^3(2) = 16$.',
-          wolframQuery: 'det(2A) for 3x3 matrix if det(A)=2'
-        },
-        {
-          id: 'alg-q4',
-          text: 'Calcula la traza de $B = \\begin{pmatrix} 1 & 0 & 5 \\\\ 0 & 2 & 0 \\\\ 3 & 4 & 1 \\end{pmatrix}$',
-          answer: '4',
-          explanation: 'Suma de la diagonal principal: $1 + 2 + 1 = 4$.',
-          wolframQuery: 'trace {{1,0,5},{0,2,0},{3,4,1}}'
-        },
-        {
-          id: 'alg-q5',
-          text: '¿Son los vectores $v_1=(1,0), v_2=(0,1), v_3=(1,1)$ linealmente independientes?',
-          answer: 'No',
-          explanation: 'Tres vectores en $\\mathbb{R}^2$ siempre son dependientes ($v_3 = v_1 + v_2$).',
-          wolframQuery: 'are (1,0), (0,1), (1,1) linearly independent'
-        }
+        { id: 'alg-q1', text: 'Calcula el determinante de la matriz $$\begin{vmatrix}2 & 3\\1 & 4\end{vmatrix}$$', answer: '5', difficulty: 'MEDIA', wolframQuery: 'determinant [[2,3],[1,4]]' },
+        { id: 'alg-q2', text: '?Cu?l es el vector propio asociado a $\lambda=3$ de la matriz $A = \begin{pmatrix}4 & 1\\0 & 3\end{pmatrix}$?', answer: '\begin{pmatrix}1\\-1\end{pmatrix}', difficulty: 'MEDIA', wolframQuery: 'eigenvectors [[4,1],[0,3]]' },
+        { id: 'alg-q3', text: 'Si $A$ es una matriz de $3\times3$ y $\det(A)=2$, ?cu?nto es $\det(2A)$?', answer: '16', difficulty: 'MEDIA', wolframQuery: 'det(2A) for 3x3 matrix if det(A)=2' },
+        { id: 'alg-q4', text: 'Calcula la traza de $B = \begin{pmatrix} 1 & 0 & 5 \\ 0 & 2 & 0 \\ 3 & 4 & 1 \end{pmatrix}$', answer: '4', difficulty: 'MEDIA', wolframQuery: 'trace {{1,0,5},{0,2,0},{3,4,1}}' },
+        { id: 'alg-q5', text: '?Son los vectores $v_1=(1,0), v_2=(0,1), v_3=(1,1)$ linealmente independientes?', answer: 'No', difficulty: 'MEDIA', wolframQuery: 'are (1,0), (0,1), (1,1) linearly independent' }
       ]
     },
     {
@@ -393,91 +445,34 @@ export const HARDCODED_DATA = {
       subjectId: 'ecu-1',
       subjectName: 'Ecuaciones Diferenciales',
       title: 'Simulacro Ecuaciones Orden 1',
+      difficulty: 'MEDIA',
       duration: 3000,
       questions: [
-        {
-          id: 'ecu-q1',
-          text: 'Resuelve la ecuación separable $y\' = y$',
-          answer: 'y = Ce^x',
-          explanation: 'Separando variables $\\frac{dy}{y} = dx \\implies \\ln|y| = x + C$.',
-          wolframQuery: 'solve y\' = y'
-        },
-        {
-          id: 'ecu-q2',
-          text: '¿Cuál es el factor integrante para $y\' + \\frac{1}{x}y = x$?',
-          answer: 'x',
-          explanation: '$\\mu(x) = e^{\\int (1/x) dx} = e^{\\ln x} = x$.',
-          wolframQuery: 'integrating factor y\' + y/x = x'
-        },
-        {
-          id: 'ecu-q3',
-          text: 'Transformada de Laplace de $f(t) = 1$',
-          answer: '\\frac{1}{s}',
-          explanation: 'Definición: $\\int_0^\\infty e^{-st} dt = 1/s$.',
-          wolframQuery: 'Laplace transform of 1'
-        },
-        {
-          id: 'ecu-q4',
-          text: 'Determina el orden de la ecuación $y\'\' + (y\')^3 = x$',
-          answer: '2',
-          explanation: 'El orden es la derivada más alta, que es $y\'\'$.',
-          wolframQuery: 'order of y\'\' + (y\')^3 = x'
-        },
-        {
-          id: 'ecu-q5',
-          text: 'Solución general de $y\'\' - y = 0$',
-          answer: 'y = C_1 e^x + C_2 e^{-x}',
-          explanation: 'Ecuación característica $r^2 - 1 = 0 \\implies r = \\pm 1$.',
-          wolframQuery: 'solve y\'\' - y = 0'
-        }
+        { id: 'ecu-q1', text: 'Resuelve la ecuaci?n separable $y^{\prime} = y$', answer: 'y = Ce^x', difficulty: 'MEDIA', wolframQuery: 'differential equation y prime = y' },
+        { id: 'ecu-q2', text: '?Cu?l es el factor integrante para $y^{\prime} + \frac{1}{x}y = x$?', answer: 'x', difficulty: 'MEDIA', wolframQuery: 'integrating factor y prime plus y/x equals x' },
+        { id: 'ecu-q3', text: 'Transformada de Laplace de $f(t) = 1$', answer: '1/s', difficulty: 'MEDIA', wolframQuery: 'Laplace transform of 1' },
+        { id: 'ecu-q4', text: 'Determina el orden de la ecuaci?n $y^{\prime\prime} + (y^{\prime})^3 = x$', answer: '2', difficulty: 'MEDIA', wolframQuery: 'order y double prime plus (y prime)^3 = x' },
+        { id: 'ecu-q5', text: 'Soluci?n general de $y^{\prime\prime} - y = 0$', answer: 'y = C_1 e^x + C_2 e^{-x}', difficulty: 'MEDIA', wolframQuery: 'solve y double prime - y = 0' }
       ]
     },
     {
       id: 'exam-probabilidad',
       subjectId: 'prob-1',
-      subjectName: 'Probabilidad y Estadística',
-      title: 'Simulacro Probabilidad Básica',
+      subjectName: 'Probabilidad y Estad?stica',
+      title: 'Simulacro Probabilidad B?sica',
+      difficulty: 'BASICO',
       duration: 2400,
       questions: [
-        {
-          id: 'prob-q1',
-          text: 'Calcula $\\binom{5}{2}$',
-          answer: '10',
-          explanation: 'Combinaciones: $\\frac{5!}{2!(5-2)!} = \\frac{120}{2 \\cdot 6} = 10$.',
-          wolframQuery: '5 choose 2'
-        },
-        {
-          id: 'prob-q2',
-          text: 'Probabilidad de obtener "Cara" al lanzar una moneda justa',
-          answer: '0.5',
-          explanation: 'Casos favorables (1) / Casos totales (2).',
-          wolframQuery: 'probability of heads'
-        },
-        {
-          id: 'prob-q3',
-          text: 'Si $P(A)=0.3, P(B)=0.4$ y son independientes, halla $P(A \\cap B)$',
-          answer: '0.12',
-          explanation: 'Independencia implica $P(A \\cap B) = P(A)P(B) = (0.3)(0.4)$.',
-          wolframQuery: '0.3 * 0.4'
-        },
-        {
-          id: 'prob-q4',
-          text: '¿Cuál es la media de una distribución normal estándar $Z$?',
-          answer: '0',
-          explanation: 'Por definición, $N(0, 1)$ tiene media 0.',
-          wolframQuery: 'mean of standard normal distribution'
-        },
-        {
-          id: 'prob-q5',
-          text: 'Permutaciones de las letras de la palabra "SOL"',
-          answer: '6',
-          explanation: '$3! = 3 \\times 2 \\times 1 = 6$.',
-          wolframQuery: 'permutations of SOL'
-        }
+        { id: 'prob-q1', text: 'Calcula $\binom{5}{2}$', answer: '10', difficulty: 'BASICO', wolframQuery: '5 choose 2' },
+        { id: 'prob-q2', text: 'Probabilidad de obtener "Cara" al lanzar una moneda justa', answer: '0.5', difficulty: 'BASICO', wolframQuery: 'probability of heads' },
+        { id: 'prob-q3', text: 'Si $P(A)=0.3, P(B)=0.4$ y son independientes, halla $P(A \cap B)$', answer: '0.12', difficulty: 'BASICO', wolframQuery: '0.3 * 0.4' },
+        { id: 'prob-q4', text: '?Cu?l es la media de una distribuci?n normal est?ndar $Z$?', answer: '0', difficulty: 'BASICO', wolframQuery: 'mean of standard normal distribution' },
+        { id: 'prob-q5', text: 'Permutaciones de las letras de la palabra "SOL"', answer: '6', difficulty: 'BASICO', wolframQuery: 'permutations of SOL' }
       ]
     }
   ],
   // Formularies are now loaded from /public/data/formularies.json
+// Formularies are now loaded from /public/data/formularies.json
   formularies: [],
   tutors: [
     {

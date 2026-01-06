@@ -1,0 +1,53 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Tests
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Build
+*.egg-info/
+dist/
+build/
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.docker/
+
+# Docs
+*.md
+!README.md
+
+# Archivos temporales
+*.tmp
+*.temp
+
+# No ignorar estos (necesarios para la imagen)
+!requirements.txt
+!manage.py
+!db.sqlite3

@@ -170,7 +170,10 @@ const GestionRecursosPage = ({ resources, onDelete, onUpdate, onCreate }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredResources.map((resource) => (
+                        {filteredResources.map((resource) => {
+                            const viewUrl = resource.archivo_url || resource.url || resource.contenido_url || '';
+                            const hasView = Boolean(viewUrl);
+                            return (
                             <tr key={resource.id} className="border-b border-light-border dark:border-dark-border">
                                 <td className="py-3 font-medium">{resource.title || resource.titulo}</td>
                                 <td className="py-3 text-slate-500">{resource.author?.name || resource.autor?.name || 'Anónimo'}</td>
@@ -181,12 +184,13 @@ const GestionRecursosPage = ({ resources, onDelete, onUpdate, onCreate }) => {
                                 <td className="py-3 space-x-2">
                                     <button className="text-blue-500 hover:underline" onClick={() => handleEditClick(resource)}>Editar</button>
                                     <button className="text-red-500 hover:underline" onClick={() => handleDelete(resource)}>Eliminar</button>
-                                    {resource.archivo_url && (
-                                        <a href={resolveFileUrl(resource.archivo_url)} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">Ver</a>
+                                    {hasView && (
+                                        <a href={resolveFileUrl(viewUrl)} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">Ver</a>
                                     )}
                                 </td>
                             </tr>
-                        ))}
+                            );
+                        })}
                     </tbody>
                 </table>
                 {filteredResources.length === 0 && (

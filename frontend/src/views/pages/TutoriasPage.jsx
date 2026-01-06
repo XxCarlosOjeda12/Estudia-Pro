@@ -100,24 +100,27 @@ const TutoriasPage = ({ userRole, tutors, view = 'list', onDeleteUpcomingActivit
 
   const handleUpdateStatus = async (sessionId, newStatus) => {
     try {
-      // Manually update local storage to simulate backend status update
-      const sessions = JSON.parse(localStorage.getItem('estudia-pro-demo-tutoring-sessions') || '[]');
-      const updatedSessions = sessions.map(s => s.id === sessionId ? { ...s, status: newStatus } : s);
-      localStorage.setItem('estudia-pro-demo-tutoring-sessions', JSON.stringify(updatedSessions));
+      const result = await apiService.updateTutoringStatus(sessionId, newStatus);
+      const normalizedStatus = result?.status || result?.estado || newStatus;
 
-      // Update local state immediately
-      setTutoringRequests(prev => prev.map(r => r.id === sessionId ? { ...r, status: newStatus } : r));
+      setTutoringRequests((prev) =>
+        prev.map((r) => (r.id.toString() === sessionId.toString() ? { ...r, status: normalizedStatus } : r))
+      );
 
       pushToast({
-        title: 'Tutorías',
-        message: `Solicitud ${newStatus === 'CONFIRMADA' ? 'confirmada' : 'rechazada'}.`,
-        type: newStatus === 'CONFIRMADA' ? 'success' : 'info'
+        title: 'Tutorias',
+        message: `Solicitud ${normalizedStatus === 'ACEPTADA' ? 'confirmada' : 'actualizada'}.`,
+        type: normalizedStatus === 'ACEPTADA' ? 'success' : 'info'
       });
 
-      apiService.broadcastChange('tutoring');
+      try {
+        window.dispatchEvent(new CustomEvent('data-change', { detail: { type: 'tutoring' } }));
+      } catch {
+        /* ignore */
+      }
     } catch (error) {
       console.error('Error updating status:', error);
-      pushToast({ title: 'Error', message: 'No se pudo actualizar el estado.', type: 'alert' });
+      pushToast({ title: 'Error', message: error?.message || 'No se pudo actualizar el estado.', type: 'alert' });
     }
   };
 
@@ -181,19 +184,19 @@ const TutoriasPage = ({ userRole, tutors, view = 'list', onDeleteUpcomingActivit
                     </div>
 
                     <div className="flex flex-col items-end gap-2 self-end md:self-auto min-w-[140px]">
-                      <span className={`text-xs px-3 py-1 rounded-full mb-1 text-center w-full ${request.status === 'PROGRAMADA'
-                        ? 'bg-yellow-500/10 text-yellow-600 border border-yellow-200'
-                        : request.status === 'CONFIRMADA'
-                          ? 'bg-green-500/10 text-green-600 border border-green-200'
-                          : 'bg-red-500/10 text-red-600 border border-red-200'
+                      <span className={`text-xs px-3 py-1 rounded-full mb-1 text-center w-full ${request.status === 'ACEPTADA'
+                        ? 'bg-green-500/10 text-green-600 border border-green-200'
+                        : request.status === 'CANCELADA'
+                          ? 'bg-red-500/10 text-red-600 border border-red-200'
+                          : 'bg-yellow-500/10 text-yellow-600 border border-yellow-200'
                         }`}>
                         {request.status}
                       </span>
 
                       <div className="flex gap-2 w-full">
-                        {request.status !== 'CONFIRMADA' && (
+                        {request.status !== 'ACEPTADA' && (
                           <button
-                            onClick={() => handleUpdateStatus(request.id, 'CONFIRMADA')}
+                            onClick={() => handleUpdateStatus(request.id, 'ACEPTADA')}
                             className="flex-1 px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors shadow-sm"
                           >
                             Aceptar
@@ -201,13 +204,13 @@ const TutoriasPage = ({ userRole, tutors, view = 'list', onDeleteUpcomingActivit
                         )}
 
                         <button
-                          onClick={() => onDeleteUpcomingActivity ? onDeleteUpcomingActivity(`tut-${request.id}`) : handleUpdateStatus(request.id, 'RECHAZADA')}
-                          className={`flex-1 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors shadow-sm ${request.status === 'CONFIRMADA'
+                          onClick={() => onDeleteUpcomingActivity ? onDeleteUpcomingActivity(`tut-${request.id}`) : handleUpdateStatus(request.id, 'CANCELADA')}
+                          className={`flex-1 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors shadow-sm ${request.status === 'ACEPTADA'
                             ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
                             : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                             }`}
                         >
-                          {request.status === 'CONFIRMADA' ? 'Cancelar' : 'Rechazar'}
+                          {request.status === 'ACEPTADA' ? 'Cancelar' : 'Rechazar'}
                         </button>
                       </div>
                     </div>

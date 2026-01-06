@@ -124,7 +124,7 @@ const SubscriptionModal = ({ onClose, onSuccess }) => {
               <div className="p-4 bg-slate-800 rounded-xl border border-white/5 flex items-center justify-between">
                 <div>
                   <p className="text-sm text-slate-400">Suscripción Mensual</p>
-                  <p className="text-2xl font-bold text-white">$120.00 <span className="text-sm font-normal text-slate-500">MXN</span></p>
+                  <p className="text-2xl font-bold text-white">$49.00 <span className="text-sm font-normal text-slate-500">MXN</span></p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-emerald-400 font-medium">✨ Cancelación en cualquier momento</p>
@@ -221,7 +221,7 @@ const SubscriptionModal = ({ onClose, onSuccess }) => {
                   type="submit"
                   className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all"
                 >
-                  Pagar $120.00 MXN
+                  Pagar $49.00 MXN
                 </button>
               )}
 
