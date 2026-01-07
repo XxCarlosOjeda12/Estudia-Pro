@@ -69,14 +69,12 @@ def _recalcular_progreso_inscripcion(inscripcion):
     curso = inscripcion.curso
     estudiante = inscripcion.estudiante
     
-    # Contar recursos totales y completados
     total_recursos = Recurso.objects.filter(modulo__curso=curso).count()
     recursos_completados = ProgresoRecurso.objects.filter(
         inscripcion=inscripcion,
         completado=True
     ).count()
     
-    # Contar exámenes del curso y aprobados
     examenes_curso = Examen.objects.filter(curso=curso, activo=True)
     total_examenes = examenes_curso.count()
     
@@ -104,7 +102,6 @@ def _recalcular_progreso_inscripcion(inscripcion):
     else:
         porcentaje = 0
     
-    # Actualizar inscripción
     inscripcion.progreso_porcentaje = round(porcentaje, 2)
     inscripcion.completado = porcentaje >= 100
     inscripcion.save(update_fields=['progreso_porcentaje', 'completado'])
@@ -118,7 +115,6 @@ def _course_to_catalog(curso, user=None):
     if user and hasattr(user, 'perfil_estudiante'):
         insc = Inscripcion.objects.filter(estudiante=user.perfil_estudiante, curso=curso).first()
         if insc:
-            # Recalcular progreso en tiempo real
             progress = _recalcular_progreso_inscripcion(insc)
 
     profesor = (curso.profesor or '').strip()
@@ -415,7 +411,6 @@ class CursoViewSet(viewsets.ModelViewSet):
         """Inscribir al estudiante en un curso"""
         curso = self.get_object()
         
-        # Verificar que el usuario es estudiante
         if not hasattr(request.user, 'perfil_estudiante'):
             return Response(
                 {'error': 'Solo los estudiantes pueden inscribirse en cursos'},
@@ -424,14 +419,12 @@ class CursoViewSet(viewsets.ModelViewSet):
         
         estudiante = request.user.perfil_estudiante
         
-        # Verificar si ya estÃƒÆ’Ã‚Â¡ inscrito
         if Inscripcion.objects.filter(estudiante=estudiante, curso=curso).exists():
             return Response(
                 {'error': 'Ya estÃƒÆ’Ã‚Â¡s inscrito en este curso'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Crear inscripciÃƒÆ’Ã‚Â³n
         inscripcion = Inscripcion.objects.create(
             estudiante=estudiante,
             curso=curso
@@ -575,13 +568,11 @@ class RecursoViewSet(viewsets.ReadOnlyModelViewSet):
         estudiante = request.user.perfil_estudiante
         curso = recurso.modulo.curso
         
-        # Obtener o crear inscripciÃƒÆ’Ã‚Â³n
         inscripcion, _ = Inscripcion.objects.get_or_create(
             estudiante=estudiante,
             curso=curso
         )
         
-        # Crear o actualizar progreso
         progreso, created = ProgresoRecurso.objects.get_or_create(
             inscripcion=inscripcion,
             recurso=recurso
@@ -592,7 +583,6 @@ class RecursoViewSet(viewsets.ReadOnlyModelViewSet):
         progreso.tiempo_dedicado = request.data.get('tiempo_dedicado', 0)
         progreso.save()
         
-        # Recalcular progreso general de la inscripción
         nuevo_progreso = _recalcular_progreso_inscripcion(inscripcion)
         
         return Response({
@@ -749,7 +739,6 @@ class ExamenViewSet(viewsets.ReadOnlyModelViewSet):
         if not base_questions:
             return Response({'error': 'No hay preguntas para generar'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Ajustar cantidad y dificultad uniforme
         filtered_by_difficulty = [
             q for q in base_questions
             if _normalize_difficulty_code(q.get('difficulty')) == difficulty_selected
@@ -761,7 +750,6 @@ class ExamenViewSet(viewsets.ReadOnlyModelViewSet):
             q = source[idx % len(source)]
             questions_data.append(self._serialize_default_question(q, difficulty_selected, idx))
 
-        # Evita duplicados previos de la misma dificultad en el curso
         difficulty_label = _difficulty_label(difficulty_selected)
         Examen.objects.filter(curso=curso, tipo='SIMULADOR', titulo__icontains=difficulty_label).delete()
 
@@ -833,10 +821,8 @@ class ExamenViewSet(viewsets.ReadOnlyModelViewSet):
         templates = []
 
         for code in difficulties:
-            # Prioriza preguntas reales del curso
             curso_questions = [self._serialize_question(p) for p in preguntas_qs if _normalize_difficulty_code(p.dificultad) == code]
 
-            # Si no hay suficientes, usa banco por defecto del backend
             fallback = [
                 self._serialize_default_question(q, code, idx)
                 for idx, q in enumerate(default_questions)
@@ -844,7 +830,6 @@ class ExamenViewSet(viewsets.ReadOnlyModelViewSet):
             ]
 
             combined = curso_questions + fallback
-            # Garantizar exactamente 5 preguntas (rellena desde fallback o curso si hay menos)
             if len(combined) < 5:
                 seed = fallback or curso_questions
                 while len(combined) < 5 and seed:
@@ -919,7 +904,6 @@ class ExamenViewSet(viewsets.ReadOnlyModelViewSet):
                 continue
             user_norm = _normalize(str(user_answer))
 
-            # Comparar por letra y por texto de la opción correcta
             letra_correcta = str(pregunta.respuesta_correcta).strip().lower()
             texto_correcto = getattr(pregunta, f"opcion_{pregunta.respuesta_correcta.lower()}", '')
             texto_norm = _normalize(texto_correcto)
@@ -929,7 +913,6 @@ class ExamenViewSet(viewsets.ReadOnlyModelViewSet):
 
         calificacion = round((correctas / total * 100) if total else 0, 2)
 
-        # Registrar intento
         intento = None
         if hasattr(request.user, 'perfil_estudiante'):
             intento = IntentoExamen.objects.create(
@@ -941,7 +924,6 @@ class ExamenViewSet(viewsets.ReadOnlyModelViewSet):
                 aprobado=calificacion >= float(examen.puntaje_minimo_aprobacion or 0),
                 fecha_fin=timezone.now()
             )
-            # Guardar respuestas (opcional, solo las correctas/incorrectas básicas)
             for pregunta in preguntas:
                 user_answer = answers.get(str(pregunta.id)) or answers.get(pregunta.id)
                 RespuestaEstudiante.objects.create(
@@ -952,7 +934,6 @@ class ExamenViewSet(viewsets.ReadOnlyModelViewSet):
                     tiempo_respuesta=0
                 )
             
-            # Recalcular progreso del curso después de completar examen
             inscripcion = Inscripcion.objects.filter(
                 estudiante=request.user.perfil_estudiante,
                 curso=examen.curso
@@ -1061,7 +1042,7 @@ def votar_respuesta(request, respuesta_id):
     """
     Votar una respuesta del foro
     """
-    tipo_voto = request.data.get('tipo') or request.data.get('vote')  # 'UP' o 'DOWN'
+    tipo_voto = request.data.get('tipo') or request.data.get('vote')   
     
     if tipo_voto not in ['UP', 'DOWN']:
         return Response(
@@ -1393,11 +1374,9 @@ from datetime import date, time
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def mi_panel(request):
-    # Dashboard principal
     user = request.user
     base_user = _serialize_user_basic(user)
 
-    # Panel para creadores
     if user.rol == 'CREADOR':
         if not hasattr(user, 'perfil_creador'):
             return Response({'error': 'Perfil de creador no encontrado'}, status=status.HTTP_404_NOT_FOUND)
@@ -1434,7 +1413,6 @@ def mi_panel(request):
             'tutoring': tutoring_list
         })
 
-    # Panel para administradores (entregar 200 para evitar loops en frontend)
     if user.rol == 'ADMINISTRADOR':
         return Response({
             'usuario': base_user,
@@ -1447,7 +1425,6 @@ def mi_panel(request):
             'puntos_totales': base_user.get('puntos_gamificacion', 0),
         })
 
-    # Panel para estudiantes
     if not hasattr(request.user, 'perfil_estudiante'):
         return Response({'error': 'Solo disponible para estudiantes'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -1457,7 +1434,6 @@ def mi_panel(request):
 
     mis_cursos = []
     for inscripcion in inscripciones[:5]:
-        # Recalcular progreso para cada curso
         progreso_actualizado = _recalcular_progreso_inscripcion(inscripcion)
         mis_cursos.append({
             'id': inscripcion.curso.id,
@@ -1510,7 +1486,6 @@ def mis_cursos_inscritos(request):
     
     cursos = []
     for inscripcion in inscripciones:
-        # Recalcular progreso para cada inscripción
         progreso_actualizado = _recalcular_progreso_inscripcion(inscripcion)
         cursos.append({
             'inscripcion_id': inscripcion.id,
@@ -1539,14 +1514,12 @@ def buscar_cursos(request):
     
     cursos = Curso.objects.filter(activo=True)
     
-    # Filtro de bÃƒÆ’Ã‚Âºsqueda por texto
     if query:
         cursos = cursos.filter(
             models.Q(titulo__icontains=query) |
             models.Q(descripcion__icontains=query)
         )
     
-    # Filtros adicionales
     if categoria:
         cursos = cursos.filter(categoria=categoria)
     
@@ -1578,7 +1551,6 @@ def mi_progreso_detallado(request):
 
     for inscripcion in inscripciones:
         curso = inscripcion.curso
-        # Recalcular progreso
         progreso_actualizado = _recalcular_progreso_inscripcion(inscripcion)
         
         intentos = IntentoExamen.objects.filter(examen__curso=curso, estudiante=estudiante, completado=True)
@@ -1644,7 +1616,6 @@ def actualizar_fecha_examen(request):
 
     inscripcion = get_object_or_404(Inscripcion, estudiante=estudiante, curso_id=subject_id)
 
-    # Borrar fecha
     if not exam_date_raw:
         inscripcion.fecha_examen = None
         inscripcion.hora_examen = None
@@ -1664,7 +1635,6 @@ def actualizar_fecha_examen(request):
     parsed_time = None
     if exam_time_raw:
         try:
-            # acepta HH:MM o HH:MM:SS
             parsed_time = time.fromisoformat(str(exam_time_raw))
         except ValueError:
             return Response({'error': 'examTime debe ser HH:MM (opcional)'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1758,7 +1728,6 @@ class ProximaActividadViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         data = list(serializer.data)
         
-        # Incorporar TutorÃƒÆ’Ã‚Â­as PrÃƒÆ’Ã‚Â³ximas
         if hasattr(request.user, 'perfil_estudiante'):
             tutorias = Tutoria.objects.filter(
                 estudiante=request.user.perfil_estudiante,
@@ -1778,7 +1747,6 @@ class ProximaActividadViewSet(viewsets.ModelViewSet):
                      'curso_titulo': t.curso.titulo if t.curso else None
                  })
         
-        # Ordenar mezclado
         data.sort(key=lambda x: f"{x.get('fecha') or x.get('date')}T{(x.get('hora') or x.get('time') or '00:00')}")
         
         return Response(data)
@@ -1826,13 +1794,11 @@ class ProximaActividadViewSet(viewsets.ModelViewSet):
         """Registrar descarga de recurso"""
         recurso = self.get_object()
         
-        # Registrar descarga
         DescargaRecurso.objects.create(
             recurso=recurso,
             usuario=request.user
         )
         
-        # Incrementar contador
         recurso.descargas += 1
         recurso.save()
         
@@ -1862,7 +1828,6 @@ class ProximaActividadViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Crear o actualizar calificaciÃƒÆ’Ã‚Â³n
         calificacion, created = CalificacionRecurso.objects.update_or_create(
             recurso=recurso,
             usuario=request.user,
@@ -1872,7 +1837,6 @@ class ProximaActividadViewSet(viewsets.ModelViewSet):
             }
         )
         
-        # Recalcular promedio
         promedio = CalificacionRecurso.objects.filter(
             recurso=recurso
         ).aggregate(promedio=models.Avg('calificacion'))['promedio']
@@ -1924,7 +1888,6 @@ class ProximaActividadViewSet(viewsets.ModelViewSet):
         if tipo:
             recursos = recursos.filter(tipo=tipo)
         
-        # Ordenar por calificaciÃƒÆ’Ã‚Â³n
         recursos = recursos.order_by('-calificacion_promedio', '-descargas')
         
         serializer = self.get_serializer(recursos, many=True)
@@ -1991,7 +1954,6 @@ class FormularioEstudioViewSet(viewsets.ModelViewSet):
         return super().perform_destroy(instance)
 
 
-# ========== Formularios ==========
 
 class FormularioViewSet(viewsets.ModelViewSet):
     """
@@ -2020,7 +1982,6 @@ class FormularioViewSet(viewsets.ModelViewSet):
         """Responder un formulario"""
         formulario = self.get_object()
         
-        # Verificar si ya respondiÃƒÆ’Ã‚Â³ (si no es anÃƒÆ’Ã‚Â³nimo)
         if not formulario.anonimo:
             if RespuestaFormulario.objects.filter(
                 formulario=formulario,
@@ -2031,14 +1992,12 @@ class FormularioViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
         
-        # Validar que el formulario estÃƒÆ’Ã‚Â© activo
         if formulario.fecha_cierre and timezone.now() > formulario.fecha_cierre:
             return Response(
                 {'error': 'Este formulario ya estÃƒÆ’Ã‚Â¡ cerrado'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Crear respuesta
         respuestas_data = request.data.get('respuestas', [])
         
         serializer = RespuestaFormularioSerializer(
@@ -2073,7 +2032,6 @@ class FormularioViewSet(viewsets.ModelViewSet):
             formulario=formulario
         ).prefetch_related('detalles')
         
-        # EstadÃƒÆ’Ã‚Â­sticas por pregunta
         preguntas = formulario.preguntas.all()
         estadisticas = []
         
@@ -2081,7 +2039,6 @@ class FormularioViewSet(viewsets.ModelViewSet):
             detalles = DetalleRespuesta.objects.filter(pregunta=pregunta)
             
             if pregunta.tipo == 'ESCALA' or pregunta.tipo == 'OPCION_MULTIPLE':
-                # Contar opciones
                 from collections import Counter
                 opciones_count = Counter([
                     d.respuesta_opcion for d in detalles if d.respuesta_opcion
@@ -2094,7 +2051,6 @@ class FormularioViewSet(viewsets.ModelViewSet):
                     'distribuciÃƒÆ’Ã‚Â³n': dict(opciones_count)
                 })
             else:
-                # Respuestas de texto
                 estadisticas.append({
                     'pregunta': pregunta.texto_pregunta,
                     'tipo': pregunta.tipo,
@@ -2110,7 +2066,6 @@ class FormularioViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def disponibles(self, request):
         """Formularios disponibles para responder"""
-        # Formularios activos y no vencidos
         formularios = Formulario.objects.filter(
             activo=True
         ).filter(
@@ -2118,7 +2073,6 @@ class FormularioViewSet(viewsets.ModelViewSet):
             models.Q(fecha_cierre__gt=timezone.now())
         )
         
-        # Excluir los que ya respondiÃƒÆ’Ã‚Â³ (si no son anÃƒÆ’Ã‚Â³nimos)
         if hasattr(request.user, 'perfil_estudiante'):
             respondidos = RespuestaFormulario.objects.filter(
                 usuario=request.user

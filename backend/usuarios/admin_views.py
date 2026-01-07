@@ -128,7 +128,6 @@ def admin_users_manage(request, user_id: int):
         target.delete()
         return Response({'success': True})
 
-    # Soporte basico para editar campos comunes si se requiere en frontend
     role = request.data.get('role') or request.data.get('rol')
     if role:
         target.rol = str(role).upper()

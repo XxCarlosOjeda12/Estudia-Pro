@@ -33,7 +33,6 @@ class UsuarioSerializer(serializers.ModelSerializer):
         read_only_fields = ['fecha_registro', 'puntos_gamificacion', 'nivel']
 
     def get_streak(self, obj):
-        # Campo requerido por el frontend; si no existe en el modelo usamos 0 por defecto
         return getattr(obj, 'streak', 0) or 0
 
 class RegisterSerializer(serializers.ModelSerializer):
